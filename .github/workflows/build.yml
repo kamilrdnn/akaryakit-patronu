@@ -128,7 +128,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add update.json
           git commit -m "Sürüm v${{ steps.surum.outputs.ad }} [skip ci]" || exit 0
-          git push
+          for i in 1 2 3 4 5; do
+            if git push; then exit 0; fi
+            echo "push reddedildi, rebase ile yeniden deneniyor ($i)"
+            git pull --rebase origin main || true
+            sleep 3
+          done
+          echo "::warning::update.json gonderilemedi"
+          exit 0
 
       - name: APK'yı iş çıktısı olarak sakla
         uses: actions/upload-artifact@v4

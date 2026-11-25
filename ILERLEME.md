@@ -27,8 +27,18 @@ Bu dosya, oturum kesilirse yeni oturumun kaldığı yerden devam edebilmesi içi
 - Hava olayları: kar ve yağmur tanecikleri
 - Çevre trafiğinde otobüs/tır/taksi/minibüs çeşitliliği
 
+## Son turda eklenenler (2)
+- Pazarlama programları: sadakat kartı, katkılı yakıt, yıkama aboneliği
+- Ödemeden kaçan müşteri + güvenlik kamerası tahsilatı
+- Muhasebede ciro/gider/net grafiği (SVG)
+- İlk oyun rehberi (6 adım + ödül)
+- Kayıt yedekleme / geri yükleme (base64 kod)
+- Gece kapatma (00:00-05:00) ve sahnede KAPALI tabelası
+- Dolumda hortum, gece dükkân neonları, kışın çatı karı
+- CI artık AAB de üretiyor; magaza/ altında gizlilik ve mağaza metni
+
 ## Sıradaki işler
-1. **Sahne cilası**: dolumda hortumun araca uzanması, gece neon tabela, çatı kar örtüsü
-2. **Oynanış derinliği**: sadakat kartı, premium (katkılı) yakıt, ödeme kaçıran müşteri + kamera etkisi, vardiya/gece kapatma
-3. **Konfor**: ciro grafiği (Muhasebe), ilk oyun rehberi, kaydı dosyaya yedekleme/geri yükleme
-4. **Dağıtım**: Google Play için AAB, mağaza görselleri, gizlilik metni
+1. **Mağaza görselleri**: 512x512 simge, 1024x500 öne çıkan grafik, 6 ekran görüntüsü
+2. **Sahne**: istasyon içi yaya hareketi, market vitrin detayı, araç gölgelerinde yumuşatma
+3. **Oynanış**: rakip istasyon olayları, fiyat savaşı, tanker filosu yönetimi
+4. **Denge**: 60 günlük bot simülasyonunu yeni programlarla yeniden ölç
