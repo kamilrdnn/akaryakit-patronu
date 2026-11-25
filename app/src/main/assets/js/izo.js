@@ -260,6 +260,7 @@ const IZO = {
     this.musteriArabalari(sb);
     this.cevreTrafigi(sb, dt);
     this.personelGuncelle(sb, dt);
+    this.yayaGuncelle(sb, dt);
 
     for (var i = this.arabalar.length - 1; i >= 0; i--) {
       var a = this.arabalar[i];
@@ -362,6 +363,54 @@ const IZO = {
         tip: dtip, gx: yer2.gx, gy: yer2.gy, w: 0.8, h: 0.8,
         boy: 0.85 + rnd(0.7), tohum: Math.floor(rnd(1000))
       });
+    }
+  },
+
+  /* istasyon içi yayalar: market/kafe arasında gidip gelirler */
+  yayaGuncelle: function (sb, dt) {
+    if (!this.yayalar) this.yayalar = [];
+    var hedefler = [];
+    var bi = D.binalar(sb);
+    for (var i = 0; i < bi.length; i++) {
+      var t = bi[i].b.t;
+      if (t === 'market' || t === 'kafe' || t === 'restoran' || t === 'wc' || t === 'atm' || t === 'mescit') {
+        hedefler.push({ gx: bi[i].i % sb.w + 0.5, gy: Math.floor(bi[i].i / sb.w) + 0.95 });
+      }
+    }
+    if (!hedefler.length) { this.yayalar = []; return; }
+
+    /* gece kapalıysa yaya olmasın */
+    var kapali = SIM.geceKapali && SIM.geceKapali(sb);
+    var hedefSayi = kapali ? 0 : Math.min(4, 1 + Math.floor(sb.kuyruk.length / 2) + (hedefler.length > 2 ? 1 : 0));
+    var renkler = ['#c75f5f', '#4f7fc0', '#d1a23c', '#5aa06c', '#8e6fb0', '#c98a4b'];
+
+    while (this.yayalar.length > hedefSayi) this.yayalar.pop();
+    while (this.yayalar.length < hedefSayi) {
+      var h0 = hedefler[Math.floor(Math.random() * hedefler.length)];
+      this.yayalar.push({
+        gx: h0.gx + (Math.random() - 0.5), gy: sb.h - 0.3,
+        hedef: h0, bekle: Math.random() * 3,
+        renk: renkler[Math.floor(Math.random() * renkler.length)],
+        faz: Math.random() * 6.28, hiz: 0.35 + Math.random() * 0.25
+      });
+    }
+
+    for (var y = 0; y < this.yayalar.length; y++) {
+      var p = this.yayalar[y];
+      p.faz += dt * 7;
+      if (p.bekle > 0) { p.bekle -= dt; continue; }
+      var dx = p.hedef.gx - p.gx, dy = p.hedef.gy - p.gy;
+      var uz = Math.sqrt(dx * dx + dy * dy);
+      if (uz < 0.08) {
+        /* yeni hedef seç: bazen yola/araca döner */
+        p.bekle = 1.5 + Math.random() * 4;
+        if (Math.random() < 0.4) p.hedef = { gx: 0.4 + Math.random() * (sb.w - 0.8), gy: sb.h - 0.25 };
+        else p.hedef = hedefler[Math.floor(Math.random() * hedefler.length)];
+        continue;
+      }
+      var adim = Math.min(uz, p.hiz * dt);
+      p.gx += dx / uz * adim;
+      p.gy += dy / uz * adim;
     }
   },
 
@@ -601,6 +650,10 @@ const IZO = {
       var pp = this.personeller[pr];
       liste.push({ d: pp.gx + pp.gy + 0.02, tur: 'insan', p: pp, gx: pp.gx, gy: pp.gy });
     }
+    for (var yy = 0; yy < (this.yayalar || []).length; yy++) {
+      var yp = this.yayalar[yy];
+      liste.push({ d: yp.gx + yp.gy + 0.03, tur: 'yaya', p: yp, gx: yp.gx, gy: yp.gy });
+    }
     for (var a2 = 0; a2 < this.arabalar.length; a2++) {
       var ar = this.arabalar[a2];
       liste.push({ d: ar.gx + ar.gy, tur: 'araba', a: ar, gx: ar.gx, gy: ar.gy });
@@ -612,6 +665,7 @@ const IZO = {
       if (o.tur === 'yapi') this.yapiCiz(sb, o.i, o.gx, o.gy);
       else if (o.tur === 'sus') this.susCiz(o.s);
       else if (o.tur === 'insan') this.insanCiz(o.p.gx, o.p.gy, o.p.renk, o.p.faz, o.p.sapka);
+      else if (o.tur === 'yaya') this.insanCiz(o.p.gx, o.p.gy, o.p.renk, o.p.faz, null);
       else this.arabaCiz(o.a);
     }
 
@@ -1091,8 +1145,44 @@ const IZO = {
     this.kutu(gx + 0.06, gy + 0.06, 2 + h, 0.88, 0.88, 5, catiRenk, { tip: 'hucre', i: i });
     /* tente */
     this.kutu(gx + 0.06, gy + 0.86, 2 + h * 0.42, 0.88, 0.18, 3, catiRenk);
+    /* vitrin + tabela (market, kafe, restoran) */
+    if (t === 'market' || t === 'kafe' || t === 'restoran') this.vitrin(gx, gy, t, catiRenk, h);
     /* pencereler */
     this.pencereler(gx, gy, h, kat);
+  },
+
+  /* dükkân vitrini: cam, kapı, tabela */
+  vitrin: function (gx, gy, t, catiRenk, h) {
+    var c = this.cz, o = this.kam.olcek, gece = this.gece();
+    /* cam bant */
+    var camRenk = gece ? 'rgba(255,226,160,.92)' : 'rgba(150,196,228,.85)';
+    var a = this.ekran(gx + 0.14, gy + 0.9, 16), b = this.ekran(gx + 0.56, gy + 0.9, 16);
+    var a2 = this.ekran(gx + 0.14, gy + 0.9, 4), b2 = this.ekran(gx + 0.56, gy + 0.9, 4);
+    this.cokgen([a, b, b2, a2], camRenk);
+    /* kapı */
+    var k1 = this.ekran(gx + 0.62, gy + 0.9, 15), k2 = this.ekran(gx + 0.84, gy + 0.9, 15);
+    var k3 = this.ekran(gx + 0.84, gy + 0.9, 2), k4 = this.ekran(gx + 0.62, gy + 0.9, 2);
+    this.cokgen([k1, k2, k3, k4], gece ? 'rgba(255,226,160,.75)' : 'rgba(70,96,125,.8)');
+    /* tabela */
+    if (o > 0.55) {
+      var tp = this.ekran(gx + 0.5, gy + 0.92, 2 + h * 0.42 + 7);
+      var yazi = t === 'market' ? 'MARKET' : (t === 'kafe' ? 'KAFE' : 'LOKANTA');
+      c.font = 'bold ' + Math.round(6.5 * o) + 'px sans-serif';
+      var w = c.measureText(yazi).width + 7 * o;
+      c.fillStyle = gece ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.85)';
+      this.yuvarlakKutu(tp.x - w / 2, tp.y - 9 * o, w, 11 * o, 3 * o);
+      c.fill();
+      c.fillStyle = catiRenk;
+      c.textAlign = 'center';
+      c.fillText(yazi, tp.x, tp.y - 1.2 * o);
+      if (gece) {
+        var g2 = c.createRadialGradient(tp.x, tp.y - 4 * o, 0, tp.x, tp.y - 4 * o, 24 * o);
+        g2.addColorStop(0, 'rgba(255,236,180,.35)');
+        g2.addColorStop(1, 'rgba(255,236,180,0)');
+        c.fillStyle = g2;
+        c.beginPath(); c.arc(tp.x, tp.y - 4 * o, 24 * o, 0, Math.PI * 2); c.fill();
+      }
+    }
   },
 
   pencereler: function (gx, gy, h, kat) {
@@ -1316,10 +1406,19 @@ const IZO = {
     /* gölge */
     var c = this.cz;
     var gp = this.ekran(a.gx, a.gy, 0);
-    c.fillStyle = 'rgba(0,0,0,.22)';
-    c.beginPath();
-    c.ellipse(gp.x, gp.y + 2, boyX * this.TW / 2 * this.kam.olcek * 0.55, boyY * this.TH / 2 * this.kam.olcek * 1.3, 0, 0, Math.PI * 2);
-    c.fill();
+    var grx = boyX * this.TW / 2 * this.kam.olcek * 0.62;
+    var gry = boyY * this.TH / 2 * this.kam.olcek * 1.45;
+    var gg = c.createRadialGradient(gp.x, gp.y + 2, 0, gp.x, gp.y + 2, Math.max(3, grx));
+    gg.addColorStop(0, 'rgba(0,0,0,.26)');
+    gg.addColorStop(0.6, 'rgba(0,0,0,.13)');
+    gg.addColorStop(1, 'rgba(0,0,0,0)');
+    c.save();
+    c.translate(gp.x, gp.y + 2);
+    c.scale(1, gry / Math.max(grx, 1));
+    c.translate(-gp.x, -(gp.y + 2));
+    c.fillStyle = gg;
+    c.beginPath(); c.arc(gp.x, gp.y + 2, Math.max(3, grx), 0, Math.PI * 2); c.fill();
+    c.restore();
     /* tekerler */
     this.kutu(gx + 0.08, gy - 0.02, 0, 0.14, boyY + 0.04, 5, '#23282f');
     this.kutu(gx + boyX - 0.22, gy - 0.02, 0, 0.14, boyY + 0.04, 5, '#23282f');
