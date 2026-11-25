@@ -421,6 +421,52 @@ kontrol(D.sube().siparis.length === 1, 'sipariş oluşmalı');
 for (let i = 0; i < 300; i++) SIM.siparisIsle(D.sube(), 1);
 kontrol(D.sube().tank.benzin.dolu > tankOnce, 'tank dolmalı');
 
+/* --- tanker filosu ekranı --- */
+{
+  const sbt = D.sube();
+  D.s.para = 20000000; D.s.seviye = 10;
+  UI.tasiyici = null;
+  calistir('tanker paneli', () => UI.sekmeGec('siparis'));
+  let g = w.document.getElementById('govde').innerHTML;
+  kontrol(g.indexOf('Tanker filon') >= 0, 'sipariş ekranında filo kartı olmalı');
+  kontrol(g.indexOf('Tedarikçi tankeri') >= 0, 'taşıyıcı seçimi görünmeli');
+
+  calistir('tanker al', () => UI.tankerAl('orta'));
+  kontrol(D.s.tankerler.length === 1, 'düğmeyle tanker alınmalı');
+  const tk = D.s.tankerler[0];
+  g = w.document.getElementById('govde').innerHTML;
+  kontrol(g.indexOf(tk.ad) >= 0, 'alınan tanker listede görünmeli');
+
+  /* taşıyıcı seçimi ve siparişin tankere bağlanması */
+  calistir('taşıyıcı seç', () => UI.tasiyiciSec(tk.id));
+  kontrol(UI.tasiyici === tk.id, 'taşıyıcı seçilmeli');
+  sbt.tank.dizel.dolu = 0;
+  calistir('tankerle sipariş', () => UI.siparis('dizel', 2000));
+  const sonSip = sbt.siparis[sbt.siparis.length - 1];
+  kontrol(sonSip && sonSip.tanker === tk.id, 'sipariş seçilen tankere bağlanmalı');
+  kontrol(tk.durum === 'yolda', 'tanker yola çıkmalı');
+
+  /* yoldayken yeni sipariş uyarı vermeli, tedarikçiye düşmemeli */
+  const sipSayi = sbt.siparis.length;
+  calistir('yoldaki tankerle sipariş', () => UI.siparis('benzin', 500));
+  kontrol(sbt.siparis.length === sipSayi, 'tanker yoldayken sipariş verilmemeli');
+
+  /* teslimat sonrası serbest kalmalı */
+  for (let i = 0; i < 400 && tk.durum === 'yolda'; i++) SIM.siparisIsle(sbt, 1);
+  kontrol(tk.durum === 'bos', 'teslimat sonrası tanker boşa dönmeli');
+  kontrol(UI.gecerliTasiyici(1000) === tk.id, 'boş tanker yeniden seçilebilir olmalı');
+  kontrol(UI.gecerliTasiyici(999999) === null, 'kapasiteyi aşan yükte tedarikçiye düşmeli');
+
+  /* bakım ve satış düğmeleri */
+  tk.bakim = 40;
+  calistir('tanker bakım', () => UI.tankerBakim(tk.id));
+  kontrol(tk.bakim === 100, 'bakım düğmesi çalışmalı');
+  calistir('tanker sat', () => UI.tankerSat(tk.id));
+  kontrol(D.s.tankerler.length === 0, 'satış düğmesi çalışmalı');
+  kontrol(UI.tasiyici === null, 'satılan tanker seçili kalmamalı');
+  calistir('filo boş panel', () => UI.sekmeGec('siparis'));
+}
+
 console.log('UI TEST 5 — servis ekranı (elle dolum)');
 UI.sekmeGec('istasyon');
 /* müşteri yarat ve pompaya ata */

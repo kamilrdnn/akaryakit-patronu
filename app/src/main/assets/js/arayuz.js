@@ -966,6 +966,8 @@ const UI = {
       h += '</div>';
     });
 
+    h += this.tankerHtml(sb);
+
     h += '<div class="kart"><div class="baslik">Tedarikçi</div>';
     h += '<div class="sek">';
     for (var tk in VERI.tedarikciler) {
@@ -1012,9 +1014,96 @@ const UI = {
     if (govde) govde.scrollTop = kay;
   },
 
+  /* --- tanker filosu --- */
+  tasiyici: null,                 /* null = tedarikçi tankeri, yoksa tanker id */
+
+  tasiyiciSec: function (tid) {
+    this.tasiyici = (tid === '' || tid === null) ? null : tid;
+    this.panelYenile();
+  },
+
+  /* seçili taşıyıcı hâlâ uygun mu (yoldaysa/satıldıysa tedarikçiye dön) */
+  gecerliTasiyici: function (mik) {
+    if (!this.tasiyici) return null;
+    var t = SIM.tankerBul(this.tasiyici);
+    if (!SIM.tankerHazir(t, mik)) return null;
+    return t.id;
+  },
+
+  tankerHtml: function (sb) {
+    var s = D.s, self = this;
+    var filo = s.tankerler || [];
+    var limit = SIM.tankerLimit();
+    var h = '<div class="kart"><div class="baslik">🚛 Tanker filon · ' + filo.length + '/' + limit + '</div>';
+    h += '<div class="not">Kendi tankerinle taşırsan litre %' + Math.round(VERI.tankerler.indirim * 100) +
+         ' ucuza gelir ve yük daha çabuk ulaşır. Karşılığında günlük gider ve bakım yükü doğar.</div>';
+
+    /* taşıyıcı seçimi */
+    h += '<div class="sek">';
+    h += '<button class="sec' + (this.tasiyici ? '' : ' secili') + '" onclick="UI.tasiyiciSec(\'\')">';
+    h += '<div class="st">🚚 Tedarikçi tankeri</div><div class="ss">Araç parası yok, litre tedarikçi fiyatına gelir.</div></button>';
+    for (var i = 0; i < filo.length; i++) {
+      var t = filo[i], tip = SIM.tankerTipi(t);
+      var uygun = SIM.tankerHazir(t, 0);
+      var durum = t.arizali ? 'bakım bekliyor' : (t.durum === 'yolda' ? 'yolda · ' + say(t.yuk, 0) + ' L' : 'hazır');
+      h += '<button class="sec' + (self.tasiyici === t.id ? ' secili' : '') + (uygun ? '' : ' pasif') + '"' +
+           (uygun ? ' onclick="UI.tasiyiciSec(\'' + t.id + '\')"' : '') + '>';
+      h += '<div class="st">' + tip.emoji + ' ' + t.ad + ' · ' + say(tip.kap, 0) + ' L</div>';
+      h += '<div class="ss">' + durum + ' · bakım %' + Math.round(t.bakim) + ' · ' + t.sefer + ' sefer</div></button>';
+    }
+    h += '</div>';
+
+    /* filodaki araçların işlemleri */
+    for (var j = 0; j < filo.length; j++) {
+      var tf = filo[j], tipf = SIM.tankerTipi(tf);
+      h += '<div class="satir"><div class="sol"><div class="ikon">' + tipf.emoji + '</div>';
+      h += '<div><div class="ad">' + tf.ad + (tf.arizali ? ' · <span class="kirmiziY">arızalı</span>' : '') + '</div>';
+      h += '<div class="alt">' + tipf.ad + ' · günlük ' + tl(tipf.gunluk) + ' · değer ' + tl(SIM.tankerDegeri(tf)) + '</div></div></div>';
+      h += '<div class="btngrup">';
+      if (tf.bakim < 100 || tf.arizali) {
+        h += '<button class="btn kucuk' + (tf.durum === 'yolda' ? ' ikincil' : '') + '" onclick="UI.tankerBakim(\'' + tf.id + '\')">Bakım · ' + tl(SIM.tankerBakimBedeli(tf)) + '</button>';
+      }
+      h += '<button class="btn kucuk ikincil" onclick="UI.tankerSat(\'' + tf.id + '\')">Sat</button>';
+      h += '</div></div>';
+      h += '<div class="cubuk" style="margin:0 0 8px"><i style="width:' + Math.round(tf.bakim) + '%;background:' +
+           (tf.bakim < VERI.tankerler.bakimEsik ? 'var(--kirmizi)' : tf.bakim < 60 ? 'var(--sari)' : 'var(--yesil)') + '"></i></div>';
+    }
+
+    /* satın alma */
+    if (filo.length < limit) {
+      h += '<div class="baslik" style="margin-top:10px">Tanker al</div>';
+      VERI.tankerler.tipler.forEach(function (tip) {
+        var kilit = s.seviye < tip.seviyeSart;
+        h += '<div class="satir"><div class="sol"><div class="ikon">' + tip.emoji + '</div>';
+        h += '<div><div class="ad">' + tip.ad + ' · ' + say(tip.kap, 0) + ' L</div>';
+        h += '<div class="alt">' + tip.aciklama + '</div></div></div>';
+        if (kilit) h += '<span class="etiket uyari">Sv ' + tip.seviyeSart + '</span>';
+        else h += '<button class="btn kucuk" onclick="UI.tankerAl(\'' + tip.id + '\')">' + tl(tip.fiyat) + '</button>';
+        h += '</div>';
+      });
+    } else {
+      h += '<div class="not">Filo dolu. Yeni hak için seviye atla ya da bir tankeri sat.</div>';
+    }
+    if (filo.length) h += '<div class="kv"><span>Filonun günlük gideri</span><b class="kirmiziY">' + tl(SIM.tankerGunlukGider()) + '</b></div>';
+    h += '</div>';
+    return h;
+  },
+
+  tankerAl: function (tipId) { if (SIM.tankerAl(tipId)) this.panelYenile(); },
+  tankerSat: function (tid) { if (SIM.tankerSat(tid)) { if (this.tasiyici === tid) this.tasiyici = null; this.panelYenile(); } },
+  tankerBakim: function (tid) { if (SIM.tankerBakim(tid)) this.panelYenile(); },
+
   siparis: function (y, mik) {
     if (mik < 50) { this.bildir('Miktar çok düşük', 'En az 50 L sipariş verebilirsin.', 'uyari'); return; }
-    if (SIM.siparisVer(D.sube(), y, mik)) {
+    var tasiyici = this.gecerliTasiyici(mik);
+    if (this.tasiyici && !tasiyici) {
+      var t = SIM.tankerBul(this.tasiyici);
+      this.bildir('Tanker uygun değil',
+        t ? (t.arizali ? t.ad + ' bakım bekliyor.' : (t.durum === 'yolda' ? t.ad + ' yolda.' : t.ad + ' bu miktarı taşıyamaz.'))
+          : 'Seçtiğin tanker filoda yok.', 'uyari');
+      return;
+    }
+    if (SIM.siparisVer(D.sube(), y, mik, tasiyici)) {
       this.siparisMiktar[y] = 0;
       if (this.modalAcik) this.modalKapat(); else this.ciz();
     }
@@ -1381,7 +1470,7 @@ const UI = {
       h += '<div class="btngrup" style="margin-top:10px">';
       if (s2.rafineri.sv < VERI.rafineri.indirim.length - 1)
         h += '<button class="btn kucuk" onclick="SIM.rafineriYukselt()&&UI.ciz()">⬆ Yükselt ' + tl(VERI.rafineri.svFiyat[s2.rafineri.sv]) + '</button>';
-      h += '<button class="btn kucuk ikincil" onclick="SIM.tankerAl()&&UI.ciz()">🚛 Tanker al ' + tl(VERI.rafineri.tankerFiyat) + '</button>';
+      h += '<button class="btn kucuk ikincil" onclick="SIM.rafineriTankerAl()&&UI.ciz()">🚛 Tanker al ' + tl(VERI.rafineri.tankerFiyat) + '</button>';
       h += '</div>';
     }
     h += '</div>';

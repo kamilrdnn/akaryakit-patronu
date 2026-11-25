@@ -128,8 +128,9 @@ const SIM = {
       sb.personel.forEach(function (p) { maas += p.maas / 30; });
       kira += SIM.kiraGunluk(sb);
     });
-    s.para -= (maas + kira);
-    s.ist.bugunGider += maas + kira;
+    var tankerGider = this.tankerGunlukGider();
+    s.para -= (maas + kira + tankerGider);
+    s.ist.bugunGider += maas + kira + tankerGider;
 
     s.subeler.forEach(function (sbr) { SIM.rakipGunSonu(sbr); });
     this.kredileriIsle();
@@ -911,7 +912,9 @@ const SIM = {
       v.arsa += D.lok(sb).fiyat * 0.5 + betonlu * 9000;
     }
     if (s.rafineri.aktif) v.rafineri = VERI.rafineri.fiyat * 0.6 * s.rafineri.sv + s.rafineri.tanker * VERI.rafineri.tankerFiyat * 0.6;
-    v.toplam = v.nakit + v.yakit + v.market + v.tesis + v.arsa + v.rafineri;
+    v.filo = 0;
+    for (var tk = 0; tk < (s.tankerler || []).length; tk++) v.filo += SIM.tankerDegeri(s.tankerler[tk]);
+    v.toplam = v.nakit + v.yakit + v.market + v.tesis + v.arsa + v.rafineri + v.filo;
     return v;
   },
 
@@ -1022,18 +1025,138 @@ const SIM = {
   /* =========================================================
      SİPARİŞ / TEDARİK
      ========================================================= */
-  siparisVer: function (sb, yakit, miktar) {
+  siparisVer: function (sb, yakit, miktar, tankerId) {
+    var tan = VERI.tankerler;
+    var tanker = tankerId ? this.tankerBul(tankerId) : null;
+    if (tankerId && !this.tankerHazir(tanker, miktar)) return false;
+
     var ted = VERI.tedarikciler[sb.tedarikci] || VERI.tedarikciler.standart;
-    var birim = D.toptanFiyat(yakit) * ted.carpan;
+    var birim, nakliye, sure;
+    if (tanker) {
+      /* kendi aracın: aracılık payı yok, nakliye yerine şoför + yakıt bedeli */
+      birim = D.toptanFiyat(yakit) * (1 - tan.indirim);
+      nakliye = tan.surucuBedeli;
+      sure = D.s.rafineri.aktif ? rastgeleTam(8, 25) : Math.round(rastgeleTam(45, 150) * this.tankerTipi(tanker).sure);
+    } else {
+      birim = D.toptanFiyat(yakit) * ted.carpan;
+      nakliye = D.s.rafineri.aktif ? 0 : 2500 + miktar * 0.35;
+      sure = D.s.rafineri.aktif ? rastgeleTam(8, 25) : Math.round(rastgeleTam(45, 150) * ted.sure);
+    }
     var tutar = birim * miktar;
-    var nakliye = D.s.rafineri.aktif ? 0 : 2500 + miktar * 0.35;
     if (!D.harca(tutar + nakliye, 'sipariş')) return false;
-    var sure = D.s.rafineri.aktif ? rastgeleTam(8, 25) : Math.round(rastgeleTam(45, 150) * ted.sure);
     if (sure < 4) sure = 4;
-    sb.siparis.push({ id: id(), yakit: yakit, miktar: miktar, kalan: sure, birim: birim });
+
+    if (tanker) {
+      tanker.durum = 'yolda';
+      tanker.yuk = miktar;
+      tanker.yakit = yakit;
+      tanker.sefer = (tanker.sefer || 0) + 1;
+    }
+    sb.siparis.push({ id: id(), yakit: yakit, miktar: miktar, kalan: sure, birim: birim, tanker: tanker ? tanker.id : null });
     D.s.ist.siparis = (D.s.ist.siparis || 0) + 1;
-    UI.bildir('Sipariş verildi', say(miktar, 0) + ' L ' + VERI.yakitlar[yakit].ad + ' · ' + tl(tutar + nakliye) + ' · ' + sure + ' dk', 'iyi');
+    UI.bildir('Sipariş verildi',
+      say(miktar, 0) + ' L ' + VERI.yakitlar[yakit].ad + ' · ' + tl(tutar + nakliye) + ' · ' + sure + ' dk' +
+      (tanker ? ' · ' + tanker.ad : ''), 'iyi');
     return true;
+  },
+
+  /* =========================================================
+     TANKER FİLOSU
+     ========================================================= */
+  tankerTipi: function (t) {
+    var l = VERI.tankerler.tipler;
+    for (var i = 0; i < l.length; i++) if (l[i].id === (t && t.tip)) return l[i];
+    return l[0];
+  },
+  tankerBul: function (tid) {
+    var l = D.s.tankerler || [];
+    for (var i = 0; i < l.length; i++) if (l[i].id === tid) return l[i];
+    return null;
+  },
+  tankerLimit: function () {
+    var tan = VERI.tankerler;
+    return kisitla(tan.limitTaban + Math.floor(D.s.seviye / tan.limitSeviye), tan.limitTaban, tan.limitTavan);
+  },
+  tankerHazir: function (t, miktar) {
+    if (!t || t.arizali || t.durum !== 'bos') return false;
+    return !miktar || miktar <= this.tankerTipi(t).kap;
+  },
+  /* o miktarı taşıyabilecek boştaki tankerler */
+  bosTankerler: function (miktar) {
+    var l = D.s.tankerler || [], c = [];
+    for (var i = 0; i < l.length; i++) if (this.tankerHazir(l[i], miktar)) c.push(l[i]);
+    return c;
+  },
+  tankerAl: function (tipId) {
+    var tip = null, l = VERI.tankerler.tipler;
+    for (var i = 0; i < l.length; i++) if (l[i].id === tipId) tip = l[i];
+    if (!tip) return false;
+    if (!D.s.tankerler) D.s.tankerler = [];
+    if (D.s.tankerler.length >= this.tankerLimit()) {
+      UI.bildir('Filo dolu', 'Daha fazla tanker için seviye atlaman gerek.', 'uyari');
+      return false;
+    }
+    if (D.s.seviye < tip.seviyeSart) {
+      UI.bildir('Seviye yetersiz', tip.ad + ' için seviye ' + tip.seviyeSart + ' gerek.', 'uyari');
+      return false;
+    }
+    if (!D.harca(tip.fiyat, 'tanker')) return false;
+    var kullanilan = {};
+    for (var k = 0; k < D.s.tankerler.length; k++) kullanilan[D.s.tankerler[k].ad] = true;
+    var ad = '';
+    for (var a = 0; a < VERI.tankerler.adlar.length; a++) {
+      if (!kullanilan[VERI.tankerler.adlar[a]]) { ad = VERI.tankerler.adlar[a]; break; }
+    }
+    if (!ad) ad = 'Tanker ' + (D.s.tankerler.length + 1);
+    D.s.tankerler.push({ id: id(), ad: ad, tip: tip.id, bakim: 100, durum: 'bos', arizali: false, sefer: 0, yuk: 0, yakit: null });
+    UI.bildir('🚛 Tanker alındı', ad + ' · ' + tip.ad + ' filoya katıldı.', 'iyi');
+    return true;
+  },
+  tankerDegeri: function (t) {
+    return Math.round(this.tankerTipi(t).fiyat * 0.6 * (0.55 + (t.bakim || 0) / 220));
+  },
+  tankerSat: function (tid) {
+    var t = this.tankerBul(tid);
+    if (!t) return false;
+    if (t.durum === 'yolda') { UI.bildir('Tanker yolda', 'Seferden dönmeden satamazsın.', 'uyari'); return false; }
+    var bedel = this.tankerDegeri(t);
+    D.s.tankerler.splice(D.s.tankerler.indexOf(t), 1);
+    D.s.para += bedel;
+    D.s.ist.bugunCiro += bedel;
+    UI.bildir('Tanker satıldı', t.ad + ' · ' + tl(bedel), 'iyi');
+    return true;
+  },
+  tankerBakimBedeli: function (t) {
+    return Math.round(this.tankerTipi(t).fiyat * 0.012 * (100 - (t.bakim || 0)) / 10);
+  },
+  tankerBakim: function (tid) {
+    var t = this.tankerBul(tid);
+    if (!t || t.durum === 'yolda') return false;
+    if (t.bakim >= 100 && !t.arizali) return false;
+    if (!D.harca(this.tankerBakimBedeli(t), 'tanker bakım')) return false;
+    t.bakim = 100;
+    t.arizali = false;
+    UI.bildir('🔧 Tanker bakımı', t.ad + ' yeniden yola hazır.', 'iyi');
+    return true;
+  },
+  /* sefer dönüşü: bakım düşer, eşiğin altına inerse arızalanır */
+  tankerDondu: function (tid) {
+    var t = this.tankerBul(tid);
+    if (!t) return;
+    var tan = VERI.tankerler;
+    t.durum = 'bos';
+    t.yuk = 0;
+    t.yakit = null;
+    t.bakim = kisitla(t.bakim - tan.bakimDusus, 0, 100);
+    if (t.bakim < tan.bakimEsik && !t.arizali) {
+      t.arizali = true;
+      UI.bildir('🔩 Tanker bozuldu', t.ad + ' bakım istiyor; onarmadan sefere çıkamaz.', 'kotu');
+    }
+  },
+  tankerGunlukGider: function () {
+    var l = D.s.tankerler || [], t = 0;
+    for (var i = 0; i < l.length; i++) t += this.tankerTipi(l[i]).gunluk;
+    return t;
   },
 
   siparisIsle: function (sb, dk) {
@@ -1047,6 +1170,7 @@ const SIM = {
         var giren = Math.min(yer, o.miktar);
         sb.tank[o.yakit].dolu += giren;
         sb.siparis.splice(i, 1);
+        if (o.tanker) this.tankerDondu(o.tanker);
         if (giren < o.miktar) {
           UI.bildir('Tanker geldi', say(giren, 0) + ' L boşaltıldı, ' + say(o.miktar - giren, 0) + ' L tanka sığmadı (iade yok).', 'uyari');
         } else {
@@ -2359,7 +2483,8 @@ const SIM = {
     return true;
   },
 
-  tankerAl: function () {
+  /* rafinerinin kendi dağıtım tankeri (filo tankerlerinden ayrı) */
+  rafineriTankerAl: function () {
     if (!D.s.rafineri.aktif) return false;
     if (!D.harca(VERI.rafineri.tankerFiyat)) return false;
     D.s.rafineri.tanker++;

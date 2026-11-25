@@ -30,6 +30,10 @@ Yolun karşısında bir rakibin var. Fiyatını kırarsan karşılık verir, fiy
 başlar; ucuz kaldığın her gün onu yıpratırsın. Pahalı kalırsan müşteriyi o toplar.
 Pazar payını ekrandan takip edersin.
 
+🚛 KENDİ TANKER FİLON
+Tedarikçiyi beklemek yerine kendi tankerini al: litre ucuzlar, yük çabuk gelir.
+Karşılığında araç parası, günlük gider ve bakım yükü senin.
+
 💳 İŞLETMEYİ YÖNET
 Banka kredisi, sadakat kartı, katkılı yakıt, yıkama aboneliği, günlük görevler,
 sözleşmeler, muhasebe ekranı ve ciro grafiği.

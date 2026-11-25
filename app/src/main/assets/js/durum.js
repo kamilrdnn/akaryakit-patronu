@@ -67,6 +67,7 @@ const D = {
       tabela: { ad: 'PETROL', renk: 'turuncu', sekil: 'klasik', logo: '⛽', fiyat: true, kanopi: false },
       filolar: [],
       filoTeklif: [],
+      tankerler: [],
       gorevler: [],
       gorevGun: 0,
       devredilen: [],
@@ -368,6 +369,13 @@ const D = {
       s.toptan = {};
       VERI.yakitSira.forEach(function (y) { s.toptan[y] = VERI.yakitlar[y].tabanMaliyet; });
     }
+    if (!s.tankerler) s.tankerler = [];
+    s.tankerler.forEach(function (t) {
+      if (typeof t.bakim !== 'number') t.bakim = 100;
+      if (typeof t.sefer !== 'number') t.sefer = 0;
+      if (typeof t.arizali !== 'boolean') t.arizali = false;
+      if (!t.durum) t.durum = 'bos';
+    });
     s.subeler.forEach(function (sb) {
       if (!sb.kuyruk) sb.kuyruk = [];
       if (!sb.market) sb.market = { stok: {}, fiyat: {}, ciro: 0, kayipSatis: 0, gunlukSatis: {} };

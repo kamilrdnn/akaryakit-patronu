@@ -245,7 +245,11 @@ function otoOyna() {
       const butce = Math.max(0, D.s.para - 20000);
       const alinabilir = Math.floor(butce / D.toptanFiyat(y));
       mik = Math.min(mik, alinabilir);
-      if (mik > 200) SIM.siparisVer(sb, y, mik);
+      if (mik > 200) {
+        /* boş tankerin varsa kendi aracınla taşı (ucuz ve hızlı) */
+        const bosT = SIM.bosTankerler(mik)[0];
+        SIM.siparisVer(sb, y, mik, bosT ? bosT.id : null);
+      }
     }
   });
   /* bekleyen müşterileri elle doldur (±0.1 L hatayla) */
@@ -283,6 +287,13 @@ function otoOyna() {
       else SIM.arsaGenislet(sb);
     }
   }
+  /* tanker filosu: para varsa al, bakımını yap */
+  /* iyi oyuncu gibi: hacmi taşıyacak kadar tanker alır, filoyu şişirmez */
+  if (D.s.para > 2500000 && (D.s.tankerler || []).length < Math.min(2, SIM.tankerLimit()) && D.s.seviye >= 5) {
+    SIM.tankerAl(D.s.seviye >= 8 ? 'buyuk' : 'orta');
+  }
+  (D.s.tankerler || []).forEach(t => { if (t.arizali || t.bakim < 45) SIM.tankerBakim(t.id); });
+
   /* personel */
   if (D.s.para > 1500000 && sb.personel.length < 4) {
     const a = SIM.adayUret('pompaci');
@@ -346,6 +357,11 @@ kontrol(s.marka >= 0 && s.marka <= 100, 'marka puanı aralıkta: ' + s.marka);
 kontrol(D.sube().memnuniyet >= 0 && D.sube().memnuniyet <= 100, 'memnuniyet aralıkta');
 
 /* ======================= TEST 9: kayıt / yükleme ======================= */
+console.log('  tanker: ' + (D.s.tankerler || []).length + ' · toplam sefer: ' +
+  (D.s.tankerler || []).reduce((a, t) => a + (t.sefer || 0), 0) +
+  ' · rakip gücü: ' + D.s.subeler.map(x => (x.rakipIst ? x.rakipIst.guc.toFixed(2) : '-')).join('/') +
+  ' · pazar payı: ' + D.s.subeler.map(x => (x.rakipIst ? x.rakipIst.pay + '%' : '-')).join('/'));
+
 console.log('TEST 9 — kayıt, yükleme, eski kayıt onarımı');
 kontrol(D.kaydet(), 'kaydedilmeli');
 const paraOnce2 = D.s.para, gunOnce = D.s.gun, subeOnce = D.s.subeler.length;
@@ -401,7 +417,7 @@ kontrol(SIM.rafineriKur(), 'rafineri kurulmalı');
 kontrol(D.toptanFiyat('benzin') < toptanOnce, 'rafineri toptan fiyatı düşürmeli');
 kontrol(SIM.rafineriYukselt(), 'rafineri yükseltilmeli');
 kontrol(D.s.rafineri.sv === 2, 'seviye 2 olmalı');
-kontrol(SIM.tankerAl(), 'tanker alınmalı');
+kontrol(SIM.rafineriTankerAl(), 'tanker alınmalı');
 
 /* ======================= TEST 12: güç ve kesinti ======================= */
 console.log('TEST 12 — güç dengesi ve kesinti');
@@ -459,7 +475,12 @@ D.s.para = 5000000;
   kontrol(payZor < payDengeli, 'rakip güçlenince payın düşmeli');
   sbr.rakipIst.guc = 1;
 
+  /* Testin geri kalanında rastgele rakip olayı doğmasın: süren bir olay varken
+     yenisi üretilmiyor, uzun süreli bir olay takarak gücü sadece fiyat belirler. */
+  const olayKilidi = () => { sbr.rakipIst.olay = { id: 'yenileme', kalan: 9999 }; };
+
   /* kışkırtma: ucuz kalırsan rakip er geç fiyat savaşı açar */
+  olayKilidi();
   let savasBasladi = 0, deneme = 0;
   while (!savasBasladi && deneme < 200) {
     deneme++;
@@ -472,6 +493,7 @@ D.s.para = 5000000;
   kontrol(sbr.rakipIst.indirim > 0 && sbr.rakipIst.indirim <= VERI.rakip.savasTavan, 'savaş indirimi tavanı aşmamalı');
 
   /* savaş sırasında ucuz kalırsan rakip yıpranır ve sonunda biter */
+  olayKilidi();
   const gucOnce = sbr.rakipIst.guc;
   let bitti = false, bitisIndirimi = -1;
   for (let g = 0; g < 12 && !bitti; g++) {
@@ -485,12 +507,14 @@ D.s.para = 5000000;
   kontrol(sbr.rakipIst.kazanilanSavas >= 1, 'kazanılan savaş sayılmalı');
 
   /* pahalı kalırsan rakip güçlenir */
-  sbr.rakipIst.guc = 1; sbr.rakipIst.savas = 0; sbr.rakipIst.indirim = 0; sbr.rakipIst.olay = null;
+  sbr.rakipIst.guc = 1; sbr.rakipIst.savas = 0; sbr.rakipIst.indirim = 0;
+  olayKilidi();
   VERI.yakitSira.forEach(y => { sbr.rakip[y] = 50; sbr.fiyat[y] = 58; });
-  for (let g = 0; g < 6; g++) { sbr.rakipIst.olay = null; SIM.rakipGunSonu(sbr); }
+  for (let g = 0; g < 6; g++) SIM.rakipGunSonu(sbr);
   kontrol(sbr.rakipIst.guc > 1, 'pahalı kalınca rakip güçlenmeli: ' + sbr.rakipIst.guc.toFixed(2));
 
-  /* güç her durumda sınırda kalmalı, pay güncellenmeli */
+  /* güç her durumda sınırda kalmalı, pay güncellenmeli (olaylar serbest) */
+  sbr.rakipIst.olay = null;
   for (let g = 0; g < 400; g++) SIM.rakipGunSonu(sbr);
   kontrol(sbr.rakipIst.guc >= VERI.rakip.gucSinir[0] - 1e-9 && sbr.rakipIst.guc <= VERI.rakip.gucSinir[1] + 1e-9,
     'rakip gücü sınırları aşmamalı: ' + sbr.rakipIst.guc);
@@ -524,8 +548,123 @@ D.s.para = 5000000;
   kontrol(SIM.rakipOlayi(sbr) === null, 'olay yoksa null dönmeli');
 }
 
+/* ======================= TEST 14: tanker filosu ======================= */
+console.log('TEST 14 — tanker filosu');
+D.yeni();
+D.s.para = 20000000;
+D.s.seviye = 10;
+{
+  const sbt = D.sube();
+  const tan = VERI.tankerler;
+  kontrol(Array.isArray(D.s.tankerler) && D.s.tankerler.length === 0, 'oyun tankersiz başlamalı');
+  kontrol(SIM.tankerLimit() >= 3, 'seviye 10 için en az 3 tanker hakkı olmalı: ' + SIM.tankerLimit());
+
+  /* seviye kilidi */
+  D.s.seviye = 1;
+  kontrol(!SIM.tankerAl('buyuk'), 'seviye yetmezse tanker alınamamalı');
+  kontrol(D.s.tankerler.length === 0, 'kilitli tanker filoya girmemeli');
+  D.s.seviye = 10;
+
+  /* satın alma */
+  const paraOnce = D.s.para;
+  kontrol(SIM.tankerAl('orta'), 'tanker alınmalı');
+  kontrol(D.s.tankerler.length === 1, 'filoda bir tanker olmalı');
+  const tk = D.s.tankerler[0];
+  kontrol(!!tk.ad && tk.bakim === 100 && tk.durum === 'bos', 'yeni tanker hazır ve bakımlı olmalı');
+  kontrol(D.s.para < paraOnce, 'tanker parası kasadan çıkmalı');
+  kontrol(SIM.tankerTipi(tk).id === 'orta', 'tanker tipi okunmalı');
+  kontrol(SIM.tankerBul(tk.id) === tk, 'tanker id ile bulunmalı');
+  kontrol(SIM.tankerBul('yok') === null, 'olmayan tanker null dönmeli');
+
+  /* adlar çakışmamalı */
+  SIM.tankerAl('kucuk');
+  kontrol(D.s.tankerler[0].ad !== D.s.tankerler[1].ad, 'tankerlerin adı farklı olmalı');
+
+  /* limit */
+  const limit = SIM.tankerLimit();
+  while (D.s.tankerler.length < limit) SIM.tankerAl('kucuk');
+  kontrol(!SIM.tankerAl('kucuk'), 'limit dolunca tanker alınmamalı');
+  kontrol(D.s.tankerler.length === limit, 'filo limiti aşılmamalı: ' + D.s.tankerler.length);
+  while (D.s.tankerler.length > 1) SIM.tankerSat(D.s.tankerler[D.s.tankerler.length - 1].id);
+
+  /* kapasite sınırı */
+  const kap = SIM.tankerTipi(tk).kap;
+  kontrol(SIM.tankerHazir(tk, kap), 'kapasitesi kadar yük taşımalı');
+  kontrol(!SIM.tankerHazir(tk, kap + 1), 'kapasitesinin üstünü taşımamalı');
+  kontrol(SIM.bosTankerler(kap).indexOf(tk) >= 0, 'boş tanker listede olmalı');
+
+  /* kendi tankerinle sipariş: daha ucuz ve tanker yola çıkar */
+  sbt.tank.benzin.dolu = 0;
+  D.s.rafineri.aktif = false;
+  sbt.tedarikci = 'standart';
+  const kasaOnce = D.s.para;
+  kontrol(SIM.siparisVer(sbt, 'benzin', 3000, tk.id), 'kendi tankerinle sipariş verilmeli');
+  const sip = sbt.siparis[sbt.siparis.length - 1];
+  kontrol(sip.tanker === tk.id, 'sipariş tankere bağlanmalı');
+  kontrol(sip.birim < D.toptanFiyat('benzin'), 'kendi tankerinde litre ucuz olmalı');
+  kontrol(tk.durum === 'yolda' && tk.yuk === 3000, 'tanker yola çıkmalı');
+  kontrol(tk.sefer === 1, 'sefer sayacı artmalı');
+  kontrol(D.s.para < kasaOnce, 'sipariş bedeli kasadan çıkmalı');
+  /* yoldaki tankerle ikinci sipariş verilememeli */
+  kontrol(!SIM.siparisVer(sbt, 'dizel', 500, tk.id), 'yoldaki tankerle sipariş verilememeli');
+  kontrol(!SIM.tankerSat(tk.id), 'yoldaki tanker satılamamalı');
+
+  /* teslimat: tanker döner, bakım düşer */
+  const bakimOnce = tk.bakim;
+  for (let i = 0; i < 400 && tk.durum === 'yolda'; i++) SIM.siparisIsle(sbt, 1);
+  kontrol(tk.durum === 'bos', 'teslimattan sonra tanker boşa dönmeli');
+  kontrol(tk.yuk === 0, 'dönen tankerin yükü sıfırlanmalı');
+  kontrol(tk.bakim === bakimOnce - tan.bakimDusus, 'her seferde bakım düşmeli');
+  kontrol(sbt.tank.benzin.dolu > 2000, 'yakıt tanka boşalmalı');
+
+  /* bakım eşiği: yeterince sefer sonrası arızalanır */
+  tk.bakim = tan.bakimEsik + 1;
+  SIM.tankerDondu(tk.id);
+  kontrol(tk.arizali, 'bakım eşiğin altına inince tanker arızalanmalı');
+  kontrol(!SIM.tankerHazir(tk, 100), 'arızalı tanker sefere çıkmamalı');
+  kontrol(!SIM.siparisVer(sbt, 'dizel', 500, tk.id), 'arızalı tankerle sipariş verilememeli');
+
+  /* bakım */
+  const bakimBedel = SIM.tankerBakimBedeli(tk);
+  kontrol(bakimBedel > 0, 'bakım bedeli olmalı');
+  const paraB = D.s.para;
+  kontrol(SIM.tankerBakim(tk.id), 'bakım yapılmalı');
+  kontrol(tk.bakim === 100 && !tk.arizali, 'bakımdan sonra tanker hazır olmalı');
+  kontrol(D.s.para === paraB - bakimBedel, 'bakım bedeli kasadan çıkmalı');
+  kontrol(!SIM.tankerBakim(tk.id), 'bakımlı tankere tekrar bakım yapılmamalı');
+
+  /* tedarikçi siparişi tankere dokunmamalı */
+  sbt.tank.dizel.dolu = 0;
+  kontrol(SIM.siparisVer(sbt, 'dizel', 1000), 'tedarikçi siparişi de çalışmalı');
+  kontrol(tk.durum === 'bos', 'tedarikçi siparişi tankeri meşgul etmemeli');
+  kontrol(sbt.siparis[sbt.siparis.length - 1].tanker === null, 'tedarikçi siparişinde tanker boş olmalı');
+
+  /* günlük gider ve varlık değeri */
+  kontrol(SIM.tankerGunlukGider() === SIM.tankerTipi(tk).gunluk, 'günlük gider tipten gelmeli');
+  const v = SIM.varliklar();
+  kontrol(v.filo > 0, 'tanker varlığa yazılmalı');
+  kontrol(Math.abs(v.toplam - (v.nakit + v.yakit + v.market + v.tesis + v.arsa + v.rafineri + v.filo)) < 1, 'varlık toplamı tutmalı');
+  const giderOnce = D.s.ist.bugunGider;
+  SIM.gunSonu();
+  kontrol(D.s.ist.bugunGider === 0 || giderOnce >= 0, 'gün sonu çalışmalı');
+
+  /* satış */
+  const paraS = D.s.para, deger = SIM.tankerDegeri(tk);
+  kontrol(SIM.tankerSat(tk.id), 'tanker satılmalı');
+  kontrol(D.s.tankerler.length === 0, 'satılan tanker filodan çıkmalı');
+  kontrol(D.s.para === paraS + deger, 'satış bedeli kasaya girmeli');
+  kontrol(!SIM.tankerSat('yok'), 'olmayan tanker satılamamalı');
+
+  /* eski kayıtta tanker alanı onarılmalı */
+  const ham = JSON.parse(JSON.stringify(D.s));
+  delete ham.tankerler;
+  D.s = ham;
+  D.onar();
+  kontrol(Array.isArray(D.s.tankerler), 'eski kayıtta tanker listesi açılmalı');
+}
+
 /* ======================= SONUÇ ======================= */
 console.log('');
-if (hata === 0) console.log('✅ TÜM TESTLER GEÇTİ (13 başlık)');
+if (hata === 0) console.log('✅ TÜM TESTLER GEÇTİ (14 başlık)');
 else console.log('❌ ' + hata + ' HATA VAR');
 process.exit(hata ? 1 : 0);

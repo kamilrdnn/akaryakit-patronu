@@ -27,6 +27,18 @@ Bu dosya, oturum kesilirse yeni oturumun kaldığı yerden devam edebilmesi içi
 - Hava olayları: kar ve yağmur tanecikleri
 - Çevre trafiğinde otobüs/tır/taksi/minibüs çeşitliliği
 
+## Son turda eklenenler (5)
+- Tanker filosu: üç tanker tipi (`VERI.tankerler`), satın alma/satış/bakım,
+  seviyeye bağlı filo limiti, günlük gider, varlıklara yazılma
+- Kendi tankerinle sipariş: litre %5,5 ucuz + nakliye yerine şoför bedeli,
+  teslim daha hızlı; tanker yoldayken başka sefere çıkamıyor, her seferde bakımı
+  düşüyor, eşiğin altında arızalanıyor
+- Sipariş ekranında taşıyıcı seçimi ve filo kartı (`UI.tankerHtml`)
+- Rafineri tankeri `SIM.rafineriTankerAl` olarak ayrıldı (ad çakışması giderildi)
+- 60 günlük bot simülasyonu artık tanker alıp kullanıyor; denge yeniden ölçüldü:
+  ~gün 61 · seviye 16 · ciro ~39-41 M ₺ · kâr ~10,2-10,9 M ₺ · 2 tanker · ~55-60 sefer
+  · pazar payı %41-50 (tankersiz ölçüme göre kâr yaklaşık aynı, sermaye araçta)
+
 ## Son turda eklenenler (4)
 - Karşı istasyon: her şubenin adı olan bir rakibi var (`sb.rakipIst`)
 - Fiyat savaşı: rakibin altına inersen karşılık verir, indirimi büyür; ucuz kaldığın
@@ -57,5 +69,6 @@ Bu dosya, oturum kesilirse yeni oturumun kaldığı yerden devam edebilmesi içi
 - CI artık AAB de üretiyor; magaza/ altında gizlilik ve mağaza metni
 
 ## Sıradaki işler
-1. **Oynanış**: tanker filosu yönetimi (kendi tankerini al, siparişi kendin taşı)
-2. **Denge**: 60 günlük bot simülasyonunu yeni programlarla yeniden ölç
+1. **Sahne**: tanker filosunu sahnede göster (kendi tankerin istasyona girip boşaltsın)
+2. **Oynanış**: rakibin pazar payını kırmak için kampanya/ilan gibi doğrudan bir hamle
+3. **Mağaza**: Play Console'a yükleme (APK/AAB Releases'ta, görseller `magaza/` altında)

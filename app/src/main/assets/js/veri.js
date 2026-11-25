@@ -172,6 +172,29 @@ const VERI = {
     hizli:    { ad: 'Hızlı Lojistik',   emoji: '⚡', carpan: 1.07, sure: 0.45, aciklama: '%7 pahalı ama yarı sürede kapıda.' }
   },
 
+  /* ---------------- kendi tanker filon ----------------
+     Tedarikçinin tankerini beklemek yerine kendi aracınla taşırsın: litre başı
+     ucuzlar ve teslim hızlanır, karşılığında araç parası, günlük gider ve bakım
+     yükü gelir. Tanker yoldayken başka sipariş taşıyamaz. */
+  tankerler: {
+    limitTaban: 1,            /* seviye 1'de kaç tanker tutabilirsin */
+    limitSeviye: 4,           /* her 4 seviyede bir hak artar */
+    limitTavan: 5,
+    indirim: 0.055,           /* kendi tankerinle litre başı kazanç */
+    surucuBedeli: 900,        /* sefer başı şoför + yakıt */
+    bakimDusus: 7,            /* her seferde bakım puanı düşüşü */
+    bakimEsik: 25,            /* altına inerse tanker bozulur */
+    tipler: [
+      { id:'kucuk', ad:'Küçük Tanker',  emoji:'🚚', fiyat: 420000,  kap: 8000,  sure: 0.72, gunluk: 1700, seviyeSart: 2,
+        aciklama:'8.000 L. Küçük istasyon için yeter, bakımı ucuz.' },
+      { id:'orta',  ad:'Çekici Tanker', emoji:'🛻', fiyat: 850000,  kap: 15000, sure: 0.60, gunluk: 2900, seviyeSart: 5,
+        aciklama:'15.000 L. Dengeli: tek seferde tankı doldurur.' },
+      { id:'buyuk', ad:'Uzun Tanker',   emoji:'🚛', fiyat: 1480000, kap: 26000, sure: 0.52, gunluk: 4600, seviyeSart: 8,
+        aciklama:'26.000 L. Zincir büyüdüğünde en ucuz litre bunda.' }
+    ],
+    adlar: ['Poyraz', 'Yıldız', 'Kaptan', 'Fırtına', 'Şimşek', 'Doğan', 'Ayaz', 'Toros']
+  },
+
   /* ---------------- kurumsal sözleşmeler ---------------- */
   sozlesmeMusteriler: [
     { ad: 'Kargo Filosu',      yakit: 'dizel',  emoji: '📦' },
