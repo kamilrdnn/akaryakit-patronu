@@ -620,6 +620,25 @@ console.log('UI TEST 9b — mini oyunlar, filo, taşıma, jeneratör');
   kontrol(D.s.rehber.kapali === true, 'rehber kapatılabilmeli');
   D.s.rehber.kapali = false;
 
+  /* --- üst şerit kaydırması yeniden çizimde korunmalı --- */
+  {
+    calistir('üst çiz', () => UI.ustCiz());
+    const serit = w.document.querySelector('#ust .ustsatir.ikinci');
+    if (serit) {
+      serit.scrollLeft = 80;
+      UI._ustDokunuyor = false;
+      calistir('üst yeniden çiz', () => UI.ustCiz());
+      const yeni = w.document.querySelector('#ust .ustsatir.ikinci');
+      kontrol(yeni && yeni.scrollLeft === 80, 'şerit kaydırma konumu korunmalı: ' + (yeni ? yeni.scrollLeft : '-'));
+      /* dokunurken yeniden çizilmemeli */
+      UI._ustDokunuyor = true;
+      const onceki = w.document.getElementById('ust').firstChild;
+      calistir('dokunurken çiz', () => UI.ustCiz());
+      kontrol(w.document.getElementById('ust').firstChild === onceki, 'dokunurken üst bar yeniden çizilmemeli');
+      UI._ustDokunuyor = false;
+    }
+  }
+
   /* --- hayalet click: modal hemen kapanmamalı --- */
   calistir('modal aç', () => UI.modal('Deneme', '<div>içerik</div>'));
   kontrol(UI.modalAcik === true, 'modal açılmalı');

@@ -212,7 +212,28 @@ const UI = {
     h += '</div>';
     h += '<div class="cubuk ince" style="margin-top:6px"><i style="width:' + xpOran + '%;background:var(--mor)"></i></div>';
 
-    document.getElementById('ust').innerHTML = h;
+    var ustEl = document.getElementById('ust');
+    if (!ustEl) return;
+    /* parmak şeridin üstündeyken yeniden çizme; kaydırma konumunu da koru */
+    if (!this._ustDinleyici && ustEl.addEventListener) {
+      this._ustDinleyici = true;
+      var self = this;
+      var bas = function () { self._ustDokunuyor = true; };
+      var birak = function () { setTimeout(function () { self._ustDokunuyor = false; }, 1200); };
+      ustEl.addEventListener('touchstart', bas, { passive: true });
+      ustEl.addEventListener('touchend', birak, { passive: true });
+      ustEl.addEventListener('touchcancel', birak, { passive: true });
+      ustEl.addEventListener('mousedown', bas);
+      ustEl.addEventListener('mouseup', birak);
+    }
+    if (this._ustDokunuyor) return;
+    var eskiSerit = ustEl.querySelector ? ustEl.querySelector('.ustsatir.ikinci') : null;
+    var kaydirma = eskiSerit ? eskiSerit.scrollLeft : 0;
+    ustEl.innerHTML = h;
+    if (kaydirma) {
+      var yeniSerit = ustEl.querySelector('.ustsatir.ikinci');
+      if (yeniSerit) yeniSerit.scrollLeft = kaydirma;
+    }
   },
 
   /* =========================================================
