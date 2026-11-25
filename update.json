@@ -1,7 +1,7 @@
 {
-  "versionCode": 141,
-  "versionName": "1.2.35",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.35/AkaryakitPatronu-1.2.35.apk",
-  "size": 3340533,
-  "notes": "Akıcılık: araç ve insan resimleri kare başına bütçeyle üretilir, önbellek toptan silinmez"
+  "versionCode": 142,
+  "versionName": "1.2.36",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.36/AkaryakitPatronu-1.2.36.apk",
+  "size": 3341821,
+  "notes": "Yol genişletme, çıkış için katılma şeridi, derinlik ve köşe tabelası düzeltmeleri"
 }
