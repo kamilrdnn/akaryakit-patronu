@@ -72,7 +72,7 @@ var OYUN = {
     var h = '';
 
     if (ekran === 'yeniOnay') {
-      /* tarayıcı confirm() kutusu WebView'da açılmadığı için sayfa içi onay */
+      /* tarayıcının onay kutusu WebView içinde açılmadığı için sayfa içi onay */
       h += '<div class="logo">🗑️</div><h1>Yeni oyun</h1>';
       h += '<p>Mevcut kaydın silinecek' + (oz ? ': <b>Gün ' + oz.gun + ' · ' + tl(oz.para) + ' · Seviye ' + oz.seviye + '</b>' : '') + '. Bu işlem geri alınamaz.</p>';
       h += '<div class="acMenu">';
