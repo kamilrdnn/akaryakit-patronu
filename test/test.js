@@ -56,10 +56,10 @@ kontrol(D.s.subeler.length === 1, 'tek şube olmalı');
 kontrol(D.pompalar().length === 2, '2 pompa olmalı, var: ' + D.pompalar().length);
 kontrol(D.s.para > 0, 'başlangıç parası');
 kontrol(D.sube().tank.benzin.dolu === 2500, 'benzin tankı yarım dolu');
-kontrol(D.sube().w === 3 && D.sube().h === 3, 'şube 3x3 başlamalı');
+kontrol(D.sube().w === 4 && D.sube().h === 3, 'şube 4x3 başlamalı: ' + D.sube().w + 'x' + D.sube().h);
 kontrol(SIM.yakitVar(D.sube(), 'benzin'), 'benzin satılabilir olmalı');
 kontrol(SIM.yakitVar(D.sube(), 'dizel'), 'dizel satılabilir olmalı');
-kontrol(!SIM.yakitVar(D.sube(), 'lpg'), 'LPG pompası yokken satılamaz');
+kontrol(!SIM.yakitVar(D.sube(), 'lpg'), 'LPG tankı boşken satılamaz');
 kontrol(!SIM.yakitVar(D.sube(), 'ev'), 'EV pompası yokken satılamaz');
 
 /* çok tabancalı pompa mantığı */
@@ -67,9 +67,9 @@ console.log('TEST 2 — pompa/yakıt uygunluğu');
 const pBenzin = { t:'pompa', yakit:'benzin' }, pLpg = { t:'pompa', yakit:'lpg' }, pEv = { t:'pompa', yakit:'ev' };
 kontrol(SIM.pompaUygun(pBenzin, 'dizel'), 'benzin pompası dizel verebilmeli');
 kontrol(SIM.pompaUygun(pBenzin, 'benzin'), 'benzin pompası benzin verebilmeli');
-kontrol(!SIM.pompaUygun(pBenzin, 'lpg'), 'benzin pompası LPG vermemeli');
+kontrol(SIM.pompaUygun(pBenzin, 'lpg'), 'karma satış: benzin pompası LPG de vermeli');
 kontrol(!SIM.pompaUygun(pBenzin, 'ev'), 'benzin pompası elektrik vermemeli');
-kontrol(SIM.pompaUygun(pLpg, 'lpg') && !SIM.pompaUygun(pLpg, 'benzin'), 'LPG pompası yalnız LPG');
+kontrol(SIM.pompaUygun(pLpg, 'lpg') && SIM.pompaUygun(pLpg, 'benzin'), 'LPG pompası da karma satar');
 kontrol(SIM.pompaUygun(pEv, 'ev') && !SIM.pompaUygun(pEv, 'dizel'), 'EV pompası yalnız elektrik');
 
 /* ======================= TEST 3: müşteri üretimi ======================= */

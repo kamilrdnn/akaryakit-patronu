@@ -58,6 +58,13 @@ const D = {
       pasifGelir: 0,
       basarimlar: [],
       kampanya: { sezonIdx: 1, sayac: 0, bitti: false },
+      ayar: { dolum: 'ikisi' },   /* 'tut' | 'onayar' | 'ikisi' */
+      krediler: [],
+      krediNotu: 55,
+      sozlesmeler: [],
+      sozlesmeTeklif: [],
+      gorevler: [],
+      gorevGun: 0,
       devredilen: [],
       ist: {
         satisL: { benzin: 0, dizel: 0, lpg: 0, ev: 0 },
@@ -76,7 +83,7 @@ const D = {
     var lok = null;
     for (var i = 0; i < VERI.lokasyonlar.length; i++) if (VERI.lokasyonlar[i].id === lokId) lok = VERI.lokasyonlar[i];
     /* şube küçük başlar, arsa satın alarak lokasyon sınırına kadar büyür */
-    var bw = Math.min(3, lok.w), bh = Math.min(3, lok.h);
+    var bw = Math.min(4, lok.w), bh = Math.min(3, lok.h);
     var n = bw * bh;
     var sb = {
       lok: lok.id,
@@ -104,6 +111,11 @@ const D = {
       personel: [],
       kuyruk: [],
       siparis: [],
+      market: { stok: {}, fiyat: {}, ciro: 0, kayipSatis: 0, gunlukSatis: {} },
+      uyari: {},
+      tedarikci: 'standart',
+      gunlukYakit: { benzin: 0, dizel: 0, lpg: 0, ev: 0 },
+      bugun: { musteri: 0, isabet: 0, litre: 0, marketUrun: 0, ciro: 0, bakim: 0, kacan: 0, tankBos: 0, kuyrukDolu: 0 },
       temizlik: 100,
       memnuniyet: 80,
       hizmetSayac: 0,
@@ -299,6 +311,14 @@ const D = {
     if (!s.olaylar) s.olaylar = [];
     if (!s.devredilen) s.devredilen = [];
     if (!s.basarimlar) s.basarimlar = [];
+    if (!s.ayar) s.ayar = { dolum: 'ikisi' };
+    if (!s.krediler) s.krediler = [];
+    if (!s.sozlesmeler) s.sozlesmeler = [];
+    if (!s.sozlesmeTeklif) s.sozlesmeTeklif = [];
+    if (!s.gorevler) s.gorevler = [];
+    if (typeof s.gorevGun !== 'number') s.gorevGun = 0;
+    if (typeof s.krediNotu !== 'number') s.krediNotu = 55;
+    if (!s.ayar.dolum) s.ayar.dolum = 'ikisi';
     if (!s.kampanya) s.kampanya = { sezonIdx: s.sezonIdx, sayac: 0, bitti: false };
     if (typeof s.pasifGelir !== 'number') s.pasifGelir = 0;
     if (typeof s.marka !== 'number') s.marka = 10;
@@ -310,6 +330,14 @@ const D = {
     }
     s.subeler.forEach(function (sb) {
       if (!sb.kuyruk) sb.kuyruk = [];
+      if (!sb.market) sb.market = { stok: {}, fiyat: {}, ciro: 0, kayipSatis: 0, gunlukSatis: {} };
+      if (!sb.market.stok) sb.market.stok = {};
+      if (!sb.market.fiyat) sb.market.fiyat = {};
+      if (!sb.market.gunlukSatis) sb.market.gunlukSatis = {};
+      if (!sb.uyari) sb.uyari = {};
+      if (!sb.tedarikci) sb.tedarikci = 'standart';
+      if (!sb.gunlukYakit) sb.gunlukYakit = { benzin: 0, dizel: 0, lpg: 0, ev: 0 };
+      if (!sb.bugun) sb.bugun = { musteri: 0, isabet: 0, litre: 0, marketUrun: 0, ciro: 0, bakim: 0, kacan: 0, tankBos: 0, kuyrukDolu: 0 };
       if (!sb.siparis) sb.siparis = [];
       if (!sb.personel) sb.personel = [];
       if (!sb.rakip) sb.rakip = JSON.parse(JSON.stringify(sb.fiyat));

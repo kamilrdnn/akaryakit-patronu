@@ -93,10 +93,17 @@ const SIM = {
     /* --- yeni olay --- */
     if (Math.random() < 0.22) this.olayUret();
 
+    this.seviyeUyarilari(sb);
     this.basarimKontrol();
 
     /* --- memnuniyet yavaş toparlanma --- */
-    sb.memnuniyet = kisitla(sb.memnuniyet + (sb.temizlik > 70 ? 0.4 : -0.3), 0, 100);
+    var konfor = 0, bik = D.binalar(sb);
+    for (var kf = 0; kf < bik.length; kf++) {
+      var tnk = VERI.binalar[bik[kf].b.t];
+      if (tnk && tnk.konfor && !bik[kf].b.arizali) konfor += tnk.konfor * (0.7 + 0.3 * bik[kf].b.sv);
+    }
+    var konforEtki = kisitla(konfor / 22, 0, 1.6) - (D.binaSayisi(sb, 'wc') ? 0 : 0.5);
+    sb.memnuniyet = kisitla(sb.memnuniyet + (sb.temizlik > 70 ? 0.4 : -0.3) + konforEtki * 0.5, 0, 100);
     s.marka = kisitla(s.marka + (sb.memnuniyet - 60) * 0.012, 0, 100);
   },
 
@@ -112,6 +119,17 @@ const SIM = {
     });
     s.para -= (maas + kira);
     s.ist.bugunGider += maas + kira;
+
+    this.kredileriIsle();
+    this.sozlesmeleriIsle();
+    /* günlük sayaçları sıfırla ve yeni görev ver */
+    s.subeler.forEach(function (sbx) {
+      sbx.gunlukYakit = { benzin: 0, dizel: 0, lpg: 0, ev: 0 };
+      sbx.bugun = { musteri: 0, isabet: 0, litre: 0, marketUrun: 0, ciro: 0, bakim: 0, kacan: 0, tankBos: 0, kuyrukDolu: 0 };
+      if (sbx.market) sbx.market.gunlukSatis = {};
+    });
+    this.gorevleriYenile();
+    if (Math.random() < 0.5 || !s.sozlesmeTeklif.length) this.sozlesmeTeklifleriUret();
 
     /* pasif gelir (devredilen şubeler) */
     if (s.pasifGelir > 0) { s.para += s.pasifGelir; s.ist.bugunCiro += s.pasifGelir; }
@@ -181,13 +199,14 @@ const SIM = {
   },
 
   /* bir pompa hangi yakıtları verebilir:
-     - EV pompası sadece elektrik, LPG pompası sadece LPG (güvenlik)
-     - benzin/dizel pompaları çok tabancalıdır: ikisini de verir,
-       kendi türünü tam hızda, diğerini %70 hızda */
+     - EV şarj ünitesi yalnızca elektrik verir
+     - benzin / dizel / LPG pompaları çok tabancalıdır: üçünü de verir,
+       kendi türünü tam hızda, diğerlerini %70 hızda */
   pompaUygun: function (p, y) {
+    /* elektrik yalnızca şarj ünitesinden; diğer pompalar benzin, dizel ve LPG'nin
+       üçünü birden verir (kendi türü tam hızda, diğerleri %70 hızda) */
     if (p.yakit === 'ev' || y === 'ev') return p.yakit === 'ev' && y === 'ev';
-    if (p.yakit === 'lpg' || y === 'lpg') return p.yakit === 'lpg' && y === 'lpg';
-    return (p.yakit === 'benzin' || p.yakit === 'dizel') && (y === 'benzin' || y === 'dizel');
+    return true;
   },
 
   yakitVar: function (sb, y) {
@@ -225,7 +244,10 @@ const SIM = {
     var calisan = 0;
     for (var ci = 0; ci < po.length; ci++) if (!po[ci].p.arizali) calisan++;
     /* kuyruk uzunsa müşteri istasyona hiç girmez (geçip gider, ceza yok) */
-    if (sb.kuyruk.length >= Math.max(2, Math.ceil(calisan * 1.6))) return;
+    if (sb.kuyruk.length >= Math.max(2, Math.ceil(calisan * 1.6))) {
+      if (sb.bugun) sb.bugun.kuyrukDolu++;
+      return;
+    }
 
     var olasilik = this.saatlikMusteri(sb) / 60;
     if (Math.random() > olasilik) return;
@@ -278,7 +300,10 @@ const SIM = {
     var hedef = depo * oran;
     if (yakit !== 'ev') {
       var mevcut = sb.tank[yakit].dolu;
-      if (hedef > mevcut) hedef = mevcut * rastgele(0.5, 0.95);
+      if (hedef > mevcut) {
+        hedef = mevcut * rastgele(0.5, 0.95);
+        if (sb.bugun) sb.bugun.tankBos++;
+      }
       if (hedef < 3) return null;
     }
 
@@ -340,6 +365,7 @@ const SIM = {
        vazgeçen yalnızca kaçırılmış fırsattır */
     sb.memnuniyet = kisitla(sb.memnuniyet - (pompadaydi ? 1.1 : 0.35), 0, 100);
     if (pompadaydi) { D.s.ist.mutsuz++; D.s.marka = kisitla(D.s.marka - 0.12, 0, 100); }
+    if (sb.bugun) sb.bugun.kacan++;
   },
 
   /* bekleyen müşteriyi uygun boş pompaya ata */
@@ -411,7 +437,7 @@ const SIM = {
    * @param yanlisYakit elle serviste yanlış nozul kullanıldıysa
    * @returns sonuç özeti
    */
-  satisTamamla: function (sb, m, elle, yanlisYakit) {
+  satisTamamla: function (sb, m, elle, yanlisYakit, onAyarli) {
     var s = D.s;
     var yk = m.yakit;
     var fiyat = sb.fiyat[yk];
@@ -465,13 +491,13 @@ const SIM = {
       s.ist.mutsuz++;
     } else if (Math.abs(fark) <= 0.15) {
       isabet = 'tam';
-      if (elle) { bahsis = ciro * 0.10 * m.bahsis * mutlulukKat; s.ist.tamIsabet++; }
+      if (elle) { bahsis = ciro * 0.10 * m.bahsis * mutlulukKat * (onAyarli ? 0.5 : 1); s.ist.tamIsabet++; }
       sb.memnuniyet = kisitla(sb.memnuniyet + 1.4, 0, 100);
       s.ist.mutlu++;
       s.marka = kisitla(s.marka + 0.22, 0, 100);
     } else if (Math.abs(fark) <= 0.60) {
       isabet = 'iyi';
-      if (elle) bahsis = ciro * 0.035 * m.bahsis * mutlulukKat;
+      if (elle) bahsis = ciro * 0.035 * m.bahsis * mutlulukKat * (onAyarli ? 0.5 : 1);
       sb.memnuniyet = kisitla(sb.memnuniyet + 0.5, 0, 100);
       s.ist.mutlu++;
     } else {
@@ -485,6 +511,7 @@ const SIM = {
 
     /* --- ek tesis geliri + sezon kampanyası --- */
     var ekGelir = this.ekTesisGeliri(sb, m);
+    ekGelir += this.marketSatis(sb, m);
     ekGelir += this.kampanyaIlerlet(sb);
 
     s.para += ciro + bahsis + ekGelir;
@@ -498,6 +525,13 @@ const SIM = {
     D.xpEkle(xp);
 
     sb.hizmetSayac++;
+    if (!sb.bugun) sb.bugun = { musteri: 0, isabet: 0, litre: 0, marketUrun: 0, ciro: 0, bakim: 0, kacan: 0, tankBos: 0, kuyrukDolu: 0 };
+    if (!sb.gunlukYakit) sb.gunlukYakit = { benzin: 0, dizel: 0, lpg: 0, ev: 0 };
+    sb.bugun.musteri++;
+    sb.bugun.litre += satilan;
+    sb.bugun.ciro += ciro + bahsis + ekGelir;
+    if (isabet === 'tam') sb.bugun.isabet++;
+    sb.gunlukYakit[yk] = (sb.gunlukYakit[yk] || 0) + satilan;
     this.basarimKontrol();
 
     /* izometrik sahnede uçan kazanç */
@@ -524,6 +558,7 @@ const SIM = {
     var bekleme = 1;
     for (var i = 0; i < bi.length; i++) {
       var t = bi[i].b.t, tan = VERI.binalar[t];
+      if (t === 'market') continue;              /* market kendi stok sistemiyle satar */
       if (!tan || !tan.gelir || bi[i].b.arizali) continue;
       var sans = tan.cekim * (1 + 0.22 * (bi[i].b.sv - 1)) * bekleme;
       if (t === 'restoran' && (m.arac === 'Tır' || m.arac === 'Otobüs')) sans *= 2.6;
@@ -587,15 +622,323 @@ const SIM = {
     }
   },
 
+
+  /* =========================================================
+     MARKET
+     ========================================================= */
+  marketVar: function (sb) { return D.binaSayisi(sb, 'market') > 0; },
+
+  marketRafKapasite: function (sb) {
+    var top = 0, m = D.binalar(sb, 'market');
+    for (var i = 0; i < m.length; i++) {
+      if (m[i].b.arizali) continue;
+      top += VERI.marketRaf[kisitla(m[i].b.sv, 1, VERI.marketRaf.length - 1)];
+    }
+    return top;
+  },
+
+  marketDoluluk: function (sb) {
+    var top = 0;
+    for (var i = 0; i < VERI.marketUrunler.length; i++) {
+      var u = VERI.marketUrunler[i];
+      top += (sb.market.stok[u.id] || 0) * u.raf;
+    }
+    return top;
+  },
+
+  marketUrun: function (id) {
+    for (var i = 0; i < VERI.marketUrunler.length; i++) if (VERI.marketUrunler[i].id === id) return VERI.marketUrunler[i];
+    return null;
+  },
+
+  marketSatisFiyati: function (sb, id) {
+    var u = this.marketUrun(id);
+    if (!u) return 0;
+    var f = sb.market.fiyat[id];
+    return (typeof f === 'number' && f > 0) ? f : u.satis;
+  },
+
+  marketStokAl: function (sb, id, adet) {
+    var u = this.marketUrun(id);
+    if (!u || adet <= 0) return false;
+    if (!this.marketVar(sb)) { UI.bildir('Market yok', 'Önce bir market inşa etmelisin.', 'kotu'); return false; }
+    var bosRaf = this.marketRafKapasite(sb) - this.marketDoluluk(sb);
+    var sigar = Math.floor(bosRaf / u.raf);
+    if (sigar <= 0) { UI.bildir('Raf dolu', 'Market rafları dolu; market yükselt veya stok erit.', 'kotu'); return false; }
+    if (adet > sigar) adet = sigar;
+    var tutar = adet * u.alis;
+    if (!D.harca(tutar)) return false;
+    sb.market.stok[id] = (sb.market.stok[id] || 0) + adet;
+    return adet;
+  },
+
+  marketTumunuDoldur: function (sb) {
+    if (!this.marketVar(sb)) { UI.bildir('Market yok', 'Önce bir market inşa etmelisin.', 'kotu'); return false; }
+    var kap = this.marketRafKapasite(sb);
+    var hedefPay = kap / VERI.marketUrunler.length;
+    var alinan = 0, harcanan = 0;
+    for (var i = 0; i < VERI.marketUrunler.length; i++) {
+      var u = VERI.marketUrunler[i];
+      if (u.sezon && VERI.sezonSira[D.s.sezonIdx] !== u.sezon) continue;
+      var hedefAdet = Math.max(1, Math.floor((hedefPay * (0.5 + u.talep / 2)) / u.raf));
+      var eksik = hedefAdet - (sb.market.stok[u.id] || 0);
+      if (eksik <= 0) continue;
+      var bosRaf = this.marketRafKapasite(sb) - this.marketDoluluk(sb);
+      if (bosRaf < u.raf) break;
+      eksik = Math.min(eksik, Math.floor(bosRaf / u.raf));
+      var tutar = eksik * u.alis;
+      if (D.s.para < tutar) continue;
+      D.s.para -= tutar;
+      D.s.ist.bugunGider += tutar;
+      sb.market.stok[u.id] = (sb.market.stok[u.id] || 0) + eksik;
+      alinan += eksik; harcanan += tutar;
+    }
+    if (alinan) UI.bildir('Market dolduruldu', say(alinan, 0) + ' ürün · ' + tl(harcanan), 'iyi');
+    else UI.bildir('Alım yapılmadı', 'Raf dolu ya da bütçe yetmedi.', 'uyari');
+    return alinan;
+  },
+
+  /* bir müşterinin market alışverişi; gelir döndürür */
+  marketSatis: function (sb, m) {
+    if (!this.marketVar(sb)) return 0;
+    var marketler = D.binalar(sb, 'market');
+    var sv = 1, calisan = false;
+    for (var i = 0; i < marketler.length; i++) {
+      if (marketler[i].b.arizali) continue;
+      calisan = true;
+      if (marketler[i].b.sv > sv) sv = marketler[i].b.sv;
+    }
+    if (!calisan) return 0;
+
+    var kasiyer = 0;
+    for (var k = 0; k < sb.personel.length; k++) if (sb.personel[k].tip === 'kasiyer') kasiyer = Math.max(kasiyer, sb.personel[k].beceri);
+    var verim = kasiyer ? (0.75 + kasiyer / 400) : 0.5;
+
+    var girisSansi = 0.17 * (1 + 0.22 * (sv - 1)) * verim * (0.7 + sb.temizlik / 330);
+    if (m.arac === 'Tır' || m.arac === 'Otobüs') girisSansi *= 1.5;
+    if (this.olayVar('turist')) girisSansi *= 1.6;
+    if (Math.random() > kisitla(girisSansi, 0, 0.8)) return 0;
+
+    var adet = 1 + (Math.random() < 0.45 ? 1 : 0) + (Math.random() < 0.18 ? 1 : 0);
+    var gelir = 0;
+    var sezon = VERI.sezonSira[D.s.sezonIdx];
+    for (var a = 0; a < adet; a++) {
+      /* talep ağırlıklı ürün seçimi */
+      var aday = [], agir = [], top = 0;
+      for (var u = 0; u < VERI.marketUrunler.length; u++) {
+        var ur = VERI.marketUrunler[u];
+        if (ur.sezon && ur.sezon !== sezon) continue;
+        var w = ur.talep;
+        if (sezon === 'yaz' && (ur.id === 'su' || ur.id === 'icecek')) w *= 1.6;
+        if (sezon === 'kis' && (ur.id === 'cay' || ur.id === 'antifriz')) w *= 1.7;
+        /* fiyat esnekliği */
+        var oran = this.marketSatisFiyati(sb, ur.id) / ur.satis;
+        w *= kisitla(1 + (1 - oran) * 1.4, 0.15, 2.0);
+        if (w <= 0) continue;
+        aday.push(ur); agir.push(w); top += w;
+      }
+      if (!top) break;
+      var r = Math.random() * top, sec = aday[0];
+      for (var z = 0; z < aday.length; z++) { r -= agir[z]; if (r <= 0) { sec = aday[z]; break; } }
+
+      if ((sb.market.stok[sec.id] || 0) <= 0) {
+        sb.market.kayipSatis++;
+        sb.memnuniyet = kisitla(sb.memnuniyet - 0.12, 0, 100);
+        continue;
+      }
+      sb.market.stok[sec.id]--;
+      var fiyat = this.marketSatisFiyati(sb, sec.id);
+      gelir += fiyat;
+      D.s.ist.marketKar = (D.s.ist.marketKar || 0) + (fiyat - sec.alis);
+      sb.market.gunlukSatis[sec.id] = (sb.market.gunlukSatis[sec.id] || 0) + 1;
+      if (sb.bugun) sb.bugun.marketUrun++;
+    }
+    sb.market.ciro += gelir;
+    return gelir;
+  },
+
+  marketStokDegeri: function (sb) {
+    var top = 0;
+    for (var i = 0; i < VERI.marketUrunler.length; i++) {
+      var u = VERI.marketUrunler[i];
+      top += (sb.market.stok[u.id] || 0) * u.alis;
+    }
+    return top;
+  },
+
+  /* =========================================================
+     UYARILAR
+     ========================================================= */
+  seviyeUyarilari: function (sb) {
+    if (!sb.uyari) sb.uyari = {};
+    var self = this;
+    ['benzin', 'dizel', 'lpg'].forEach(function (y) {
+      var kap = D.tankKap(sb, y);
+      if (!kap) return;
+      var o = sb.tank[y].dolu / kap;
+      var yolda = false;
+      for (var i = 0; i < sb.siparis.length; i++) if (sb.siparis[i].yakit === y) yolda = true;
+      if (o < 0.25 && !sb.uyari[y] && !yolda) {
+        sb.uyari[y] = true;
+        UI.bildir('⚠️ ' + VERI.yakitlar[y].ad + ' azaldı',
+          '%' + Math.round(o * 100) + ' kaldı (' + say(sb.tank[y].dolu, 0) + ' L). Sipariş ver.', 'uyari');
+      } else if (o > 0.35 || yolda) {
+        sb.uyari[y] = false;
+      }
+    });
+    /* market stoğu */
+    if (this.marketVar(sb)) {
+      var kap2 = this.marketRafKapasite(sb);
+      var dolu = this.marketDoluluk(sb);
+      var mo = kap2 ? dolu / kap2 : 0;
+      if (mo < 0.25 && !sb.uyari.market) {
+        sb.uyari.market = true;
+        UI.bildir('⚠️ Market stoğu azaldı', '%' + Math.round(mo * 100) + ' dolu. Market menüsünden mal al.', 'uyari');
+      } else if (mo > 0.4) sb.uyari.market = false;
+    }
+  },
+
+  /* =========================================================
+     BANKA / FİNANS
+     ========================================================= */
+  varliklar: function () {
+    var s = D.s;
+    var v = { nakit: s.para, yakit: 0, market: 0, tesis: 0, arsa: 0, rafineri: 0 };
+    for (var i = 0; i < s.subeler.length; i++) {
+      var sb = s.subeler[i];
+      if (sb.devredildi) continue;
+      ['benzin', 'dizel', 'lpg'].forEach(function (y) {
+        v.yakit += sb.tank[y].dolu * D.toptanFiyat(y);
+      });
+      v.market += SIM.marketStokDegeri(sb);
+      var po = D.pompalar(sb);
+      for (var p = 0; p < po.length; p++) v.tesis += VERI.pompa.fiyat[po[p].p.yakit] * po[p].p.sv * 0.7 * (0.5 + po[p].p.bakim / 200);
+      var bi = D.binalar(sb);
+      for (var b = 0; b < bi.length; b++) v.tesis += VERI.binalar[bi[b].b.t].fiyat * bi[b].b.sv * 0.7 * (0.5 + bi[b].b.bakim / 200);
+      var betonlu = 0;
+      for (var c = 0; c < sb.beton.length; c++) if (sb.beton[c]) betonlu++;
+      v.arsa += D.lok(sb).fiyat * 0.5 + betonlu * 9000;
+    }
+    if (s.rafineri.aktif) v.rafineri = VERI.rafineri.fiyat * 0.6 * s.rafineri.sv + s.rafineri.tanker * VERI.rafineri.tankerFiyat * 0.6;
+    v.toplam = v.nakit + v.yakit + v.market + v.tesis + v.arsa + v.rafineri;
+    return v;
+  },
+
+  borcToplam: function () {
+    var t = 0;
+    for (var i = 0; i < D.s.krediler.length; i++) t += D.s.krediler[i].kalan;
+    return t;
+  },
+
+  aylikTaksitToplam: function () {
+    var t = 0;
+    for (var i = 0; i < D.s.krediler.length; i++) t += D.s.krediler[i].taksitTutar;
+    return t;
+  },
+
+  netDeger: function () { return this.varliklar().toplam - this.borcToplam(); },
+
+  aylikTaksitHesapla: function (anapara, faiz, ay) {
+    if (faiz <= 0) return anapara / ay;
+    return anapara * faiz / (1 - Math.pow(1 + faiz, -ay));
+  },
+
+  krediLimiti: function () {
+    var net = this.netDeger();
+    var tavan = Math.max(150000, net * VERI.banka.borcOrani);
+    return Math.max(0, tavan - this.borcToplam());
+  },
+
+  krediTeklifleri: function () {
+    var s = D.s, liste = [];
+    var limit = this.krediLimiti();
+    for (var i = 0; i < VERI.banka.urunler.length; i++) {
+      var u = VERI.banka.urunler[i];
+      var uygun = s.seviye >= u.seviyeSart && s.krediNotu >= u.notSart;
+      /* kredi notu faizi ve tutarı etkiler */
+      var faiz = u.faiz * (1.35 - s.krediNotu / 160);
+      var tutar = Math.min(u.taban * (0.6 + s.krediNotu / 125), limit);
+      tutar = Math.floor(tutar / 10000) * 10000;
+      var taksit = this.aylikTaksitHesapla(tutar, faiz, u.taksit);
+      liste.push({
+        id: u.id, ad: u.ad, tutar: tutar, ay: u.taksit, faiz: faiz,
+        taksitTutar: taksit, toplam: taksit * u.taksit,
+        uygun: uygun && tutar >= 50000,
+        sebep: !uygun ? (s.seviye < u.seviyeSart ? 'Seviye ' + u.seviyeSart + ' gerekli' : 'Kredi notu ' + u.notSart + ' gerekli')
+                      : (tutar < 50000 ? 'Limitin yetersiz' : '')
+      });
+    }
+    return liste;
+  },
+
+  krediCek: function (teklif) {
+    if (!teklif.uygun) { UI.bildir('Kredi verilmedi', teklif.sebep, 'kotu'); return false; }
+    if (D.s.krediler.length >= 4) { UI.bildir('Kredi sınırı', 'Aynı anda en fazla 4 kredin olabilir.', 'kotu'); return false; }
+    D.s.krediler.push({
+      id: id(), ad: teklif.ad, anapara: teklif.tutar, kalan: teklif.tutar,
+      faiz: teklif.faiz, taksitTutar: teklif.taksitTutar,
+      kalanTaksit: teklif.ay, toplamTaksit: teklif.ay,
+      sonrakiGun: D.s.gun + 30, gecikme: 0
+    });
+    D.s.para += teklif.tutar;
+    D.s.ist.bugunCiro += 0;
+    UI.bildir('💰 Kredi onaylandı', tl(teklif.tutar) + ' hesabına geçti · ' + teklif.ay + ' taksit × ' + tl(teklif.taksitTutar), 'iyi');
+    return true;
+  },
+
+  krediKapat: function (kid) {
+    for (var i = 0; i < D.s.krediler.length; i++) {
+      var k = D.s.krediler[i];
+      if (k.id !== kid) continue;
+      if (!D.harca(k.kalan)) return false;
+      UI.bildir('Kredi kapatıldı', k.ad + ' · ' + tl(k.kalan) + ' ödendi, kalan faizden kurtuldun.', 'iyi');
+      D.s.krediler.splice(i, 1);
+      D.s.krediNotu = kisitla(D.s.krediNotu + 4, 0, 100);
+      return true;
+    }
+    return false;
+  },
+
+  kredileriIsle: function () {
+    var s = D.s;
+    for (var i = s.krediler.length - 1; i >= 0; i--) {
+      var k = s.krediler[i];
+      if (s.gun < k.sonrakiGun) continue;
+      var borc = k.taksitTutar + (k.gecikme || 0);
+      if (s.para >= borc) {
+        s.para -= borc;
+        s.ist.bugunGider += borc;
+        k.kalan = Math.max(0, k.kalan - (borc - k.kalan * k.faiz));
+        k.kalanTaksit--;
+        k.gecikme = 0;
+        k.sonrakiGun = s.gun + 30;
+        s.krediNotu = kisitla(s.krediNotu + 1.5, 0, 100);
+        if (k.kalanTaksit <= 0 || k.kalan <= 1) {
+          UI.bildir('✅ Kredi bitti', k.ad + ' tamamen ödendi.', 'iyi');
+          s.krediler.splice(i, 1);
+          s.krediNotu = kisitla(s.krediNotu + 6, 0, 100);
+        }
+      } else {
+        k.gecikme = (k.gecikme || 0) + k.taksitTutar * VERI.banka.gecikmeFaizi;
+        k.kalan += k.taksitTutar * VERI.banka.gecikmeFaizi;
+        k.sonrakiGun = s.gun + 10;
+        s.krediNotu = kisitla(s.krediNotu - 8, 0, 100);
+        UI.bildir('❌ Taksit ödenemedi', k.ad + ' · gecikme faizi işledi, kredi notun düştü.', 'kotu');
+      }
+    }
+  },
+
   /* =========================================================
      SİPARİŞ / TEDARİK
      ========================================================= */
   siparisVer: function (sb, yakit, miktar) {
-    var birim = D.toptanFiyat(yakit);
+    var ted = VERI.tedarikciler[sb.tedarikci] || VERI.tedarikciler.standart;
+    var birim = D.toptanFiyat(yakit) * ted.carpan;
     var tutar = birim * miktar;
     var nakliye = D.s.rafineri.aktif ? 0 : 2500 + miktar * 0.35;
     if (!D.harca(tutar + nakliye, 'sipariş')) return false;
-    var sure = D.s.rafineri.aktif ? rastgeleTam(8, 25) : rastgeleTam(45, 150);
+    var sure = D.s.rafineri.aktif ? rastgeleTam(8, 25) : Math.round(rastgeleTam(45, 150) * ted.sure);
+    if (sure < 4) sure = 4;
     sb.siparis.push({ id: id(), yakit: yakit, miktar: miktar, kalan: sure, birim: birim });
     UI.bildir('Sipariş verildi', say(miktar, 0) + ' L ' + VERI.yakitlar[yakit].ad + ' · ' + tl(tutar + nakliye) + ' · ' + sure + ' dk', 'iyi');
     return true;
@@ -619,6 +962,184 @@ const SIM = {
         }
       }
     }
+  },
+
+
+  /* =========================================================
+     KURUMSAL SÖZLEŞMELER
+     ========================================================= */
+  sozlesmeTeklifleriUret: function () {
+    var s = D.s;
+    s.sozlesmeTeklif = [];
+    var adet = kisitla(1 + Math.floor(s.seviye / 3), 1, 4);
+    for (var i = 0; i < adet; i++) {
+      var m = secRast(VERI.sozlesmeMusteriler);
+      var gun = rastgeleTam(5, 14);
+      var gunlukL = Math.round(rastgeleTam(60, 90 + s.seviye * 22) / 10) * 10;
+      var taban = D.toptanFiyat(m.yakit);
+      var fiyat = +(taban * rastgele(1.10, 1.26)).toFixed(2);
+      var prim = Math.round(gunlukL * gun * taban * rastgele(0.05, 0.12));
+      s.sozlesmeTeklif.push({
+        id: id(), ad: m.ad, emoji: m.emoji, yakit: m.yakit,
+        gun: gun, gunlukL: gunlukL, fiyat: fiyat,
+        prim: prim, ceza: Math.round(prim * rastgele(0.6, 1.1))
+      });
+    }
+  },
+
+  sozlesmeImzala: function (teklifId) {
+    var s = D.s;
+    for (var i = 0; i < s.sozlesmeTeklif.length; i++) {
+      var t = s.sozlesmeTeklif[i];
+      if (t.id !== teklifId) continue;
+      if (s.sozlesmeler.length >= 3) { UI.bildir('Sözleşme sınırı', 'Aynı anda en fazla 3 sözleşme yürütebilirsin.', 'kotu'); return false; }
+      s.sozlesmeler.push({
+        id: t.id, ad: t.ad, emoji: t.emoji, yakit: t.yakit,
+        gun: t.gun, kalanGun: t.gun, gunlukL: t.gunlukL, fiyat: t.fiyat,
+        prim: t.prim, ceza: t.ceza, basarili: 0, kacirilan: 0, sube: s.aktif
+      });
+      s.sozlesmeTeklif.splice(i, 1);
+      UI.bildir('✍️ Sözleşme imzalandı', t.ad + ' · günde ' + say(t.gunlukL, 0) + ' L ' + VERI.yakitlar[t.yakit].ad, 'iyi');
+      return true;
+    }
+    return false;
+  },
+
+  sozlesmeleriIsle: function () {
+    var s = D.s;
+    for (var i = s.sozlesmeler.length - 1; i >= 0; i--) {
+      var sz = s.sozlesmeler[i];
+      var sb = s.subeler[sz.sube] || D.sube();
+      var satilan = (sb.gunlukYakit && sb.gunlukYakit[sz.yakit]) || 0;
+      if (satilan >= sz.gunlukL) {
+        sz.basarili++;
+        var odeme = sz.gunlukL * sz.fiyat * 0.12;   /* günlük teşvik payı */
+        s.para += odeme;
+        s.ist.bugunCiro += odeme;
+      } else {
+        sz.kacirilan++;
+        var kesinti = Math.round(sz.ceza / sz.gun);
+        s.para -= kesinti;
+        s.ist.bugunGider += kesinti;
+        UI.bildir('⚠️ Sözleşme açığı', sz.ad + ' · bugün ' + say(satilan, 0) + '/' + say(sz.gunlukL, 0) + ' L · kesinti ' + tl(kesinti), 'kotu');
+      }
+      sz.kalanGun--;
+      if (sz.kalanGun <= 0) {
+        if (sz.kacirilan === 0) {
+          s.para += sz.prim;
+          s.ist.bugunCiro += sz.prim;
+          s.marka = kisitla(s.marka + 4, 0, 100);
+          D.xpEkle(800);
+          UI.bildir('🏅 Sözleşme tamamlandı', sz.ad + ' · prim ' + tl(sz.prim), 'iyi');
+        } else {
+          s.marka = kisitla(s.marka - 2, 0, 100);
+          UI.bildir('Sözleşme bitti', sz.ad + ' · ' + sz.kacirilan + ' gün eksik kaldı, prim alamadın.', 'uyari');
+        }
+        s.sozlesmeler.splice(i, 1);
+      }
+    }
+  },
+
+  /* =========================================================
+     GÜNLÜK GÖREVLER
+     ========================================================= */
+  gorevleriYenile: function () {
+    var s = D.s;
+    var havuz = VERI.gorevTipleri.slice();
+    s.gorevler = [];
+    for (var i = 0; i < 3 && havuz.length; i++) {
+      var idx = Math.floor(Math.random() * havuz.length);
+      var g = havuz.splice(idx, 1)[0];
+      var kat = 1 + s.seviye * 0.22;
+      s.gorevler.push({
+        id: g.id, ad: g.ad, birim: g.birim,
+        hedef: Math.round(g.taban * kat),
+        odul: Math.round(g.odul * (1 + s.seviye * 0.18)),
+        alindi: false
+      });
+    }
+    s.gorevGun = s.gun;
+  },
+
+  gorevIlerleme: function (g) {
+    var sb = D.sube();
+    var b = sb.bugun || {};
+    switch (g.id) {
+      case 'musteri': return b.musteri || 0;
+      case 'isabet':  return b.isabet || 0;
+      case 'litre':   return b.litre || 0;
+      case 'market':  return b.marketUrun || 0;
+      case 'ciro':    return b.ciro || 0;
+      case 'bakim':   return b.bakim || 0;
+    }
+    return 0;
+  },
+
+  gorevOdulAl: function (gid) {
+    var s = D.s;
+    for (var i = 0; i < s.gorevler.length; i++) {
+      var g = s.gorevler[i];
+      if (g.id !== gid || g.alindi) continue;
+      if (this.gorevIlerleme(g) < g.hedef) { UI.bildir('Henüz tamamlanmadı', g.ad, 'uyari'); return false; }
+      g.alindi = true;
+      s.para += g.odul;
+      s.ist.bugunCiro += g.odul;
+      D.xpEkle(200);
+      UI.bildir('✅ Görev tamam', g.ad + ' · ödül ' + tl(g.odul), 'iyi');
+      return true;
+    }
+    return false;
+  },
+
+  /* =========================================================
+     DARBOĞAZ ANALİZİ (muhasebe görünümü)
+     ========================================================= */
+  darbogazlar: function () {
+    var sb = D.sube(), s = D.s, liste = [];
+    var b = sb.bugun || {};
+
+    if (b.tankBos > 3) {
+      liste.push({ baslik: 'Tank kurudu', metin: b.tankBos + ' müşteri istediği kadar yakıt alamadı. Tank %25 in altına inmeden sipariş ver.', sekme: 'siparis', dugme: 'Sipariş ver' });
+    }
+    if (b.kuyrukDolu > 4) {
+      liste.push({ baslik: 'Kuyruk doldu', metin: b.kuyrukDolu + ' araç sıraya giremeden geçip gitti. Pompa ekle ya da pompacı tut.', sekme: 'insa', dugme: 'Pompa ekle' });
+    }
+    if (b.kacan > 5) {
+      liste.push({ baslik: 'Müşteri bekletiliyor', metin: b.kacan + ' müşteri sabrı tükenip gitti. Pompacı atamak bekleme süresini düşürür.', sekme: 'personel', dugme: 'Pompacı tut' });
+    }
+    var fk = this.fiyatKat(sb);
+    if (fk < 0.85) {
+      liste.push({ baslik: 'Fiyatın yüksek', metin: 'Rakibe göre pahalısın; müşteri akışı %' + Math.round((1 - fk) * 100) + ' düşük. Fiyatı kırmak cirosu artırır.', sekme: 'fiyat', dugme: 'Fiyatı ayarla' });
+    } else if (fk > 1.45) {
+      var marjDus = false;
+      VERI.yakitSira.forEach(function (y) {
+        var mal = y === 'ev' ? SIM.elektrikMaliyet(sb) : D.toptanFiyat(y);
+        if (sb.fiyat[y] - mal < mal * 0.08) marjDus = true;
+      });
+      if (marjDus) liste.push({ baslik: 'Marj çok ince', metin: 'Fiyatın maliyete çok yakın; çok satıyorsun ama kâr kalmıyor.', sekme: 'fiyat', dugme: 'Fiyatı ayarla' });
+    }
+    var bakimOrt = D.bakimOrt(sb);
+    if (bakimOrt < 60) {
+      liste.push({ baslik: 'Bakım düşük', metin: 'Ortalama bakım %' + Math.round(bakimOrt) + '. Arıza riski ve yavaşlama artıyor.', sekme: 'insa', dugme: 'Bakım yap' });
+    }
+    var arizali = 0;
+    for (var i = 0; i < sb.yapi.length; i++) if (sb.yapi[i] && sb.yapi[i].arizali) arizali++;
+    if (arizali) liste.push({ baslik: arizali + ' arızalı ekipman', metin: 'Arızalı ekipman hiç çalışmaz. Tamir et.', sekme: 'insa', dugme: 'Tamir et' });
+    if (sb.temizlik < 50) liste.push({ baslik: 'İstasyon kirli', metin: 'Temizlik %' + Math.round(sb.temizlik) + '. Memnuniyet ve marka puanı düşüyor.', sekme: 'insa', dugme: 'Temizlik yaptır' });
+    if (this.marketVar(sb)) {
+      var kap = this.marketRafKapasite(sb), dolu = this.marketDoluluk(sb);
+      if (kap && dolu / kap < 0.25) liste.push({ baslik: 'Market boş', metin: 'Raflar %' + Math.round(dolu / kap * 100) + ' dolu; stoksuz ürün satılamıyor.', sekme: 'market', dugme: 'Mal al' });
+      var kasiyerVar = false;
+      for (var k = 0; k < sb.personel.length; k++) if (sb.personel[k].tip === 'kasiyer') kasiyerVar = true;
+      if (!kasiyerVar) liste.push({ baslik: 'Kasiyer yok', metin: 'Market yarı verimle çalışıyor.', sekme: 'personel', dugme: 'Kasiyer al' });
+    }
+    var ure = D.gucUretim(sb), tuk = D.gucTuketim(sb);
+    if (sb.kesinti && ure < tuk * 0.9) liste.push({ baslik: 'Elektrik kesintisi', metin: 'Kendi üretimin yetmiyor, pompalar yavaş çalışıyor.', sekme: 'insa', dugme: 'Jeneratör kur' });
+    if (this.borcToplam() > this.varliklar().toplam * 0.55) {
+      liste.push({ baslik: 'Borç yükü ağır', metin: 'Borcun varlığının yarısını aştı; taksitler nakdini kurutabilir.', sekme: 'banka', dugme: 'Bankaya bak' });
+    }
+    if (!liste.length) liste.push({ baslik: 'Darboğaz yok', metin: 'İstasyon sorunsuz çalışıyor. Büyümeye bakabilirsin.', sekme: 'insa', dugme: 'Yatırım yap' });
+    return liste;
   },
 
   /* =========================================================
@@ -820,6 +1341,7 @@ const SIM = {
     var f = this.bakimBedeli(y);
     if (!D.harca(f)) return false;
     y.bakim = 100; y.arizali = false;
+    if (sb.bugun) sb.bugun.bakim++;
     D.xpEkle(30);
     return true;
   },

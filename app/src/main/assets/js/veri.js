@@ -40,13 +40,22 @@ const VERI = {
     yag:      { ad: 'Yağ Değişimi',  emoji: '🔧', fiyat: 290000,  guc: 9,  gelir: 320, cekim: 0.035,sv: 3, svFiyat: 220000, seviyeSart: 4,  aciklama: 'Periyodik bakım hizmeti. Az müşteri, yüksek ciro.' },
     restoran: { ad: 'Restoran',      emoji: '🍽️', fiyat: 620000,  guc: 20, gelir: 165, cekim: 0.10, sv: 3, svFiyat: 420000, seviyeSart: 6,  aciklama: 'Özellikle otoyolda tır şoförleri için güçlü bir çekim merkezi.' },
     tirpark:  { ad: 'Tır Parkı',     emoji: '🅿️', fiyat: 380000,  guc: 4,  gelir: 120, cekim: 0.05, sv: 2, svFiyat: 260000, seviyeSart: 5,  aciklama: 'Tır trafiğini ve dizel satışını ciddi şekilde artırır.' },
+    wc:       { ad: 'Tuvalet',        emoji: '🚻', fiyat: 65000,   guc: 3,  gelir: 6,   cekim: 0.22, sv: 2, svFiyat: 55000,  seviyeSart: 1,  konfor: 10, aciklama: 'Temel ihtiyaç. Yoksa müşteri memnuniyeti sürekli düşer, varsa yükselir.' },
+    mescit:   { ad: 'Mescit',         emoji: '🕌', fiyat: 95000,   guc: 2,  gelir: 0,   cekim: 0.10, sv: 2, svFiyat: 70000,  seviyeSart: 2,  konfor: 8,  aciklama: 'Yol üstü istasyonların vazgeçilmezi; mola veren sürücüyü çeker.' },
+    havasu:   { ad: 'Hava & Su',      emoji: '💨', fiyat: 48000,   guc: 4,  gelir: 14,  cekim: 0.20, sv: 2, svFiyat: 40000,  seviyeSart: 1,  konfor: 5,  aciklama: 'Lastik havası ve su. Küçük gelir, yüksek memnuniyet.' },
+    atm:      { ad: 'ATM',            emoji: '🏧', fiyat: 75000,   guc: 3,  gelir: 20,  cekim: 0.12, sv: 1, svFiyat: 0,      seviyeSart: 2,  konfor: 4,  aciklama: 'Banka yerleştirir, sen kira ve komisyon alırsın.' },
+    lastikci: { ad: 'Lastikçi',       emoji: '🛞', fiyat: 265000,  guc: 11, gelir: 280, cekim: 0.045,sv: 3, svFiyat: 200000, seviyeSart: 5,  konfor: 3,  aciklama: 'Lastik değişimi ve tamiri. Kışın ve uzun yolda talep patlar.' },
+    adblue:   { ad: 'AdBlue Ünitesi', emoji: '🧪', fiyat: 130000,  guc: 3,  gelir: 110, cekim: 0.07, sv: 2, svFiyat: 95000,  seviyeSart: 4,  konfor: 2,  aciklama: 'Dizel ticari araç ve tırlar için şart; otoyolda çok iş yapar.' },
+    kamera:   { ad: 'Güvenlik Kamerası', emoji: '📹', fiyat: 115000, guc: 4, gelir: 0,  cekim: 0,    sv: 2, svFiyat: 85000,  seviyeSart: 3,  konfor: 3,  aciklama: 'Ödemeden kaçan müşterileri engeller, denetim puanını yükseltir.' },
+    yangin:   { ad: 'Yangın Sistemi', emoji: '🧯', fiyat: 98000,   guc: 2,  gelir: 0,   cekim: 0,    sv: 2, svFiyat: 72000,  seviyeSart: 2,  konfor: 2,  aciklama: 'Denetimde puan kazandırır, yangın riskini neredeyse sıfırlar.' },
+    totem:    { ad: 'Fiyat Totemi',   emoji: '🪧', fiyat: 85000,   guc: 3,  gelir: 0,   cekim: 0.06, sv: 2, svFiyat: 60000,  seviyeSart: 2,  konfor: 0,  aciklama: 'Yoldan fiyatın görünür. Ucuzsan trafiği belirgin artırır.' },
     depo:     { ad: 'Yakıt Deposu',  emoji: '🛢️', fiyat: 180000,  guc: 2,  gelir: 0,   cekim: 0,    sv: 4, svFiyat: 150000, seviyeSart: 1,  aciklama: 'Her seviyesi tüm tanklara +4.000 L kapasite ekler.' },
     ofis:     { ad: 'Yönetim Ofisi', emoji: '🏢', fiyat: 260000,  guc: 5,  gelir: 0,   cekim: 0,    sv: 3, svFiyat: 200000, seviyeSart: 4,  aciklama: 'Personel verimini ve müdür performansını artırır.' },
     gunes:    { ad: 'Güneş Paneli',  emoji: '☀️', fiyat: 140000,  guc: 0,  gelir: 0,   cekim: 0,    sv: 4, svFiyat: 110000, seviyeSart: 2,  uretim: 18, aciklama: 'Gündüz bedava elektrik üretir; gece üretmez.' },
     jenerator:{ ad: 'Dizel Jeneratör',emoji:'🔋', fiyat: 160000,  guc: 0,  gelir: 0,   cekim: 0,    sv: 3, svFiyat: 120000, seviyeSart: 1,  uretim: 40, aciklama: 'Her saat dizel tankından yakıt yakar ama kesinti yaşatmaz.' },
     smr:      { ad: 'Modüler Reaktör',emoji:'⚛️', fiyat: 4200000, guc: 0,  gelir: 0,   cekim: 0,    sv: 2, svFiyat: 3000000,seviyeSart: 12, uretim: 420, aciklama: 'Küçük modüler reaktör: dev üretim, zorunlu bakım, yüksek prestij.' }
   },
-  binaSira: ['depo','market','gunes','jenerator','kafe','yikama','yag','ofis','tirpark','restoran','smr'],
+  binaSira: ['depo','wc','havasu','market','totem','gunes','jenerator','yangin','mescit','atm','kafe','kamera','yikama','yag','adblue','ofis','lastikci','tirpark','restoran','smr'],
 
   /* ---------------- araçlar ---------------- */
   araclar: [
@@ -64,19 +73,19 @@ const VERI = {
 
   /* ---------------- lokasyonlar ---------------- */
   lokasyonlar: [
-    { id:'kasaba',    ad:'Kasaba İstasyonu',   emoji:'🏘️', fiyat:0,        w:4, h:4, trafik:1.00, maxPompa:4,  seviyeSart:1,
+    { id:'kasaba',    ad:'Kasaba İstasyonu',   emoji:'🏘️', fiyat:0,        w:5, h:5, trafik:1.00, maxPompa:6,  seviyeSart:1,
       profil:{ Otomobil:1.1, Hatchback:1.1, 'Ticari Araç':.9, Tır:.25, Otobüs:.3, Motosiklet:1.2, 'Lüks Araç':.3, Elektrikli:.25, Traktör:1.4, Taksi:.7 },
       aciklama:'Doğduğun kasaba. Sakin trafik, düşük kira, öğrenmek için ideal.' },
-    { id:'cevreyolu', ad:'Çevre Yolu',         emoji:'🛣️', fiyat:900000,   w:5, h:5, trafik:1.75, maxPompa:7,  seviyeSart:4,
+    { id:'cevreyolu', ad:'Çevre Yolu',         emoji:'🛣️', fiyat:900000,   w:7, h:6, trafik:1.75, maxPompa:9,  seviyeSart:4,
       profil:{ Otomobil:1.2, Hatchback:1.1, 'Ticari Araç':1.3, Tır:.8, Otobüs:.8, Motosiklet:.9, 'Lüks Araç':.7, Elektrikli:.6, Traktör:.4, Taksi:1.2 },
       aciklama:'Şehir çıkışı. Dengeli trafik, ticari araç ve taksi yoğun.' },
-    { id:'otoyol',    ad:'Otoyol Dinlenme',    emoji:'🚛', fiyat:2600000,  w:6, h:6, trafik:2.60, maxPompa:10, seviyeSart:7,
+    { id:'otoyol',    ad:'Otoyol Dinlenme',    emoji:'🚛', fiyat:2600000,  w:8, h:7, trafik:2.60, maxPompa:12, seviyeSart:7,
       profil:{ Otomobil:1.0, Hatchback:.8, 'Ticari Araç':1.2, Tır:3.2, Otobüs:2.4, Motosiklet:.5, 'Lüks Araç':.9, Elektrikli:.8, Traktör:.1, Taksi:.3 },
       aciklama:'Dizel cenneti. Tır ve otobüsler büyük depolarla gelir; restoran ve tır parkı şart.' },
-    { id:'marina',    ad:'Marina',             emoji:'⛵', fiyat:4100000,  w:5, h:6, trafik:1.60, maxPompa:8,  seviyeSart:9,
+    { id:'marina',    ad:'Marina',             emoji:'⛵', fiyat:4100000,  w:7, h:7, trafik:1.60, maxPompa:10, seviyeSart:9,
       profil:{ Otomobil:.9, Hatchback:.6, 'Ticari Araç':.5, Tır:.2, Otobüs:.3, Motosiklet:.8, 'Lüks Araç':3.4, Elektrikli:1.6, Traktör:.05, Taksi:.6 },
       aciklama:'Lüks araç ve yat sahipleri. Az müşteri ama yüksek bahşiş ve premium fiyat toleransı.' },
-    { id:'metropol',  ad:'Metropol',           emoji:'🌆', fiyat:7800000,  w:7, h:7, trafik:3.60, maxPompa:14, seviyeSart:12,
+    { id:'metropol',  ad:'Metropol',           emoji:'🌆', fiyat:7800000,  w:9, h:9, trafik:3.60, maxPompa:14, seviyeSart:12,
       profil:{ Otomobil:1.4, Hatchback:1.3, 'Ticari Araç':1.1, Tır:.6, Otobüs:1.2, Motosiklet:1.5, 'Lüks Araç':1.5, Elektrikli:2.8, Traktör:.02, Taksi:2.6 },
       aciklama:'Zirve. Dev trafik, elektrikli araç patlaması, 14 pompaya kadar büyüme.' }
   ],
@@ -86,6 +95,7 @@ const VERI = {
     pompaci: { ad:'Pompacı', emoji:'🧑‍🔧', maas:[14000,26000], aciklama:'Atandığı pompada müşterileri kendi doldurur. Bahşiş alamaz, küçük hata payı vardır.' },
     temizlik:{ ad:'Temizlik Görevlisi', emoji:'🧹', maas:[12000,18000], aciklama:'İstasyon temizliğini korur; memnuniyet ve marka puanını yükseltir.' },
     teknisyen:{ ad:'Teknisyen', emoji:'🛠️', maas:[22000,34000], aciklama:'Pompa ve bina bakımlarını kendiliğinden yapar, arıza riskini düşürür.' },
+    kasiyer: { ad:'Market Kasiyeri', emoji:'🧑‍💼', maas:[15000,27000], aciklama:'Market satışlarını yürütür. Kasiyersiz market yarı verimle çalışır.' },
     mudur:   { ad:'Şube Müdürü', emoji:'👔', maas:[38000,65000], aciklama:'Sen başka şubedeyken bu şubeyi çalıştırır. Becerisi kadar verim alır.' }
   },
   isimler: ['Hakan','Mert','Emre','Serkan','Oğuz','Burak','Kaan','Tolga','Can','Barış','Volkan','Uğur','Seda','Elif','Merve','Ayşe','Zeynep','Buse','Derya','Gamze','Fatih','Yusuf','Murat','Okan','Selim','Ece','Nazlı','Pelin','İrem','Berk'],
@@ -128,10 +138,70 @@ const VERI = {
   ],
 
 
+
+
+  /* ---------------- tedarikçiler ---------------- */
+  tedarikciler: {
+    toptanci: { ad: 'Toptancı Depo',    emoji: '🏚️', carpan: 0.92, sure: 1.9, aciklama: '%8 ucuz ama tanker geç gelir.' },
+    standart: { ad: 'Standart Dağıtım', emoji: '🚚', carpan: 1.00, sure: 1.0, aciklama: 'Piyasa fiyatı, normal teslim.' },
+    hizli:    { ad: 'Hızlı Lojistik',   emoji: '⚡', carpan: 1.07, sure: 0.45, aciklama: '%7 pahalı ama yarı sürede kapıda.' }
+  },
+
+  /* ---------------- kurumsal sözleşmeler ---------------- */
+  sozlesmeMusteriler: [
+    { ad: 'Kargo Filosu',      yakit: 'dizel',  emoji: '📦' },
+    { ad: 'Taksi Durağı',      yakit: 'lpg',    emoji: '🚕' },
+    { ad: 'Tarım Kooperatifi', yakit: 'dizel',  emoji: '🚜' },
+    { ad: 'Belediye Otobüsü',  yakit: 'dizel',  emoji: '🚌' },
+    { ad: 'Servis Şirketi',    yakit: 'benzin', emoji: '🚐' },
+    { ad: 'Araç Kiralama',     yakit: 'benzin', emoji: '🔑' },
+    { ad: 'İnşaat Şantiyesi',  yakit: 'dizel',  emoji: '🏗️' },
+    { ad: 'Kurye Ağı',         yakit: 'benzin', emoji: '🛵' }
+  ],
+
+  /* ---------------- günlük görevler ---------------- */
+  gorevTipleri: [
+    { id: 'musteri',  ad: 'Müşteriye hizmet et',    birim: 'müşteri', taban: 12,   odul: 9000 },
+    { id: 'isabet',   ad: 'Tam isabetli dolum yap', birim: 'dolum',   taban: 4,    odul: 12000 },
+    { id: 'litre',    ad: 'Yakıt sat',              birim: 'L',       taban: 900,  odul: 11000 },
+    { id: 'market',   ad: 'Markette ürün sat',      birim: 'ürün',    taban: 10,   odul: 8000 },
+    { id: 'ciro',     ad: 'Ciro yap',               birim: '₺',       taban: 35000,odul: 10000 },
+    { id: 'bakim',    ad: 'Bakım veya tamir yap',   birim: 'işlem',   taban: 2,    odul: 7000 }
+  ],
+
+  /* ---------------- market ürünleri ---------------- */
+  marketUrunler: [
+    { id: 'su',      ad: 'Su',             emoji: '💧', alis: 6,   satis: 15,  raf: 1,   talep: 1.30 },
+    { id: 'icecek',  ad: 'Gazlı İçecek',   emoji: '🥤', alis: 18,  satis: 40,  raf: 1,   talep: 1.10 },
+    { id: 'cay',     ad: 'Çay & Kahve',    emoji: '☕', alis: 9,   satis: 30,  raf: 1,   talep: 1.00 },
+    { id: 'cips',    ad: 'Cips',           emoji: '🍟', alis: 22,  satis: 50,  raf: 1,   talep: 0.85 },
+    { id: 'cikolata',ad: 'Çikolata',       emoji: '🍫', alis: 14,  satis: 35,  raf: 1,   talep: 0.80 },
+    { id: 'sandvic', ad: 'Sandviç & Tost', emoji: '🥪', alis: 45,  satis: 110, raf: 2,   talep: 0.55 },
+    { id: 'sigara',  ad: 'Sigara',         emoji: '🚬', alis: 78,  satis: 90,  raf: 1,   talep: 1.45 },
+    { id: 'camsuyu', ad: 'Cam Suyu',       emoji: '🧴', alis: 35,  satis: 85,  raf: 2,   talep: 0.35 },
+    { id: 'antifriz',ad: 'Antifriz',       emoji: '🧊', alis: 90,  satis: 190, raf: 2,   talep: 0.18, sezon: 'kis' },
+    { id: 'motoryag',ad: 'Motor Yağı',     emoji: '🛢️', alis: 420, satis: 780, raf: 3,   talep: 0.14 },
+    { id: 'ampul',   ad: 'Ampul & Sigorta',emoji: '💡', alis: 40,  satis: 110, raf: 1,   talep: 0.12 },
+    { id: 'kuruyemis',ad: 'Kuruyemiş',     emoji: '🥜', alis: 55,  satis: 120, raf: 1,   talep: 0.40 }
+  ],
+  marketRaf: [0, 120, 220, 360],     /* market seviyesine göre raf kapasitesi */
+
+  /* ---------------- banka ---------------- */
+  banka: {
+    urunler: [
+      { id: 'ihtiyac',  ad: 'İhtiyaç Kredisi',  taban: 250000,   taksit: 12, faiz: 0.034, notSart: 0,  seviyeSart: 1 },
+      { id: 'yatirim',  ad: 'Yatırım Kredisi',  taban: 1500000,  taksit: 24, faiz: 0.029, notSart: 45, seviyeSart: 4 },
+      { id: 'ticari',   ad: 'Ticari Kredi',     taban: 6000000,  taksit: 36, faiz: 0.026, notSart: 60, seviyeSart: 8 },
+      { id: 'kurumsal', ad: 'Kurumsal Kredi',   taban: 25000000, taksit: 48, faiz: 0.023, notSart: 75, seviyeSart: 12 }
+    ],
+    gecikmeFaizi: 0.05,      /* ödenmeyen taksite aylık ek */
+    borcOrani: 0.65          /* net değerin en fazla bu kadarı borçlanılabilir */
+  },
+
   /* ---------------- sezon kampanyaları ---------------- */
   kampanyalar: {
     ilkbahar: { ad: 'Cam Suyu',     emoji: '💧', hedef: 12, odul: 45000 },
-    yaz:      { ad: 'Klima Gazı',   emoji: '❄️', hedef: 10, odul: 60000 },
+    yaz:      { ad: 'Soğuk İçecek', emoji: '🥤', hedef: 14, odul: 60000 },
     sonbahar: { ad: 'Kış Lastiği',  emoji: '🛞', hedef: 14, odul: 80000 },
     kis:      { ad: 'Antifriz',     emoji: '🧊', hedef: 12, odul: 55000 }
   },

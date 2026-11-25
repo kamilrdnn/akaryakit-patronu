@@ -10,35 +10,90 @@ const UI = {
 
   sekmeler: [
     { id: 'istasyon', ad: 'İstasyon', ik: '⛽' },
-    { id: 'insa',     ad: 'Mağaza',   ik: '🏗️' },
-    { id: 'fiyat',    ad: 'Fiyat',    ik: '🏷️' },
+    { id: 'insa',     ad: 'İnşaat',   ik: '🏗️' },
+    { id: 'market',   ad: 'Market',   ik: '🛒' },
     { id: 'siparis',  ad: 'Sipariş',  ik: '🚚' },
     { id: 'personel', ad: 'Personel', ik: '🧑‍🔧' },
+    { id: 'fiyat',    ad: 'Fiyat',    ik: '🏷️' },
     { id: 'subeler',  ad: 'Şubeler',  ik: '🗺️' },
-    { id: 'daha',     ad: 'Daha',     ik: '☰' }
+    { id: 'banka',    ad: 'Banka',    ik: '🏦' },
+    { id: 'daha',     ad: 'Yönetim',  ik: '⚙️' }
   ],
+
+  /* yelpaze menüdeki yerleşim: [sekme, yarıçap, açı] */
+  fabDuzen: [
+    ['insa', 112, 90], ['market', 112, 62], ['siparis', 112, 34], ['personel', 112, 6],
+    ['fiyat', 198, 90], ['subeler', 198, 62], ['banka', 198, 34], ['daha', 198, 6]
+  ],
+  fabAcik: false,
 
   /* =========================================================
      KURULUM
      ========================================================= */
   kur: function () {
-    var h = '';
-    for (var i = 0; i < this.sekmeler.length; i++) {
-      var s = this.sekmeler[i];
-      h += '<button onclick="UI.sekmeGec(\'' + s.id + '\')" id="sk_' + s.id + '">' +
-           '<span class="ik">' + s.ik + '</span>' + s.ad + '</button>';
-    }
-    document.getElementById('alt').innerHTML = h;
+    this.fabCiz();
     try { IZO.kur(); } catch (e) { /* tuval yoksa oyun yine çalışır */ }
     this.sekmeGec('istasyon');
   },
 
+  /* ---------- yelpaze menü ---------- */
+  fabCiz: function () {
+    var kap = document.getElementById('fab');
+    if (!kap) return;
+    var h = '<div class="perde" onclick="UI.fabKapat()"></div>';
+    for (var i = 0; i < this.fabDuzen.length; i++) {
+      var d = this.fabDuzen[i], sk = null;
+      for (var j = 0; j < this.sekmeler.length; j++) if (this.sekmeler[j].id === d[0]) sk = this.sekmeler[j];
+      if (!sk) continue;
+      var r = d[1], aci = d[2] * Math.PI / 180;
+      var x = Math.cos(aci) * r, y = Math.sin(aci) * r;
+      h += '<button class="fabOge" id="fo_' + sk.id + '" style="transition-delay:' + (i * 22) + 'ms" ' +
+           'data-x="' + x.toFixed(1) + '" data-y="' + y.toFixed(1) + '" ' +
+           'onclick="UI.fabSec(\'' + sk.id + '\')">' +
+           '<span class="yuvar">' + sk.ik + '</span><span class="yzi">' + sk.ad + '</span></button>';
+    }
+    h += '<button class="fabAna" onclick="UI.fabAc()"><span class="kareler"><i></i><i></i><i></i><i></i></span></button>';
+    kap.innerHTML = h;
+    this.fabKonumla();
+  },
+
+  fabKonumla: function () {
+    var kap = document.getElementById('fab');
+    if (!kap) return;
+    var ogeler = kap.querySelectorAll('.fabOge');
+    for (var i = 0; i < ogeler.length; i++) {
+      var e = ogeler[i];
+      if (this.fabAcik) {
+        e.style.transform = 'translate(' + e.getAttribute('data-x') + 'px,' + (-e.getAttribute('data-y')) + 'px) scale(1)';
+      } else {
+        e.style.transform = 'translate(0,0) scale(.5)';
+      }
+    }
+  },
+
+  fabAc: function () {
+    this.fabAcik = !this.fabAcik;
+    var kap = document.getElementById('fab');
+    if (kap) kap.classList.toggle('ac', this.fabAcik);
+    this.fabKonumla();
+    if (this.sekme === 'istasyon') this.ciz();
+  },
+  fabKapat: function () {
+    if (!this.fabAcik) return;
+    this.fabAcik = false;
+    var kap = document.getElementById('fab');
+    if (kap) kap.classList.remove('ac');
+    this.fabKonumla();
+    if (this.sekme === 'istasyon') this.ciz();
+  },
+  fabSec: function (id) {
+    this.fabKapat();
+    this.sekmeGec(id);
+  },
+
   sekmeGec: function (id) {
     this.sekme = id;
-    for (var i = 0; i < this.sekmeler.length; i++) {
-      var el = document.getElementById('sk_' + this.sekmeler[i].id);
-      if (el) el.classList.toggle('aktif', this.sekmeler[i].id === id);
-    }
+    this.fabKapat();
     if (id === 'daha') this.okunmamis = 0;
     var g = document.getElementById('govde');
     if (g) g.scrollTop = 0;
@@ -88,7 +143,9 @@ const UI = {
   panelHtml: function () {
     var bas = '', ic = '';
     switch (this.sekme) {
-      case 'insa':     bas = '🏗️ Mağaza & İnşaat'; ic = this.insaHtml(); break;
+      case 'insa':     bas = '🏗️ İnşaat';          ic = this.insaHtml(); break;
+      case 'market':   bas = '🛒 Market';          ic = this.marketHtml(); break;
+      case 'banka':    bas = '🏦 Banka & Finans';  ic = this.bankaHtml(); break;
       case 'fiyat':    bas = '🏷️ Fiyatlar';        ic = this.fiyatHtml(); break;
       case 'siparis':  bas = '🚚 Sipariş';         ic = this.siparisHtml(); break;
       case 'personel': bas = '🧑‍🔧 Personel';      ic = this.personelHtml(); break;
@@ -120,6 +177,7 @@ const UI = {
     h += '<div class="rozet"><span class="yildiz">' + '★'.repeat(yildiz) + '☆'.repeat(5 - yildiz) + '</span></div>';
     h += '<div class="rozet">' + sz.emoji + ' ' + sz.ad + '</div>';
     h += '<div class="rozet">😊 <b>' + Math.round(sb.memnuniyet) + '</b></div>';
+    h += '<div class="rozet" onclick="UI.sekmeGec(\'banka\')">Net <b>' + tl(SIM.netDeger()) + '</b></div>';
     for (var i = 0; i < s.olaylar.length; i++) {
       var ov = null;
       for (var j = 0; j < VERI.olaylar.length; j++) if (VERI.olaylar[j].id === s.olaylar[i].id) ov = VERI.olaylar[j];
@@ -162,17 +220,6 @@ const UI = {
     });
     h += '</div>';
 
-    /* ---- buton satırı ---- */
-    h += '<div class="hudSatir">';
-    h += '<button class="magaza tik" onclick="UI.sekmeGec(\'insa\')">🛒 Mağaza</button>';
-    h += '<div class="hudBosluk"></div>';
-    h += '<button class="hudIk tik" onclick="UI.sekmeGec(\'subeler\')">🗺️</button>';
-    h += '<button class="hudIk tik" onclick="UI.sekmeGec(\'fiyat\')">🏷️</button>';
-    var yoldaSayi = sb.siparis.length;
-    h += '<button class="hudIk tik" onclick="UI.sekmeGec(\'siparis\')">📦' + (yoldaSayi ? '<span class="say">' + yoldaSayi + '</span>' : '') + '</button>';
-    h += '<button class="hudIk tik" onclick="UI.sekmeGec(\'daha\')">⚙️' + (this.okunmamis ? '<span class="say">' + this.okunmamis + '</span>' : '') + '</button>';
-    h += '</div>';
-
     /* ---- kampanya + sıradaki lokasyon ---- */
     h += '<div class="hudSatir" style="align-items:flex-start">';
     h += this.kampanyaHtml();
@@ -189,7 +236,7 @@ const UI = {
     h += '</div>';
 
     /* ---- alt: bekleyen müşteri ---- */
-    h += '<div class="hudAlt">';
+    h += '<div class="hudAlt"' + (this.fabAcik ? ' style="display:none"' : '') + '>';
     var bekleyen = null, bekSayi = 0;
     for (var k = 0; k < sb.kuyruk.length; k++) {
       if (sb.kuyruk[k].durum === 'pompada') { bekSayi++; if (!bekleyen) bekleyen = sb.kuyruk[k]; }
@@ -372,7 +419,7 @@ const UI = {
     if (y.t === 'pompa') {
       ad = VERI.yakitlar[y.yakit].ad + ' Pompası ' + (k + 1);
       aciklama = 'Tam akış ' + say(D.akis(y), 1) + ' · yavaş ' + say(D.yavasAkis(y), 2) + ' ' + VERI.yakitlar[y.yakit].birim + '/sn';
-      if (y.yakit === 'benzin' || y.yakit === 'dizel') aciklama += ' · çok tabancalı (benzin+dizel)';
+      if (y.yakit !== 'ev') aciklama += ' · çok tabancalı: benzin, dizel ve LPG verir (kendi türü tam hızda)';
     } else {
       ad = VERI.binalar[y.t].ad;
       aciklama = VERI.binalar[y.t].aciklama;
@@ -593,6 +640,190 @@ const UI = {
     if (SIM.siparisVer(D.sube(), y, mik)) { if (this.modalAcik) this.modalKapat(); else this.ciz(); }
   },
 
+
+  /* =========================================================
+     MARKET
+     ========================================================= */
+  marketHtml: function () {
+    var sb = D.sube();
+    var h = '';
+    if (!SIM.marketVar(sb)) {
+      h += '<div class="kart"><div class="bos">Bu şubede market yok.<br>Market kurduğunda burada raf, stok ve fiyat yönetimi açılır.</div>';
+      h += '<button class="btn genis" style="margin-top:10px" onclick="UI.sekmeGec(\'insa\')">🏗️ İnşaat menüsüne git</button></div>';
+      return h;
+    }
+    var kap = SIM.marketRafKapasite(sb), dolu = SIM.marketDoluluk(sb);
+    var oran = kap ? (dolu / kap) * 100 : 0;
+    var kasiyer = null;
+    for (var i = 0; i < sb.personel.length; i++) if (sb.personel[i].tip === 'kasiyer') kasiyer = sb.personel[i];
+
+    h += '<div class="kart"><div class="baslik">Raf ve kasa</div>';
+    h += '<div class="kv"><span>Raf doluluğu</span><b>' + say(dolu, 0) + ' / ' + say(kap, 0) + ' birim</b></div>';
+    h += '<div class="cubuk"><i style="width:' + oran + '%;background:' + (oran < 25 ? 'var(--kirmizi)' : oran < 50 ? 'var(--sari)' : 'var(--yesil)') + '"></i></div>';
+    h += '<div class="kv" style="margin-top:8px"><span>Market cirosu (toplam)</span><b>' + tl(sb.market.ciro) + '</b></div>';
+    h += '<div class="kv"><span>Stok değeri</span><b>' + tl(SIM.marketStokDegeri(sb)) + '</b></div>';
+    h += '<div class="kv"><span>Stoksuzluktan kaçan satış</span><b class="' + (sb.market.kayipSatis > 20 ? 'kirmiziY' : '') + '">' + say(sb.market.kayipSatis, 0) + '</b></div>';
+    h += '<div class="kv"><span>Kasiyer</span><b>' + (kasiyer ? kasiyer.ad + ' (' + kasiyer.beceri + ')' : '<span class="sariY">yok · market yarı verimle çalışıyor</span>') + '</b></div>';
+    h += '<div class="btngrup" style="margin-top:10px">';
+    h += '<button class="btn kucuk" onclick="UI.marketDoldur()">🛒 Rafları doldur</button>';
+    if (!kasiyer) h += '<button class="btn kucuk ikincil" onclick="UI.sekmeGec(\'personel\')">🧑‍💼 Kasiyer al</button>';
+    h += '</div></div>';
+
+    h += '<div class="kart"><div class="baslik">Ürünler</div>';
+    h += '<div class="not">Alış fiyatı sabittir; satış fiyatını sen belirlersin. Ucuzlatırsan daha çok satarsın, pahalılaştırırsan marjın artar.</div>';
+    var sezon = VERI.sezonSira[D.s.sezonIdx];
+    for (var u = 0; u < VERI.marketUrunler.length; u++) {
+      var ur = VERI.marketUrunler[u];
+      var stok = sb.market.stok[ur.id] || 0;
+      var fiyat = SIM.marketSatisFiyati(sb, ur.id);
+      var marj = fiyat - ur.alis;
+      var sezonluk = ur.sezon && ur.sezon !== sezon;
+      h += '<div style="padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)">';
+      h += '<div class="satir" style="border:none;padding:0 0 5px"><div class="sol"><div class="ikon">' + ur.emoji + '</div>';
+      h += '<div><div class="ad">' + ur.ad + (sezonluk ? ' <span class="etiket">sezon dışı</span>' : '') + '</div>';
+      h += '<div class="alt">alış ' + say(ur.alis, 0) + ' ₺ · stok <b class="' + (stok <= 0 ? 'kirmiziY' : stok < 6 ? 'sariY' : '') + '">' + say(stok, 0) + '</b> · bugün ' + say(sb.market.gunlukSatis[ur.id] || 0, 0) + ' satıldı</div></div></div>';
+      h += '<div style="text-align:right"><div style="font-size:17px;font-weight:800">' + say(fiyat, 0) + ' ₺</div>';
+      h += '<div class="mini ' + (marj <= 0 ? 'kirmiziY' : 'yesilY') + '">+' + say(marj, 0) + '</div></div></div>';
+      h += '<input type="range" min="' + Math.round(ur.alis) + '" max="' + Math.round(ur.satis * 2) + '" step="1" value="' + Math.round(fiyat) + '" oninput="UI.marketFiyat(\'' + ur.id + '\',this.value)">';
+      h += '<div class="btngrup" style="margin-top:5px">';
+      [10, 25, 50].forEach(function (adet) {
+        h += '<button class="btn minik ikincil" onclick="UI.marketAl(\'' + ur.id + '\',' + adet + ')">+' + adet + '<br><span class="mini">' + tl(adet * ur.alis) + '</span></button>';
+      });
+      h += '</div></div>';
+    }
+    h += '</div>';
+    return h;
+  },
+
+  marketAl: function (id, adet) {
+    var sonuc = SIM.marketStokAl(D.sube(), id, adet);
+    if (sonuc) {
+      var govde = document.getElementById('govde');
+      var kay = govde ? govde.scrollTop : 0;
+      this.ciz();
+      if (govde) govde.scrollTop = kay;
+    }
+  },
+  marketDoldur: function () { SIM.marketTumunuDoldur(D.sube()); this.ciz(); },
+  marketFiyat: function (id, v) {
+    D.sube().market.fiyat[id] = Math.round(+v);
+    var govde = document.getElementById('govde');
+    var kay = govde ? govde.scrollTop : 0;
+    this.ciz();
+    if (govde) govde.scrollTop = kay;
+  },
+
+  /* =========================================================
+     BANKA & FİNANS
+     ========================================================= */
+  bankaHtml: function () {
+    var s = D.s;
+    var v = SIM.varliklar();
+    var borc = SIM.borcToplam();
+    var net = v.toplam - borc;
+    var h = '';
+
+    h += '<div class="kart"><div class="baslik">Özet</div>';
+    h += '<div class="kv"><span>Kasadaki nakit</span><b>' + tl(v.nakit) + '</b></div>';
+    h += '<div class="kv"><span>Toplam varlık</span><b>' + tl(v.toplam) + '</b></div>';
+    h += '<div class="kv"><span>Toplam borç</span><b class="' + (borc > 0 ? 'kirmiziY' : '') + '">' + tl(borc) + '</b></div>';
+    h += '<div class="kv" style="border-top:1px solid var(--cizgi);margin-top:6px;padding-top:8px"><span><b>Net değer</b></span><b class="' + (net >= 0 ? 'yesilY' : 'kirmiziY') + '" style="font-size:17px">' + tl(net) + '</b></div>';
+    h += '<div class="kv"><span>Kredi notu</span><b class="' + (s.krediNotu >= 70 ? 'yesilY' : s.krediNotu >= 45 ? 'sariY' : 'kirmiziY') + '">' + Math.round(s.krediNotu) + ' / 100</b></div>';
+    h += '<div class="cubuk"><i style="width:' + s.krediNotu + '%;background:' + (s.krediNotu >= 70 ? 'var(--yesil)' : s.krediNotu >= 45 ? 'var(--sari)' : 'var(--kirmizi)') + '"></i></div>';
+    h += '</div>';
+
+    h += '<div class="kart"><div class="baslik">Neyim var</div>';
+    h += '<div class="kv"><span>💵 Nakit</span><b>' + tl(v.nakit) + '</b></div>';
+    h += '<div class="kv"><span>⛽ Tanklardaki yakıt</span><b>' + tl(v.yakit) + '</b></div>';
+    h += '<div class="kv"><span>🛒 Market stoğu</span><b>' + tl(v.market) + '</b></div>';
+    h += '<div class="kv"><span>🏗️ Pompa ve tesisler</span><b>' + tl(v.tesis) + '</b></div>';
+    h += '<div class="kv"><span>🧱 Arsa ve zemin</span><b>' + tl(v.arsa) + '</b></div>';
+    if (v.rafineri) h += '<div class="kv"><span>⚙️ Rafineri ve tankerler</span><b>' + tl(v.rafineri) + '</b></div>';
+    if (s.pasifGelir) h += '<div class="kv"><span>🏁 Devredilen şubeler (günlük)</span><b class="yesilY">' + tl(s.pasifGelir) + '</b></div>';
+    h += '</div>';
+
+    /* şube şube döküm */
+    h += '<div class="kart"><div class="baslik">Şube dökümü</div>';
+    for (var i = 0; i < s.subeler.length; i++) {
+      var sb = s.subeler[i];
+      var deger = SIM.subeDegeri(sb);
+      h += '<div class="satir"><div class="sol"><div class="ikon">' + D.lok(sb).emoji + '</div><div><div class="ad">' + sb.ad + '</div>';
+      h += '<div class="alt">' + D.pompalar(sb).length + ' pompa · ' + D.binalar(sb).length + ' tesis' + (sb.devredildi ? ' · devredildi' : '') + '</div></div></div>';
+      h += '<b>' + tl(deger) + '</b></div>';
+    }
+    h += '</div>';
+
+    /* giderler */
+    var gunlukMaas = 0, gunlukKira = 0;
+    for (var j = 0; j < s.subeler.length; j++) {
+      var sbx = s.subeler[j];
+      if (sbx.devredildi) continue;
+      for (var p = 0; p < sbx.personel.length; p++) gunlukMaas += sbx.personel[p].maas / 30;
+      gunlukKira += SIM.kiraGunluk(sbx);
+    }
+    h += '<div class="kart"><div class="baslik">Sabit giderler</div>';
+    h += '<div class="kv"><span>Personel (günlük)</span><b>' + tl(gunlukMaas) + '</b></div>';
+    h += '<div class="kv"><span>Kira ve işletme (günlük)</span><b>' + tl(gunlukKira) + '</b></div>';
+    if (s.krediler.length) h += '<div class="kv"><span>Kredi taksitleri (aylık)</span><b class="kirmiziY">' + tl(SIM.aylikTaksitToplam()) + '</b></div>';
+    h += '<div class="kv" style="border-top:1px solid var(--cizgi);margin-top:6px;padding-top:8px"><span><b>Günlük toplam</b></span><b>' + tl(gunlukMaas + gunlukKira + SIM.aylikTaksitToplam() / 30) + '</b></div>';
+    h += '</div>';
+
+    /* mevcut krediler */
+    if (s.krediler.length) {
+      h += '<div class="kart"><div class="baslik">Kredilerim</div>';
+      for (var k = 0; k < s.krediler.length; k++) {
+        var kr = s.krediler[k];
+        h += '<div class="satir"><div class="sol"><div class="ikon">🏦</div><div><div class="ad">' + kr.ad + '</div>';
+        h += '<div class="alt">kalan <b>' + tl(kr.kalan) + '</b> · ' + kr.kalanTaksit + '/' + kr.toplamTaksit + ' taksit · aylık ' + tl(kr.taksitTutar);
+        h += '<br>sonraki ödeme: gün ' + kr.sonrakiGun + ' · faiz %' + say(kr.faiz * 100, 1);
+        if (kr.gecikme) h += ' · <span class="kirmiziY">gecikme ' + tl(kr.gecikme) + '</span>';
+        h += '</div></div></div>';
+        h += '<button class="btn minik ikincil" onclick="UI.krediKapat(\'' + kr.id + '\')">Kapat</button></div>';
+      }
+      h += '</div>';
+    }
+
+    /* teklifler */
+    h += '<div class="kart"><div class="baslik">Kredi teklifleri</div>';
+    h += '<div class="kv"><span>Kullanılabilir limit</span><b>' + tl(SIM.krediLimiti()) + '</b></div>';
+    h += '<div class="not">Limit net değerinin %' + Math.round(VERI.banka.borcOrani * 100) + ' u kadardır. Taksitini zamanında ödersen kredi notun yükselir, faizin düşer.</div>';
+    var teklifler = SIM.krediTeklifleri();
+    for (var t = 0; t < teklifler.length; t++) {
+      var tk = teklifler[t];
+      h += '<div class="satir"><div class="sol"><div class="ikon">' + (tk.uygun ? '💰' : '🔒') + '</div><div><div class="ad"' + (tk.uygun ? '' : ' style="opacity:.6"') + '>' + tk.ad + '</div>';
+      if (tk.uygun) {
+        h += '<div class="alt">' + tl(tk.tutar) + ' · ' + tk.ay + ' ay × ' + tl(tk.taksitTutar) + '<br>aylık faiz %' + say(tk.faiz * 100, 2) + ' · toplam geri ödeme ' + tl(tk.toplam) + '</div>';
+      } else {
+        h += '<div class="alt"><span class="kirmiziY">' + tk.sebep + '</span></div>';
+      }
+      h += '</div></div>';
+      if (tk.uygun) h += '<button class="btn minik" onclick="UI.krediCek(' + t + ')">Çek</button>';
+      h += '</div>';
+    }
+    h += '</div>';
+    return h;
+  },
+
+  krediCek: function (i) {
+    var teklifler = SIM.krediTeklifleri();
+    if (!teklifler[i]) return;
+    var tk = teklifler[i];
+    var h = '<div class="not">Kredi hemen kasana geçer. Taksitler her 30 günde bir otomatik tahsil edilir; ödeyemezsen gecikme faizi işler ve kredi notun düşer.</div>';
+    h += '<div class="kv" style="margin-top:10px"><span>Anapara</span><b>' + tl(tk.tutar) + '</b></div>';
+    h += '<div class="kv"><span>Vade</span><b>' + tk.ay + ' ay</b></div>';
+    h += '<div class="kv"><span>Aylık faiz</span><b>%' + say(tk.faiz * 100, 2) + '</b></div>';
+    h += '<div class="kv"><span>Aylık taksit</span><b>' + tl(tk.taksitTutar) + '</b></div>';
+    h += '<div class="kv"><span>Toplam geri ödeme</span><b class="kirmiziY">' + tl(tk.toplam) + '</b></div>';
+    h += '<div class="kv"><span>Toplam faiz yükü</span><b class="kirmiziY">' + tl(tk.toplam - tk.tutar) + '</b></div>';
+    h += '<button class="btn genis" style="margin-top:12px" onclick="UI.krediOnay(' + i + ')">Krediyi kullan</button>';
+    this.modal(tk.ad, h);
+  },
+  krediOnay: function (i) {
+    var teklifler = SIM.krediTeklifleri();
+    if (teklifler[i] && SIM.krediCek(teklifler[i])) this.modalKapat();
+  },
+  krediKapat: function (kid) { if (SIM.krediKapat(kid)) this.ciz(); },
+
   /* =========================================================
      PERSONEL
      ========================================================= */
@@ -636,9 +867,9 @@ const UI = {
   },
 
   adaylarYenile: function (ciz) {
-    var tipler = ['pompaci', 'pompaci', 'temizlik', 'teknisyen', 'mudur'];
+    var tipler = ['pompaci', 'pompaci', 'kasiyer', 'temizlik', 'teknisyen', 'mudur'];
     this.adaylar = [];
-    for (var i = 0; i < 5; i++) this.adaylar.push(SIM.adayUret(tipler[i]));
+    for (var i = 0; i < tipler.length; i++) this.adaylar.push(SIM.adayUret(tipler[i]));
     if (ciz) this.ciz();
   },
   iseAl: function (i) {
@@ -788,6 +1019,16 @@ const UI = {
     }
 
     h += '<div class="kart"><div class="baslik">⚙️ Ayarlar</div>';
+    var dm = (s.ayar && s.ayar.dolum) || 'ikisi';
+    h += '<div class="kv"><span>Dolum şekli</span><b></b></div>';
+    h += '<div class="sek" style="margin-bottom:10px">';
+    [['tut', '✋ Basılı tut', 'Tabancayı sen tutarsın; tam isabette tam bahşiş.'],
+     ['onayar', '🔢 Miktar gir', 'Miktarı yaz, pompa kendi durur; bahşiş yarı.'],
+     ['ikisi', '⚡ İkisi de', 'Serviste iki seçenek birlikte çıkar.']].forEach(function (o) {
+      h += '<button class="sec' + (dm === o[0] ? ' secili' : '') + '" onclick="UI.dolumModu(\'' + o[0] + '\')">';
+      h += '<div class="st">' + o[1] + '</div><div class="ss">' + o[2] + '</div></button>';
+    });
+    h += '</div>';
     h += '<div class="kv"><span>Oyun hızı</span><b>' + s.hiz + '×</b></div>';
     h += '<div class="btngrup" style="margin-top:8px">';
     h += '<button class="btn kucuk ikincil" onclick="D.kaydet()&&UI.bildir(\'Kaydedildi\',\'\',\'iyi\')">💾 Kaydet</button>';
@@ -796,6 +1037,16 @@ const UI = {
     h += '</div>';
     h += '<div class="not">Sürüm <b id="surumYazi">—</b> · Oyun tamamen çevrimdışı çalışır; internet yalnızca güncelleme denetiminde kullanılır.</div>';
     h += '</div>';
+
+    h += '<div class="kart"><div class="baslik">🧪 Geliştirici</div>';
+    h += '<div class="not">Kendi oyunun — istediğin gibi oyna. Bu düğmeler kaydını anında değiştirir.</div>';
+    h += '<div class="btngrup" style="margin-top:10px">';
+    h += '<button class="btn kucuk ikincil" onclick="UI.hile(\'para\')">+5.000.000 ₺</button>';
+    h += '<button class="btn kucuk ikincil" onclick="UI.hile(\'para50\')">+50.000.000 ₺</button>';
+    h += '<button class="btn kucuk ikincil" onclick="UI.hile(\'seviye\')">+3 seviye</button>';
+    h += '<button class="btn kucuk ikincil" onclick="UI.hile(\'tank\')">Tankları doldur</button>';
+    h += '<button class="btn kucuk ikincil" onclick="UI.hile(\'bakim\')">Her şeyi tamir et</button>';
+    h += '</div></div>';
 
     h += '<div class="kart"><div class="baslik">💡 İpuçları</div>';
     for (var t = 0; t < VERI.ipuclari.length; t++) h += '<div class="kv"><span>·</span><b style="font-weight:500;text-align:right">' + VERI.ipuclari[t] + '</b></div>';
@@ -807,6 +1058,26 @@ const UI = {
     }, 0);
 
     return h;
+  },
+
+  hile: function (tip) {
+    var s = D.s, sb = D.sube();
+    if (tip === 'para') { s.para += 5000000; this.bildir('+5.000.000 ₺', 'Kasaya eklendi.', 'iyi'); }
+    else if (tip === 'para50') { s.para += 50000000; this.bildir('+50.000.000 ₺', 'Kasaya eklendi.', 'iyi'); }
+    else if (tip === 'seviye') {
+      s.seviye = Math.min(VERI.xpTablo.length, s.seviye + 3);
+      s.xp = Math.max(s.xp, D.oncekiXp());
+      this.bildir('Seviye ' + s.seviye, 'Yeni lokasyon ve tesisler açıldı.', 'iyi');
+    } else if (tip === 'tank') {
+      ['benzin', 'dizel', 'lpg'].forEach(function (y) { sb.tank[y].dolu = D.tankKap(sb, y); });
+      this.bildir('Tanklar doldu', 'Bedava dolum.', 'iyi');
+    } else if (tip === 'bakim') {
+      for (var i = 0; i < sb.yapi.length; i++) if (sb.yapi[i]) { sb.yapi[i].bakim = 100; sb.yapi[i].arizali = false; }
+      sb.temizlik = 100;
+      this.bildir('Her şey tamir edildi', 'Bakım ve temizlik %100.', 'iyi');
+    }
+    D.kaydet();
+    this.ciz();
   },
 
   sifirlaOnay: function () {
@@ -821,6 +1092,14 @@ const UI = {
     this.modalKapat();
     this.sekmeGec('istasyon');
     this.bildir('Yeni oyun', 'Kasaba istasyonunda yeniden başladın.', 'iyi');
+  },
+
+  dolumModu: function (m) {
+    if (!D.s.ayar) D.s.ayar = {};
+    D.s.ayar.dolum = m;
+    D.kaydet();
+    this.bildir('Dolum şekli', m === 'tut' ? 'Basılı tut' : m === 'onayar' ? 'Miktar gir' : 'İkisi de', 'iyi');
+    this.ciz();
   },
 
   guncellemeKontrol: function () {

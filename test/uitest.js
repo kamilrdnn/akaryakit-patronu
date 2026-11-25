@@ -55,7 +55,8 @@ kontrol(w.document.getElementById('acilis').innerHTML.indexOf('BAŞLA') > 0, 'BA
 
 console.log('UI TEST 2 — oyunu başlat ve tüm sekmeleri çiz');
 calistir('basla', () => OYUN.basla(true));
-kontrol(w.document.getElementById('alt').children.length === 7, '7 sekme olmalı');
+kontrol(w.document.getElementById('fab').querySelectorAll('.fabOge').length === 8, 'yelpaze menüde 8 öğe olmalı');
+kontrol(!!w.document.querySelector('.fabAna'), 'ana menü düğmesi olmalı');
 kontrol(w.document.getElementById('hud').innerHTML.length > 400, 'istasyon HUD dolu olmalı');
 kontrol(w.document.getElementById('hud').classList.contains('ac'), 'istasyonda HUD açık olmalı');
 kontrol(!w.document.getElementById('govde').classList.contains('ac'), 'istasyonda panel kapalı olmalı');
@@ -72,10 +73,20 @@ UI.sekmeler.forEach(sk => {
   if (sk.id !== 'istasyon') kontrol(g.indexOf('panelBas') > 0, sk.id + ' panelinde geri başlığı olmalı');
 });
 
+console.log('UI TEST 2a — yelpaze menü');
+calistir('menü aç', () => UI.fabAc());
+kontrol(UI.fabAcik === true, 'menü açılmalı');
+kontrol(w.document.getElementById('fab').classList.contains('ac'), 'menüye ac sınıfı gelmeli');
+const ilkOge = w.document.querySelector('.fabOge');
+kontrol(ilkOge.style.transform.indexOf('scale(1)') > 0, 'öğeler yayılmalı');
+calistir('menüden seç', () => UI.fabSec('market'));
+kontrol(UI.sekme === 'market', 'menüden market açılmalı');
+kontrol(UI.fabAcik === false, 'seçimden sonra menü kapanmalı');
+UI.sekmeGec('istasyon');
+
 console.log('UI TEST 2b — HUD bileşenleri');
 UI.sekmeGec('istasyon');
 let hud = w.document.getElementById('hud').innerHTML;
-kontrol(hud.indexOf('Mağaza') > 0, 'Mağaza butonu olmalı');
 kontrol(hud.indexOf('yakitKart') > 0, 'yakıt göstergesi olmalı');
 kontrol(hud.indexOf('SIRADAKİ') > 0 || hud.indexOf('ZİNCİR') > 0, 'sıradaki lokasyon kartı olmalı');
 kontrol(hud.indexOf('kampanya') > 0, 'sezon kampanyası kartı olmalı');
@@ -144,6 +155,112 @@ calistir('araba üretimi', () => {
 kontrol(IZO.arabalar.length >= 1, 'müşteri için araç oluşmalı');
 calistir('araba ilerleme', () => { for (let i = 0; i < 300; i++) IZO.arabalar.forEach(a => IZO.arabaIlerlet(a, 0.05)); });
 kontrol(true, 'araç ilerletme hata vermemeli');
+
+console.log('UI TEST 2e — market sistemi');
+D.s.para = 90000000; D.s.seviye = 20;
+const sbm = D.sube();
+UI.sekmeGec('market');
+kontrol(w.document.getElementById('govde').innerHTML.indexOf('market yok') > 0 ||
+        w.document.getElementById('govde').innerHTML.indexOf('Raf') > 0, 'market paneli çizilmeli');
+/* market kur */
+let bosM = -1;
+for (let i = 0; i < sbm.beton.length; i++) if (!sbm.beton[i]) { SIM.betonDok(sbm, i); bosM = i; break; }
+if (bosM < 0) for (let i = 0; i < sbm.yapi.length; i++) if (sbm.beton[i] && !sbm.yapi[i]) { bosM = i; break; }
+calistir('market kur', () => SIM.binaKur(sbm, bosM, 'market'));
+kontrol(SIM.marketVar(sbm), 'market kurulmalı');
+kontrol(SIM.marketRafKapasite(sbm) > 0, 'raf kapasitesi olmalı');
+UI.sekmeGec('market');
+kontrol(w.document.getElementById('govde').innerHTML.indexOf('Ürünler') > 0, 'ürün listesi çizilmeli');
+const paraM = D.s.para;
+calistir('stok al', () => UI.marketAl('su', 25));
+kontrol((sbm.market.stok.su || 0) === 25, 'stok eklenmeli: ' + (sbm.market.stok.su || 0));
+kontrol(D.s.para < paraM, 'stok parası düşmeli');
+calistir('fiyat değiştir', () => UI.marketFiyat('su', 22));
+kontrol(SIM.marketSatisFiyati(sbm, 'su') === 22, 'market fiyatı güncellenmeli');
+calistir('rafları doldur', () => UI.marketDoldur());
+kontrol(SIM.marketDoluluk(sbm) > 25, 'raflar dolmalı: ' + SIM.marketDoluluk(sbm));
+/* raf sınırı aşılmamalı */
+for (let i = 0; i < 60; i++) SIM.marketStokAl(sbm, 'motoryag', 50);
+kontrol(SIM.marketDoluluk(sbm) <= SIM.marketRafKapasite(sbm), 'raf kapasitesi aşılmamalı');
+/* satış */
+sbm.market.stok.su = 50;
+let marketGeliri = 0;
+const mTest = { arac: 'Otomobil', emoji: '🚗', yakit: 'benzin', bahsis: 1 };
+for (let i = 0; i < 400; i++) marketGeliri += SIM.marketSatis(sbm, mTest);
+kontrol(marketGeliri > 0, 'market satış geliri olmalı');
+kontrol(sbm.market.ciro > 0, 'market cirosu birikmeli');
+
+console.log('UI TEST 2f — banka ve finans');
+UI.sekmeGec('banka');
+const bg = w.document.getElementById('govde').innerHTML;
+kontrol(bg.indexOf('Net değer') > 0, 'net değer gösterilmeli');
+kontrol(bg.indexOf('Neyim var') > 0, 'varlık dökümü olmalı');
+kontrol(bg.indexOf('Kredi teklifleri') > 0, 'kredi teklifleri olmalı');
+const v = SIM.varliklar();
+kontrol(v.toplam > 0 && isFinite(v.toplam), 'varlık toplamı tutarlı');
+kontrol(v.nakit === D.s.para, 'nakit kasayla aynı olmalı');
+const teklifler = SIM.krediTeklifleri();
+kontrol(teklifler.length === 4, '4 kredi ürünü olmalı');
+const uygunT = teklifler.filter(t => t.uygun);
+kontrol(uygunT.length > 0, 'en az bir kredi uygun olmalı');
+const paraK = D.s.para;
+calistir('kredi çek', () => SIM.krediCek(uygunT[0]));
+kontrol(D.s.para > paraK, 'kredi parası kasaya geçmeli');
+kontrol(D.s.krediler.length === 1, 'kredi kaydedilmeli');
+kontrol(SIM.borcToplam() > 0, 'borç görünmeli');
+/* taksit ödemesi */
+const kredi = D.s.krediler[0];
+const taksitOnce = kredi.kalanTaksit;
+D.s.gun = kredi.sonrakiGun;
+calistir('taksit', () => SIM.kredileriIsle());
+kontrol(D.s.krediler.length === 0 || D.s.krediler[0].kalanTaksit === taksitOnce - 1, 'taksit işlenmeli');
+/* parasız gecikme */
+if (D.s.krediler.length) {
+  D.s.para = 0;
+  D.s.gun = D.s.krediler[0].sonrakiGun;
+  const notOnce = D.s.krediNotu;
+  SIM.kredileriIsle();
+  kontrol(D.s.krediNotu < notOnce, 'ödenmeyince kredi notu düşmeli');
+  kontrol(D.s.krediler[0].gecikme > 0, 'gecikme faizi işlemeli');
+}
+D.s.para = 90000000;
+/* erken kapatma */
+if (D.s.krediler.length) {
+  calistir('erken kapat', () => SIM.krediKapat(D.s.krediler[0].id));
+  kontrol(D.s.krediler.length === 0, 'kredi kapanmalı');
+}
+
+console.log('UI TEST 2g — tank uyarıları');
+const sbu = D.sube();
+sbu.uyari = {};
+sbu.siparis.length = 0;
+sbu.tank.benzin.dolu = D.tankKap(sbu, 'benzin') * 0.1;
+UI.bildirimGecmisi.length = 0;
+calistir('uyarı', () => SIM.seviyeUyarilari(sbu));
+kontrol(sbu.uyari.benzin === true, 'benzin uyarısı verilmeli');
+kontrol(UI.bildirimGecmisi.some(b => b.baslik.indexOf('Benzin') > 0),
+  'benzin bildirimi düşmeli (' + UI.bildirimGecmisi.map(b => b.baslik).join('|') + ')');
+const uyariSayi = UI.bildirimGecmisi.length;
+SIM.seviyeUyarilari(sbu);
+kontrol(UI.bildirimGecmisi.length === uyariSayi, 'aynı uyarı tekrarlanmamalı');
+/* yolda tanker varken uyarma */
+sbu.uyari = {}; UI.bildirimGecmisi.length = 0;
+['benzin', 'dizel', 'lpg'].forEach(y => sbu.siparis.push({ id: 'x' + y, yakit: y, miktar: 1000, kalan: 50, birim: 40 }));
+SIM.seviyeUyarilari(sbu);
+kontrol(!UI.bildirimGecmisi.some(b => b.baslik.indexOf('azaldı') > 0), 'tanker yoldayken yakıt uyarısı verilmemeli');
+sbu.siparis.length = 0;
+sbu.tank.benzin.dolu = D.tankKap(sbu, 'benzin') * 0.9;
+SIM.seviyeUyarilari(sbu);
+kontrol(sbu.uyari.benzin === false, 'tank dolunca uyarı sıfırlanmalı');
+
+console.log('UI TEST 2h — karma pompa satışı');
+const sbk = D.sube();
+const pompaK = D.pompalar(sbk)[0].p;
+kontrol(SIM.pompaUygun(pompaK, 'benzin') && SIM.pompaUygun(pompaK, 'dizel') && SIM.pompaUygun(pompaK, 'lpg'),
+  'tek pompa benzin+dizel+LPG vermeli');
+kontrol(!SIM.pompaUygun(pompaK, 'ev'), 'yakıt pompası elektrik vermemeli');
+const nozullar = SERVIS.nozullar(pompaK, sbk);
+kontrol(nozullar.length === 3, 'serviste üç tabanca olmalı: ' + nozullar.join(','));
 
 console.log('UI TEST 3 — hücre tıklama ve modallar');
 UI.sekmeGec('istasyon');

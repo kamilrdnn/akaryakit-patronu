@@ -58,20 +58,29 @@ D.s.para = 90000000;
 D.s.seviye = 20;
 const sb = D.sube();
 /* arsayı büyüt */
-while (sb.w < 4 || sb.h < 4) SIM.arsaGenislet(sb);
+while (sb.w < 5 || sb.h < 5) SIM.arsaGenislet(sb);
 for (let i = 0; i < sb.beton.length; i++) sb.beton[i] = true;
 /* pompalar */
 SIM.pompaKur(sb, 2, 'lpg');
 SIM.pompaKur(sb, 3, 'ev');
 sb.yapi[0].sv = 3; sb.yapi[1].sv = 2;
 /* tesisler */
-const yerlesim = [[4, 'market'], [5, 'kafe'], [6, 'depo'], [7, 'gunes'],
-                  [8, 'yikama'], [9, 'jenerator'], [10, 'restoran'], [11, 'tirpark'],
-                  [12, 'yag'], [13, 'ofis'], [14, 'smr']];
+const yerlesim = [[4, 'totem'], [5, 'market'], [6, 'kafe'], [7, 'depo'], [8, 'gunes'],
+                  [9, 'wc'], [10, 'mescit'], [11, 'havasu'], [12, 'atm'], [13, 'yangin'],
+                  [14, 'kamera'], [15, 'lastikci'], [16, 'adblue'], [17, 'yikama'],
+                  [18, 'jenerator'], [19, 'restoran'], [20, 'tirpark'], [21, 'yag'],
+                  [22, 'ofis'], [23, 'smr'], [24, 'market']];
 yerlesim.forEach(([i, t]) => { if (i < sb.yapi.length && !sb.yapi[i]) SIM.binaKur(sb, i, t); });
 sb.tank.benzin.dolu = 4000; sb.tank.dizel.dolu = 3500; sb.tank.lpg.dolu = 1800;
 /* arızalı bir yapı */
 if (sb.yapi[8]) { sb.yapi[8].arizali = true; sb.yapi[8].bakim = 20; }
+
+/* personel: pompacı, temizlikçi, teknisyen, müdür */
+['pompaci', 'temizlik', 'teknisyen', 'mudur'].forEach(tip => {
+  const a = SIM.adayUret(tip);
+  if (SIM.iseAl(sb, a) && tip === 'pompaci') SIM.pompaAta(sb, a.id, 0);
+});
+kontrol(sb.personel.length === 4, '4 personel işe alınmalı');
 
 /* müşteriler */
 for (let i = 0; i < 40 && sb.kuyruk.length < 4; i++) {
@@ -89,6 +98,9 @@ console.log('SAHNE TEST 2 — araç ve efektler');
 IZO.guncelle(0.016);
 kontrol(IZO.arabalar.length >= sb.kuyruk.length, 'her müşteri için araç olmalı: ' + IZO.arabalar.length);
 kontrol((IZO.susler || []).length > 0, 'süs nesneleri üretilmeli');
+IZO.personelGuncelle(sb, 0.016);
+kontrol(IZO.personeller.length === 4, 'personel sahnede konumlanmalı: ' + IZO.personeller.length);
+kontrol(IZO.personeller.some(p => p.tip === 'pompaci'), 'pompacı figürü olmalı');
 IZO.ucur(1.5, 1.5, '+₺750');
 IZO.ucur(2.5, 0.5, '+₺1.240', '#6ee2a0');
 for (let i = 0; i < 600; i++) IZO.guncelle(0.05);   /* araçlar pompaya yanaşsın */

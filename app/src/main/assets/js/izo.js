@@ -7,7 +7,7 @@ const IZO = {
   G: 1,                 // devicePixelRatio
   en: 0, boy: 0,
   TW: 64, TH: 32,       // iso karo ölçüsü
-  kam: { x: 0, y: 0, olcek: 1, kuruldu: false },
+  kam: { x: 0, y: 0, olcek: 1, hx: 0, hy: 0, holcek: 1, vx: 0, vy: 0, kuruldu: false },
   arabalar: [],
   ucanlar: [],          // uçan ₺ yazıları
   duman: [],
@@ -41,7 +41,7 @@ const IZO = {
     var k = this.tuval.parentNode;
     var en = (k ? k.clientWidth : window.innerWidth) || 360;
     var boy = (k ? k.clientHeight : window.innerHeight) || 560;
-    this.G = Math.min(window.devicePixelRatio || 1, 2);
+    this.G = Math.min(window.devicePixelRatio || 1, 3);
     this.en = en; this.boy = boy;
     this.tuval.width = Math.round(en * this.G);
     this.tuval.height = Math.round(boy * this.G);
@@ -57,9 +57,11 @@ const IZO = {
     /* dar ekranda istasyon taşmasın */
     var genislikGerek = (sb.w + sb.h + 2) * this.TW / 2;
     olcek = Math.min(olcek, (this.en - 24) / genislikGerek);
-    this.kam.olcek = olcek;
-    this.kam.x = this.en / 2 - m.x * olcek;
-    this.kam.y = this.boy * 0.54 - m.y * olcek;
+    this.kam.holcek = olcek;
+    this.kam.hx = this.en / 2 - m.x * olcek;
+    this.kam.hy = this.boy * 0.54 - m.y * olcek;
+    if (!this.kam.kuruldu) { this.kam.olcek = olcek; this.kam.x = this.kam.hx; this.kam.y = this.kam.hy; }
+    this.kam.vx = this.kam.vy = 0;
     this.kam.kuruldu = true;
   },
 
@@ -139,8 +141,54 @@ const IZO = {
     this.cokgen([Dd, C, Ck, Dk], sol);        // sol yüz
     this.cokgen([B, C, Ck, Bk], sag);         // sağ yüz
     this.cokgen([A, B, C, Dd], ust);          // üst yüz
+    /* üst kenarda ince aydınlık: kenarlar yumuşasın */
+    var cz = this.cz;
+    cz.strokeStyle = this.ton(renk, Math.min(1.25, 1.18 * I));
+    cz.lineWidth = Math.max(0.6, 0.9 * this.kam.olcek);
+    cz.beginPath();
+    cz.moveTo(Dd.x, Dd.y); cz.lineTo(A.x, A.y); cz.lineTo(B.x, B.y);
+    cz.stroke();
     if (vurusa) this.vurus.push({ tip: vurusa.tip, i: vurusa.i, poly: [A, B, Bk, Ck, Dk, Dd] });
     return { A: A, B: B, C: C, D: Dd };
+  },
+
+  /* nesne altına yumuşak gölge */
+  golge: function (gx, gy, w, d, koyu) {
+    var c = this.cz;
+    var p = this.ekran(gx + w / 2, gy + d / 2, 0);
+    var rx = (w + d) * this.TW / 4 * this.kam.olcek * 0.62;
+    var ry = (w + d) * this.TH / 4 * this.kam.olcek * 0.62;
+    var g = c.createRadialGradient(p.x, p.y, 1, p.x, p.y, Math.max(rx, 6));
+    var a = (koyu || 0.3) * this.isik();
+    g.addColorStop(0, 'rgba(0,0,0,' + a + ')');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.save();
+    c.translate(p.x, p.y);
+    c.scale(1, ry / Math.max(rx, 1));
+    c.translate(-p.x, -p.y);
+    c.fillStyle = g;
+    c.beginPath(); c.arc(p.x, p.y, Math.max(rx, 6), 0, Math.PI * 2); c.fill();
+    c.restore();
+  },
+
+  /* küçük insan figürü (personel / müşteri) */
+  insanCiz: function (gx, gy, renk, faz, sapka) {
+    var c = this.cz, o = this.kam.olcek, I = this.isik();
+    var salin = Math.sin((faz || 0)) * 1.4;
+    this.golge(gx - 0.08, gy - 0.08, 0.16, 0.16, 0.26);
+    /* bacaklar */
+    this.kutu(gx - 0.05, gy - 0.03, 0, 0.04, 0.05, 7, '#2f3a4d');
+    this.kutu(gx + 0.01, gy - 0.03, 0, 0.04, 0.05, 7, '#2f3a4d');
+    /* gövde */
+    this.kutu(gx - 0.06, gy - 0.04, 7, 0.12, 0.08, 10 + salin, renk);
+    /* kafa */
+    var kp = this.ekran(gx, gy, 20 + salin);
+    c.fillStyle = this.ton('#e8b98f', I);
+    c.beginPath(); c.arc(kp.x, kp.y, 3.6 * o, 0, Math.PI * 2); c.fill();
+    if (sapka) {
+      c.fillStyle = this.ton(sapka, I);
+      c.beginPath(); c.arc(kp.x, kp.y - 1.6 * o, 3.6 * o, Math.PI, 0); c.fill();
+    }
   },
 
   /* silindir (tank, reaktör) */
@@ -197,8 +245,10 @@ const IZO = {
       this.kameraSifirla();
     }
 
+    this.kameraGuncelle(dt);
     this.musteriArabalari(sb);
     this.cevreTrafigi(sb, dt);
+    this.personelGuncelle(sb, dt);
 
     for (var i = this.arabalar.length - 1; i >= 0; i--) {
       var a = this.arabalar[i];
@@ -338,10 +388,70 @@ const IZO = {
       }
       return;
     }
-    var adim = Math.min(uz, a.hiz * dt);
+    /* hedefe yaklaşırken yavaşla (yumuşak varış) */
+    var hedefHiz = a.hiz * (uz < 0.8 ? Math.max(0.28, uz / 0.8) : 1);
+    a.suanHiz = (a.suanHiz === undefined) ? hedefHiz : a.suanHiz + (hedefHiz - a.suanHiz) * Math.min(1, dt * 4);
+    a.fren = a.suanHiz < a.hiz * 0.7;
+    var adim = Math.min(uz, a.suanHiz * dt);
     a.gx += dx / uz * adim;
     a.gy += dy / uz * adim;
-    a.aci = Math.atan2(dy, dx);
+    /* açıyı yumuşat */
+    var yeniAci = Math.atan2(dy, dx);
+    if (a.aci === undefined) a.aci = yeniAci;
+    var fark = yeniAci - a.aci;
+    while (fark > Math.PI) fark -= Math.PI * 2;
+    while (fark < -Math.PI) fark += Math.PI * 2;
+    a.aci += fark * Math.min(1, dt * 7);
+  },
+
+  /* personeli sahnede konumlandır */
+  personelGuncelle: function (sb, dt) {
+    this.personeller = [];
+    var t = Date.now() / 1000;
+    for (var i = 0; i < sb.personel.length; i++) {
+      var p = sb.personel[i];
+      if (p.tip === 'pompaci') {
+        if (p.pompa === null || p.pompa === undefined) continue;
+        var y = sb.yapi[p.pompa];
+        if (!y || y.t !== 'pompa') continue;
+        var px = p.pompa % sb.w, py = Math.floor(p.pompa / sb.w);
+        this.personeller.push({
+          gx: px + 0.88, gy: py + 0.34, renk: '#2f6fa8',
+          faz: t * 3 + i, sapka: '#e24e2f', tip: 'pompaci',
+          calisiyor: !!y.mesgul
+        });
+      } else if (p.tip === 'temizlik') {
+        var d = (t * 0.12 + i * 0.37) % 1;
+        var cevre = this.cevreYolu(sb, d);
+        this.personeller.push({ gx: cevre.gx, gy: cevre.gy, renk: '#3ec47a', faz: t * 5 + i, sapka: '#2f9e5e', tip: 'temizlik' });
+      } else if (p.tip === 'teknisyen') {
+        /* en bakımsız yapının yanına gider */
+        var hedef = null, enAz = 101;
+        for (var k = 0; k < sb.yapi.length; k++) {
+          var yy = sb.yapi[k];
+          if (yy && typeof yy.bakim === 'number' && yy.bakim < enAz) { enAz = yy.bakim; hedef = k; }
+        }
+        if (hedef === null) continue;
+        var hx = hedef % sb.w, hy = Math.floor(hedef / sb.w);
+        this.personeller.push({ gx: hx + 0.12, gy: hy + 0.86, renk: '#f0b429', faz: t * 4 + i, sapka: '#f0b429', tip: 'teknisyen' });
+      } else if (p.tip === 'mudur') {
+        this.personeller.push({ gx: -0.35, gy: sb.h - 0.4, renk: '#9f7aea', faz: t * 2 + i, sapka: '#2f3b52', tip: 'mudur' });
+      }
+    }
+  },
+
+  /* istasyon çevresinde kapalı dolaşım yolu (0..1) */
+  cevreYolu: function (sb, d) {
+    var w = sb.w - 0.4, h = sb.h - 0.4;
+    var cevre = 2 * (w + h);
+    var m = d * cevre;
+    if (m < w) return { gx: 0.2 + m, gy: 0.2 };
+    m -= w;
+    if (m < h) return { gx: 0.2 + w, gy: 0.2 + m };
+    m -= h;
+    if (m < w) return { gx: 0.2 + w - m, gy: 0.2 + h };
+    m -= w;
+    return { gx: 0.2, gy: 0.2 + h - m };
   },
 
   /* satış/gelir yazısı uçur */
@@ -426,6 +536,10 @@ const IZO = {
       var su = this.susler[s2];
       liste.push({ d: su.gx + su.gy, tur: 'sus', s: su, gx: su.gx, gy: su.gy });
     }
+    for (var pr = 0; pr < (this.personeller || []).length; pr++) {
+      var pp = this.personeller[pr];
+      liste.push({ d: pp.gx + pp.gy + 0.02, tur: 'insan', p: pp, gx: pp.gx, gy: pp.gy });
+    }
     for (var a2 = 0; a2 < this.arabalar.length; a2++) {
       var ar = this.arabalar[a2];
       liste.push({ d: ar.gx + ar.gy, tur: 'araba', a: ar, gx: ar.gx, gy: ar.gy });
@@ -436,6 +550,7 @@ const IZO = {
       var o = liste[n];
       if (o.tur === 'yapi') this.yapiCiz(sb, o.i, o.gx, o.gy);
       else if (o.tur === 'sus') this.susCiz(o.s);
+      else if (o.tur === 'insan') this.insanCiz(o.p.gx, o.p.gy, o.p.renk, o.p.faz, o.p.sapka);
       else this.arabaCiz(o.a);
     }
 
@@ -499,6 +614,7 @@ const IZO = {
     var yk = VERI.yakitlar[p.yakit];
     var I = this.isik();
     /* ada (beton kaide) */
+    this.golge(gx + 0.08, gy + 0.08, 0.84, 0.36, 0.26);
     this.kutu(gx + 0.06, gy + 0.06, 0, 0.88, 0.38, 3, '#b9c1c9', { tip: 'hucre', i: i });
     /* gövde */
     var govde = p.yakit === 'ev' ? '#2f6fa8' : '#e2683a';
@@ -545,6 +661,7 @@ const IZO = {
     var I = this.isik();
 
     if (t === 'depo') {
+      this.golge(gx + 0.08, gy + 0.08, 0.84, 0.84, 0.3);
       this.kutu(gx + 0.05, gy + 0.05, 0, 0.9, 0.9, 3, '#aab3bd', { tip: 'hucre', i: i });
       this.silindir(gx + 0.12, gy + 0.14, 3, 0.36, 26 + b.sv * 4, '#e8edf2');
       this.silindir(gx + 0.54, gy + 0.14, 3, 0.36, 22 + b.sv * 4, '#5aa9e6');
@@ -569,6 +686,7 @@ const IZO = {
       return;
     }
     if (t === 'smr') {
+      this.golge(gx + 0.05, gy + 0.05, 0.9, 0.9, 0.34);
       this.kutu(gx + 0.02, gy + 0.02, 0, 0.96, 0.96, 5, '#aeb6bf', { tip: 'hucre', i: i });
       this.silindir(gx + 0.18, gy + 0.18, 5, 0.62, 46, '#dde3ea');
       this.silindir(gx + 0.3, gy + 0.3, 51, 0.38, 10, '#8fa8c6');
@@ -582,6 +700,99 @@ const IZO = {
         var p1 = this.ekran(gx + 0.1, gy + 0.2 + k * 0.28, 3), p2 = this.ekran(gx + 0.9, gy + 0.2 + k * 0.28, 3);
         c0.beginPath(); c0.moveTo(p1.x, p1.y); c0.lineTo(p2.x, p2.y); c0.stroke();
       }
+      return;
+    }
+
+    if (t === 'totem') {
+      this.golge(gx + 0.35, gy + 0.35, 0.3, 0.3, 0.3);
+      this.kutu(gx + 0.42, gy + 0.42, 0, 0.1, 0.1, 62, '#8e98a4');
+      /* tabela panosu */
+      var ty = 62, tw = 0.86;
+      this.kutu(gx + 0.07, gy + 0.4, ty, tw, 0.1, 42, '#16233a', { tip: 'hucre', i: i });
+      var c3 = this.cz, o3 = this.kam.olcek;
+      var sayac = 0;
+      var sbx = D.sube();
+      ['benzin', 'dizel', 'lpg'].forEach(function (yk) {
+        var tp = IZO.ekran(gx + 0.5, gy + 0.45, ty + 34 - sayac * 12);
+        c3.font = 'bold ' + Math.round(8 * o3) + 'px sans-serif';
+        c3.textAlign = 'center';
+        c3.fillStyle = VERI.yakitlar[yk].renk;
+        c3.fillText(VERI.yakitlar[yk].kisa + ' ' + say(sbx.fiyat[yk], 2), tp.x, tp.y);
+        sayac++;
+      });
+      return;
+    }
+    if (t === 'wc') {
+      this.golge(gx + 0.1, gy + 0.1, 0.8, 0.8, 0.3);
+      this.kutu(gx + 0.08, gy + 0.08, 0, 0.84, 0.84, 2, '#aab3bd', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.14, gy + 0.14, 2, 0.72, 0.7, 24, '#e6ebf0', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.1, gy + 0.1, 26, 0.8, 0.78, 4, '#5a6b80');
+      this.kutu(gx + 0.2, gy + 0.83, 4, 0.22, 0.03, 16, '#4a7fb5');
+      this.kutu(gx + 0.52, gy + 0.83, 4, 0.22, 0.03, 16, '#c0578f');
+      return;
+    }
+    if (t === 'mescit') {
+      this.golge(gx + 0.1, gy + 0.1, 0.8, 0.8, 0.3);
+      this.kutu(gx + 0.1, gy + 0.1, 0, 0.8, 0.8, 2, '#c3cbd4');
+      this.kutu(gx + 0.16, gy + 0.16, 2, 0.62, 0.62, 22, '#e9eef3', { tip: 'hucre', i: i });
+      this.silindir(gx + 0.26, gy + 0.26, 24, 0.42, 12, '#4a8f6f');
+      /* minare */
+      this.kutu(gx + 0.8, gy + 0.2, 2, 0.08, 0.08, 46, '#e9eef3');
+      this.silindir(gx + 0.79, gy + 0.19, 48, 0.1, 7, '#4a8f6f');
+      return;
+    }
+    if (t === 'havasu') {
+      this.golge(gx + 0.2, gy + 0.2, 0.6, 0.6, 0.25);
+      this.kutu(gx + 0.15, gy + 0.15, 0, 0.7, 0.7, 3, '#b6bec7', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.24, gy + 0.3, 3, 0.18, 0.18, 20, '#3f7fd0', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.56, gy + 0.3, 3, 0.18, 0.18, 18, '#4aa96c');
+      this.kutu(gx + 0.26, gy + 0.28, 21, 0.14, 0.03, 6, '#eef3f7');
+      return;
+    }
+    if (t === 'atm') {
+      this.golge(gx + 0.3, gy + 0.3, 0.42, 0.42, 0.25);
+      this.kutu(gx + 0.28, gy + 0.3, 0, 0.42, 0.34, 3, '#aab3bd');
+      this.kutu(gx + 0.32, gy + 0.34, 3, 0.34, 0.26, 24, '#d64545', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.35, gy + 0.32, 16, 0.26, 0.03, 9, this.gece() ? '#9ef0b5' : '#1d2a3d');
+      this.kutu(gx + 0.26, gy + 0.28, 27, 0.5, 0.42, 4, '#8f2f2f');
+      return;
+    }
+    if (t === 'lastikci') {
+      this.golge(gx + 0.06, gy + 0.06, 0.88, 0.88, 0.3);
+      this.kutu(gx + 0.04, gy + 0.04, 0, 0.92, 0.92, 2, '#9aa3ad', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.1, gy + 0.1, 2, 0.62, 0.78, 30, '#b9c2cb', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.06, gy + 0.06, 32, 0.7, 0.86, 4, '#3f4a57');
+      /* lastik yığını */
+      for (var li = 0; li < 3; li++) this.silindir(gx + 0.74, gy + 0.2 + li * 0.02, 2 + li * 7, 0.2, 7, '#2a2f38');
+      for (var lj = 0; lj < 2; lj++) this.silindir(gx + 0.74, gy + 0.56 + lj * 0.02, 2 + lj * 7, 0.2, 7, '#2a2f38');
+      return;
+    }
+    if (t === 'adblue') {
+      this.golge(gx + 0.2, gy + 0.2, 0.6, 0.5, 0.25);
+      this.kutu(gx + 0.14, gy + 0.2, 0, 0.72, 0.42, 3, '#b6bec7', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.24, gy + 0.3, 3, 0.3, 0.26, 28, '#2f80b8', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.27, gy + 0.28, 18, 0.24, 0.03, 9, '#eef3f7');
+      this.kutu(gx + 0.58, gy + 0.3, 3, 0.2, 0.2, 16, '#d9e2ea');
+      return;
+    }
+    if (t === 'kamera') {
+      this.golge(gx + 0.4, gy + 0.4, 0.2, 0.2, 0.22);
+      this.kutu(gx + 0.44, gy + 0.44, 0, 0.1, 0.1, 54, '#7d8793', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.3, gy + 0.42, 52, 0.26, 0.14, 9, '#3f4a57', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.26, gy + 0.45, 54, 0.06, 0.07, 5, '#1d2630');
+      if (this.gece()) {
+        var kp = this.ekran(gx + 0.28, gy + 0.48, 56);
+        this.cz.fillStyle = 'rgba(240,82,82,.85)';
+        this.cz.beginPath(); this.cz.arc(kp.x, kp.y, 1.8 * this.kam.olcek, 0, Math.PI * 2); this.cz.fill();
+      }
+      return;
+    }
+    if (t === 'yangin') {
+      this.golge(gx + 0.25, gy + 0.25, 0.5, 0.5, 0.25);
+      this.kutu(gx + 0.2, gy + 0.22, 0, 0.6, 0.5, 3, '#aab3bd');
+      this.kutu(gx + 0.26, gy + 0.3, 3, 0.46, 0.34, 22, '#c23b3b', { tip: 'hucre', i: i });
+      this.kutu(gx + 0.3, gy + 0.28, 12, 0.36, 0.03, 10, '#eef3f7');
+      this.kutu(gx + 0.74, gy + 0.3, 0, 0.12, 0.12, 14, '#d64545');
       return;
     }
 
@@ -599,6 +810,7 @@ const IZO = {
     var kat = Math.min(3, ((t === 'ofis' || t === 'restoran') ? 2 : 1) + Math.floor(b.sv / 2));
     var h = 22 * kat;
 
+    this.golge(gx + 0.06, gy + 0.06, 0.88, 0.88, 0.32);
     this.kutu(gx + 0.04, gy + 0.04, 0, 0.92, 0.92, 2, '#aab3bd', { tip: 'hucre', i: i });
     this.kutu(gx + 0.1, gy + 0.1, 2, 0.8, 0.8, h, govdeRenk, { tip: 'hucre', i: i });
     this.kutu(gx + 0.06, gy + 0.06, 2 + h, 0.88, 0.88, 5, catiRenk, { tip: 'hucre', i: i });
@@ -671,6 +883,12 @@ const IZO = {
       this.kutu(gx + boyX - 0.42, gy + 0.03, 4 + govdeY, 0.4, boyY - 0.06, 13, this.sabitTon(a.renk, 1.1));
     } else {
       this.kutu(gx + 0.18, gy + 0.04, 4 + govdeY, boyX - 0.4, boyY - 0.08, 9, '#cfe0ee');
+    }
+    /* fren lambası */
+    if (a.fren && a.durum !== 'park') {
+      var lp = this.ekran(a.gx - Math.cos(a.aci || 0) * boyX * 0.45, a.gy - Math.sin(a.aci || 0) * boyY * 0.45, 9);
+      c.fillStyle = 'rgba(240,82,82,.9)';
+      c.beginPath(); c.arc(lp.x, lp.y, 2.4 * this.kam.olcek, 0, Math.PI * 2); c.fill();
     }
     /* gece farları */
     if (this.gece() && a.durum !== 'park') {
@@ -826,21 +1044,23 @@ const IZO = {
         var a = e.touches[0], b = e.touches[1];
         self._pinch = {
           uz: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
-          olcek: self.kam.olcek
+          olcek: self.kam.holcek
         };
         self._suruk = null;
         return;
       }
       var p = nokta(e);
-      self._suruk = { x: p.x, y: p.y, bx: p.x, by: p.y, kx: self.kam.x, ky: self.kam.y, tasindi: false, t: Date.now() };
+      self.kam.vx = self.kam.vy = 0;
+      self._suruk = { x: p.x, y: p.y, bx: p.x, by: p.y, kx: self.kam.hx, ky: self.kam.hy,
+                      sx: p.x, sy: p.y, st: Date.now(), tasindi: false, t: Date.now() };
     }
     function hareket(e) {
       if (self._pinch && e.touches && e.touches.length === 2) {
         e.preventDefault();
         var a = e.touches[0], b = e.touches[1];
         var uz = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-        var yeni = kisitla(self._pinch.olcek * (uz / self._pinch.uz), 0.38, 2.2);
-        self.kam.olcek = yeni;
+        var yeni = kisitla(self._pinch.olcek * (uz / self._pinch.uz), 0.38, 2.4);
+        self.kam.olcek = yeni; self.kam.holcek = yeni;
         return;
       }
       if (!self._suruk) return;
@@ -849,8 +1069,16 @@ const IZO = {
       if (Math.abs(dx) > 6 || Math.abs(dy) > 6) self._suruk.tasindi = true;
       if (self._suruk.tasindi) {
         e.preventDefault();
-        self.kam.x = self._suruk.kx + dx;
-        self.kam.y = self._suruk.ky + dy;
+        self.kam.hx = self._suruk.kx + dx;
+        self.kam.hy = self._suruk.ky + dy;
+        self.kam.x = self.kam.hx; self.kam.y = self.kam.hy;   /* sürüklerken birebir */
+        var gs = Date.now();
+        var ds = Math.max(16, gs - self._suruk.st);
+        if (ds > 24) {
+          self.kam.vx = (p.x - self._suruk.sx) / ds * 1000;
+          self.kam.vy = (p.y - self._suruk.sy) / ds * 1000;
+          self._suruk.sx = p.x; self._suruk.sy = p.y; self._suruk.st = gs;
+        }
       }
     }
     function birak(e) {
@@ -859,6 +1087,7 @@ const IZO = {
       var s = self._suruk;
       self._suruk = null;
       if (s.tasindi || Date.now() - s.t > 600) return;
+      self.kam.vx = self.kam.vy = 0;
       self.dokunuldu(s.bx, s.by);
     }
 
@@ -872,7 +1101,7 @@ const IZO = {
     t.addEventListener('mouseleave', function () { self._suruk = null; });
     t.addEventListener('wheel', function (e) {
       e.preventDefault();
-      self.kam.olcek = kisitla(self.kam.olcek * (e.deltaY < 0 ? 1.12 : 0.89), 0.38, 2.2);
+      self.yakinlas(e.deltaY < 0 ? 1.12 : 0.89);
     }, { passive: false });
   },
 
@@ -900,7 +1129,30 @@ const IZO = {
     return ic;
   },
 
+  /* kamera yumuşatma + atalet */
+  kameraGuncelle: function (dt) {
+    var k = this.kam;
+    /* sürükleme bittiyse atalet */
+    if (!this._suruk && (Math.abs(k.vx) > 0.5 || Math.abs(k.vy) > 0.5)) {
+      k.hx += k.vx * dt;
+      k.hy += k.vy * dt;
+      var sonum = Math.pow(0.0016, dt);
+      k.vx *= sonum; k.vy *= sonum;
+    }
+    var p = 1 - Math.pow(0.0009, dt);     /* kare hızından bağımsız yumuşatma */
+    k.x += (k.hx - k.x) * p;
+    k.y += (k.hy - k.y) * p;
+    k.olcek += (k.holcek - k.olcek) * p;
+  },
+
   /* dışarıdan kamera kontrolleri */
-  yakinlas: function (k) { this.kam.olcek = kisitla(this.kam.olcek * k, 0.38, 2.2); },
+  yakinlas: function (k) {
+    var eski = this.kam.holcek;
+    this.kam.holcek = kisitla(eski * k, 0.38, 2.4);
+    /* ekran merkezini sabit tut */
+    var oran = this.kam.holcek / eski;
+    this.kam.hx = this.en / 2 - (this.en / 2 - this.kam.hx) * oran;
+    this.kam.hy = this.boy / 2 - (this.boy / 2 - this.kam.hy) * oran;
+  },
   ortala: function () { this.kameraSifirla(); }
 };

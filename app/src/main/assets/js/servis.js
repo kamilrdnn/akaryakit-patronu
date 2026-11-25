@@ -8,6 +8,8 @@ const SERVIS = {
   nozul: null,
   basili: false,
   mod: 'tam',
+  onAyar: 0,        /* 0 = kapalı, >0 = bu miktarda otomatik duracak */
+  onAyarliSatis: false,
   sonFrame: 0,
   rafId: 0,
   bitti: false,
@@ -15,9 +17,8 @@ const SERVIS = {
   /* ---- hangi nozullar bu pompada var ---- */
   nozullar: function (p, sb) {
     if (p.yakit === 'ev') return ['ev'];
-    if (p.yakit === 'lpg') return ['lpg'];
     var r = [];
-    ['benzin', 'dizel'].forEach(function (y) {
+    ['benzin', 'dizel', 'lpg'].forEach(function (y) {
       if (sb.tank[y] && sb.tank[y].kap > 0) r.push(y);
     });
     if (!r.length) r = [p.yakit];
@@ -38,6 +39,8 @@ const SERVIS = {
     this.nozul = null;   /* bilerek boş: doğru tabancayı oyuncu seçer */
     this.basili = false;
     this.mod = 'tam';
+    this.onAyar = 0;
+    this.onAyarliSatis = false;
     this._uyardi = false;
     this.bitti = false;
     this.acik = true;
@@ -98,7 +101,28 @@ const SERVIS = {
     h += '<div class="bl" id="svBilgi">Nozulu seç, sonra butonu basılı tut</div>';
     h += '</div>';
 
-    h += '<div class="tetikler">';
+    var ayar = (D.s.ayar && D.s.ayar.dolum) || 'ikisi';
+    if (ayar === 'onayar' || ayar === 'ikisi') {
+      h += '<div class="onAyar tik">';
+      h += '<div class="oaBas">Ön ayar<span class="mini"> · gireceğin miktarda kendiliğinden durur, bahşiş yarı</span></div>';
+      h += '<div class="oaSatir">';
+      h += '<input type="number" id="oaMiktar" inputmode="decimal" step="0.01" min="0" value="' + m.hedef.toFixed(2) + '">';
+      h += '<span class="oaBirim">' + VERI.yakitlar[m.yakit].birim + '</span>';
+      h += '<button class="btn kucuk" onclick="SERVIS.onAyarBasla()">BAŞLAT</button>';
+      h += '</div>';
+      h += '<div class="btngrup" style="margin-top:6px">';
+      h += '<button class="btn minik ikincil" onclick="SERVIS.oaDoldur(' + m.hedef.toFixed(2) + ')">İstenen (' + say(m.hedef, 2) + ')</button>';
+      [100, 250, 500].forEach(function (tut) {
+        var lt = tut / sb.fiyat[m.yakit];
+        h += '<button class="btn minik ikincil" onclick="SERVIS.oaDoldur(' + lt.toFixed(2) + ')">' + tut + ' ₺</button>';
+      });
+      h += '</div></div>';
+    }
+    if (ayar === 'onayar') {
+      h += '<div class="tetikler" style="min-height:0;display:none">';
+    } else {
+      h += '<div class="tetikler">';
+    }
     h += '<div class="tetik kapali" id="svTetik">TAM AKIŞ<span class="th">basılı tut</span></div>';
     h += '<div class="tetik yavas kapali" id="svYavas">YAVAŞ<span class="th">hassas</span></div>';
     h += '</div>';
@@ -145,7 +169,39 @@ const SERVIS = {
     this.guncelle();
   },
 
+  oaDoldur: function (v) {
+    var el = document.getElementById('oaMiktar');
+    if (el) el.value = (+v).toFixed(2);
+  },
+
+  onAyarBasla: function () {
+    if (this.bitti || !this.acik) return;
+    if (!this.nozul) { UI.bildir('Nozul seçilmedi', 'Önce hangi yakıtı vereceğini seç.', 'uyari'); return; }
+    var el = document.getElementById('oaMiktar');
+    var v = el ? parseFloat(String(el.value).replace(',', '.')) : 0;
+    if (!isFinite(v) || v <= 0) { UI.bildir('Miktar girilmedi', 'Kaç ' + VERI.yakitlar[this.m.yakit].birim + ' dolduracağını yaz.', 'uyari'); return; }
+    if (v <= this.m.verilen + 0.001) { UI.bildir('Zaten doldu', 'Girilen miktar sayaçtan düşük.', 'uyari'); return; }
+    this.onAyar = v;
+    this.onAyarliSatis = true;
+    this.mod = 'tam';
+    this.basili = true;
+    this.sonFrame = performance.now();
+    var t = document.getElementById('svTetik');
+    if (t) t.classList.add('basili');
+    UI.bildir('Ön ayar', say(v, 2) + ' ' + VERI.yakitlar[this.m.yakit].birim + ' dolduruluyor…', 'iyi');
+  },
+
+  onAyarDur: function () {
+    this.onAyar = 0;
+    this.basili = false;
+    var t = document.getElementById('svTetik');
+    var v = document.getElementById('svYavas');
+    if (t) t.classList.remove('basili');
+    if (v) v.classList.remove('basili');
+  },
+
   bas: function (durum, mod) {
+    if (durum && this.onAyar) this.onAyar = 0;   /* elle müdahale ön ayarı iptal eder */
     if (this.bitti || !this.acik) return;
     if (!this.nozul) {
       if (durum) UI.bildir('Nozul seçilmedi', 'Önce hangi yakıtı vereceğini seç.', 'uyari');
@@ -189,6 +245,11 @@ const SERVIS = {
     var hiz = temelHiz * (y === p.yakit ? 1 : 0.70);
 
     var miktar = hiz * dt;
+    if (this.onAyar > 0) {
+      var kalanOa = this.onAyar - this.m.verilen;
+      if (kalanOa <= 0) { this.onAyarDur(); this.guncelle(); return; }
+      if (miktar > kalanOa) miktar = kalanOa;
+    }
     if (y !== 'ev') {
       if (sb.tank[y].dolu <= 0.01) {
         this.basili = false;
@@ -204,6 +265,11 @@ const SERVIS = {
       sb.tank[y].dolu -= miktar;
     }
     this.m.verilen += miktar;
+    if (this.onAyar > 0 && this.m.verilen >= this.onAyar - 0.0005) {
+      this.onAyarDur();
+      try { if (window.AndroidKabuk) AndroidKabuk.titret(35); } catch (e) {}
+      UI.bildir('Ön ayar tamam', say(this.m.verilen, 2) + ' ' + VERI.yakitlar[y].birim + ' verildi. BİTİR\'e bas.', 'iyi');
+    }
     /* titreşim geri bildirimi: hedefi geçerken */
     if (this.m.verilen > this.m.hedef && !this._uyardi) {
       this._uyardi = true;
@@ -262,7 +328,7 @@ const SERVIS = {
     this.bitti = true;
     var yanlis = !!(this.nozul && this.nozul !== m.yakit && m.verilen > 0.5);
     var hedef = m.hedef, verilen = m.verilen;
-    var sonuc = SIM.satisTamamla(sb, m, true, yanlis);
+    var sonuc = SIM.satisTamamla(sb, m, true, yanlis, this.onAyarliSatis);
     this.sonucEkrani(sonuc, m, hedef, verilen);
   },
 
@@ -279,7 +345,7 @@ const SERVIS = {
       else { bas = '🙂 Satış Tamam'; renk = 'var(--mavi)'; }
       alt += 'Hedef ' + say(hedef, 2) + ' · verilen ' + say(verilen, 2) + ' (' + (r.fark >= 0 ? '+' : '') + say(r.fark, 2) + ')<br>';
       alt += 'Satış: <b>' + tl(r.ciro) + '</b>';
-      if (r.bahsis > 0.5) alt += ' · Bahşiş: <b class="sariY">+' + tl(r.bahsis) + '</b>';
+      if (r.bahsis > 0.5) alt += ' · Bahşiş: <b class="sariY">+' + tl(r.bahsis) + '</b>' + (this.onAyarliSatis ? ' <span class="mini">(ön ayar: yarı bahşiş)</span>' : '');
       if (r.dokulen > 0.05) alt += '<br>Dökülen: <b class="kirmiziY">' + say(r.dokulen, 2) + ' L</b>';
       if (r.ekGelir > 0.5) alt += '<br>Market/tesis: <b class="yesilY">+' + tl(r.ekGelir) + '</b>';
       alt += '<br>Net kâr: <b class="yesilY">' + tl(r.kar) + '</b> · +' + r.xp + ' XP';
@@ -308,6 +374,8 @@ const SERVIS = {
   sonrakine: function (pompaIdx) {
     this.bitti = false;
     this.mod = 'tam';
+    this.onAyar = 0;
+    this.onAyarliSatis = false;
     this.m = null;
     this._uyardi = false;
     this.ac(pompaIdx);

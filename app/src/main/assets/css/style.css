@@ -29,16 +29,7 @@ input[type=range]{width:100%}
 #govde{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:10px 10px 14px;
   -webkit-overflow-scrolling:touch;background:var(--bg);display:none}
 #govde.ac{display:block}
-#alt{
-  flex:0 0 auto;display:flex;background:#111a28;border-top:1px solid var(--cizgi);
-  padding:4px 2px 6px;gap:1px;
-}
-#alt button{
-  flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;
-  padding:5px 0 2px;border-radius:9px;font-size:10px;color:var(--sol);line-height:1.1;
-}
-#alt button .ik{font-size:19px;line-height:1}
-#alt button.aktif{color:var(--yazi);background:var(--kart2)}
+
 
 /* ---------- üst bar ---------- */
 .ustsatir{display:flex;align-items:center;gap:8px}
@@ -315,4 +306,52 @@ input[type=range]{width:100%}
 .panelBas .geri{
   width:36px;height:36px;border-radius:11px;background:var(--kart);border:1px solid var(--cizgi);
   display:grid;place-items:center;font-size:17px
+}
+
+
+/* ön ayar (miktar girerek dolum) */
+.onAyar{background:var(--kart);border:1px solid var(--cizgi);border-radius:14px;padding:9px 11px;margin-bottom:10px}
+.oaBas{font-size:11px;color:var(--sol);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.oaBas .mini{text-transform:none;letter-spacing:0;font-weight:500}
+.oaSatir{display:flex;align-items:center;gap:7px}
+.oaSatir input{
+  flex:1;min-width:0;background:#0a0f18;border:1px solid var(--cizgi);border-radius:10px;
+  color:var(--yazi);font:700 19px/1.2 inherit;padding:8px 10px;font-variant-numeric:tabular-nums
+}
+.oaBirim{font-size:12px;color:var(--sol);font-weight:700}
+
+
+/* ================= yelpaze menü (sol alt) ================= */
+#fab{position:absolute;left:0;right:0;bottom:0;top:0;pointer-events:none;z-index:20}
+#fab .perde{
+  position:absolute;inset:0;background:rgba(6,10,18,0);transition:background .22s;pointer-events:none
+}
+#fab.ac .perde{background:rgba(6,10,18,.55);pointer-events:auto}
+
+.fabAna{
+  position:absolute;left:14px;bottom:14px;width:60px;height:60px;border-radius:50%;
+  background:linear-gradient(180deg,var(--ana2),var(--ana));box-shadow:0 5px 0 #a9321a,0 8px 18px rgba(0,0,0,.4);
+  display:grid;place-items:center;pointer-events:auto;transition:transform .22s
+}
+.fabAna:active{transform:translateY(3px) scale(.97)}
+#fab.ac .fabAna{transform:rotate(45deg)}
+.fabAna .kareler{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.fabAna .kareler i{width:11px;height:11px;border-radius:3px;background:#fff;display:block}
+
+.fabOge{
+  position:absolute;left:44px;bottom:44px;width:54px;margin-left:-27px;margin-bottom:-27px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  pointer-events:none;opacity:0;transform:translate(0,0) scale(.5);
+  transition:transform .28s cubic-bezier(.2,1.25,.4,1),opacity .18s
+}
+#fab.ac .fabOge{opacity:1;pointer-events:auto}
+.fabOge .yuvar{
+  width:54px;height:54px;flex:0 0 54px;border-radius:50%;background:rgba(24,33,50,.97);
+  border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;font-size:23px;
+  box-shadow:0 4px 14px rgba(0,0,0,.5)
+}
+.fabOge:active .yuvar{transform:scale(.93)}
+.fabOge .yzi{
+  background:rgba(12,18,30,.9);border-radius:7px;padding:2px 7px;font-size:10.5px;font-weight:700;
+  white-space:nowrap;letter-spacing:.2px
 }
