@@ -1,7 +1,7 @@
 {
-  "versionCode": 142,
-  "versionName": "1.2.36",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.36/AkaryakitPatronu-1.2.36.apk",
-  "size": 3341821,
-  "notes": "Yol genişletme, çıkış için katılma şeridi, derinlik ve köşe tabelası düzeltmeleri"
+  "versionCode": 143,
+  "versionName": "1.2.37",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.37/AkaryakitPatronu-1.2.37.apk",
+  "size": 3343357,
+  "notes": "Güncelleme bildirimi: yarım saatte bir denetim, deneme bildirimi ve izin kısayolları"
 }
