@@ -1,7 +1,7 @@
 {
-  "versionCode": 139,
-  "versionName": "1.2.33",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.33/AkaryakitPatronu-1.2.33.apk",
-  "size": 3339249,
-  "notes": "Tabela arsanın 1 kare dışına ve yol kenarına konabilir"
+  "versionCode": 140,
+  "versionName": "1.2.34",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.34/AkaryakitPatronu-1.2.34.apk",
+  "size": 3339697,
+  "notes": "Arsa dışında iki tabela durabilir"
 }
