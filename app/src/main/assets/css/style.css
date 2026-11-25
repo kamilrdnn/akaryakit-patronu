@@ -437,7 +437,7 @@ input[type=range]{width:100%}
 
 
 /* ================= HUD (izometrik sahne üstü) ================= */
-.hudUst{position:absolute;left:8px;right:8px;top:calc(6px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:6px}
+.hudUst{position:absolute;left:8px;right:8px;top:5px;display:flex;flex-direction:column;gap:6px}
 .hudAlt{position:absolute;left:8px;right:8px;bottom:8px;display:flex;flex-direction:column;gap:7px}
 
 .yakitKart{

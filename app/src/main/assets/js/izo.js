@@ -712,6 +712,15 @@ const IZO = {
             a.yol[a.yol.length - 1] = hedefBek;
           } else if (a.gy < sb.h + 0.9) {
             a.yol = [hedefBek];                 /* içerideyse doğruca sıraya ilerle */
+          } else if (!a.yol || !a.yol.length) {
+            /* yolda takılı kaldıysa kapıdan içeri al */
+            var kpb = this.kapilar(sb);
+            a.yol = [
+              { gx: kpb.giris, gy: kpb.yolY },
+              { gx: kpb.giris, gy: kpb.agizY },
+              { gx: kpb.giris, gy: kpb.bekY },
+              hedefBek
+            ];
           }
         }
         bekSira++;
@@ -721,14 +730,19 @@ const IZO = {
         a.hedefPompa = m.pompa;
         var kp = this.kapilar(sb);
         var px = m.pompa % sb.w, py = Math.floor(m.pompa / sb.w);
-        a.yol = [
-          { gx: kp.giris, gy: kp.yolY },          /* kapı önüne yanaş */
-          { gx: kp.giris, gy: kp.agizY },         /* kapıdan gir */
-          { gx: kp.giris, gy: kp.seritY },        /* apron şeridi */
-          { gx: px + 1.45, gy: kp.seritY },       /* pompanın sağına geç */
-          { gx: px + 1.35, gy: py + 0.82 },       /* pompa şeridine dön */
-          { gx: px + 0.52, gy: py + 0.82 }       /* adanın önünde paralel dur */
-        ];
+        var icerde = a.gy < sb.h + 0.9;           /* araç zaten istasyonun içinde mi */
+        a.yol = [];
+        if (!icerde) {
+          a.yol.push({ gx: kp.giris, gy: kp.yolY });    /* kapı önüne yanaş */
+          a.yol.push({ gx: kp.giris, gy: kp.agizY });   /* kapıdan gir */
+          a.yol.push({ gx: kp.giris, gy: kp.seritY });  /* apron şeridine in */
+        } else {
+          a.yol.push({ gx: a.gx, gy: kp.seritY });      /* bekleme şeridinden manevra şeridine */
+        }
+        a.yol.push({ gx: px + 1.45, gy: kp.seritY });   /* pompanın sağına geç */
+        a.yol.push({ gx: px + 1.35, gy: py + 0.82 });   /* pompa şeridine dön */
+        a.yol.push({ gx: px + 0.52, gy: py + 0.82 });   /* adanın önünde paralel dur */
+        a.bekYeri = null;
         a.durum = 'geliyor';
       }
     }
@@ -1050,7 +1064,9 @@ const IZO = {
         var gy = t - gx;
         var ic = (gx >= 0 && gx < sb.w && gy >= 0 && gy < sb.h);
         var yolMu = (gy === sb.h + 1 || gy === sb.h + 2);
-        var onluk = (gy === sb.h && gx >= -1 && gx <= sb.w);
+        var sv0 = (SIM.girisSeviye ? SIM.girisSeviye(sb) : 1);
+        var yan = sv0;                               /* her seviye bir karo daha yanlara */
+        var onluk = (gy === sb.h && gx >= -yan && gx < sb.w + yan);
         var renk, cimMi = false;
         if (yolMu) renk = asfalt;
         else if (onluk) renk = beton;
@@ -1071,6 +1087,16 @@ const IZO = {
     var kapiEn = 0.9 + (sv - 1) * 0.45;                 /* kapı genişliği (karo) */
     var girisX = 0.25, cikisX = sb.w - 0.25 - kapiEn;   /* sol giriş, sağ çıkış */
     var onY = sb.h;                                     /* apron satırı */
+
+    /* --- kapı rampaları: apron ile yol arasındaki banket --- */
+    var rampaRenk = this.ton('#9aa3ad', I);
+    function rampa(x1r, x2r) {
+      var a = IZO.ekran(x1r, onY + 0.94, 0.2), b = IZO.ekran(x2r, onY + 0.94, 0.2);
+      var d2 = IZO.ekran(x2r + 0.1, onY + 1.0, 0.2), e2 = IZO.ekran(x1r - 0.1, onY + 1.0, 0.2);
+      IZO.cokgen([a, b, d2, e2], rampaRenk);
+    }
+    rampa(girisX - 0.1, girisX + kapiEn + 0.1);
+    rampa(cikisX - 0.1, cikisX + kapiEn + 0.1);
 
     /* --- bordür: ön kenarda kapı boşlukları hariç --- */
     var bordurRenk = '#d7dde4';
@@ -2093,46 +2119,143 @@ const IZO = {
      ARAÇ
      ========================================================= */
   arabaCiz: function (a) {
-    var boyX = a.buyuk ? 1.25 : 0.72;
-    var boyY = a.buyuk ? 0.42 : 0.36;
-    var gx = a.gx - boyX / 2, gy = a.gy - boyY / 2;
-    var govdeY = a.buyuk ? 15 : 11;
-    /* gölge */
     var c = this.cz;
+    /* --- yön: eksene hizalı dört yön --- */
+    var aci = a.aci || 0;
+    var yatay = Math.abs(Math.cos(aci)) >= Math.abs(Math.sin(aci));
+    var ileriX = yatay ? (Math.cos(aci) >= 0 ? 1 : -1) : 0;
+    var ileriY = yatay ? 0 : (Math.sin(aci) >= 0 ? 1 : -1);
+
+    /* --- ölçüler: tipe göre --- */
+    var cesit = a.cesit || (a.buyuk ? 'tir' : 'oto');
+    if (a.tip === 'Tır') cesit = 'tir';
+    else if (a.tip === 'Otobüs') cesit = 'otobus';
+    else if (a.tip === 'Motosiklet') cesit = 'motor';
+    else if (a.tip === 'Taksi') cesit = 'taksi';
+    else if (a.tip === 'Ticari Araç' || a.tip === 'Minibüs') cesit = 'minibus';
+    else if (a.tip === 'Traktör') cesit = 'traktor';
+
+    var olcu = {
+      oto:     { uz: 0.78, en: 0.38, govde: 7,  tavan: 9,  tekerR: 0.15 },
+      taksi:   { uz: 0.80, en: 0.38, govde: 7,  tavan: 9,  tekerR: 0.15 },
+      minibus: { uz: 0.92, en: 0.42, govde: 9,  tavan: 14, tekerR: 0.16 },
+      traktor: { uz: 0.70, en: 0.42, govde: 10, tavan: 13, tekerR: 0.2 },
+      motor:   { uz: 0.42, en: 0.2,  govde: 5,  tavan: 5,  tekerR: 0.1 },
+      tir:     { uz: 1.55, en: 0.46, govde: 11, tavan: 15, tekerR: 0.18 },
+      otobus:  { uz: 1.45, en: 0.46, govde: 9,  tavan: 17, tekerR: 0.18 }
+    }[cesit] || { uz: 0.78, en: 0.38, govde: 7, tavan: 9, tekerR: 0.15 };
+
+    /* yöne göre kutu ölçüleri */
+    var w = yatay ? olcu.uz : olcu.en;
+    var d = yatay ? olcu.en : olcu.uz;
+    var gx = a.gx - w / 2, gy = a.gy - d / 2;
+
+    /* --- gölge --- */
     var gp = this.ekran(a.gx, a.gy, 0);
-    this.golgeCiz(gp.x, gp.y + 2,
-      Math.max(4, boyX * this.TW / 2 * this.kam.olcek * 0.7),
-      Math.max(2, boyY * this.TH / 2 * this.kam.olcek * 1.5), 0.28);
-    /* tekerler */
-    this.kutu(gx + 0.08, gy - 0.02, 0, 0.14, boyY + 0.04, 5, '#23282f');
-    this.kutu(gx + boyX - 0.22, gy - 0.02, 0, 0.14, boyY + 0.04, 5, '#23282f');
-    /* gövde */
-    this.kutu(gx, gy, 4, boyX, boyY, govdeY, a.renk);
-    /* kabin / üst yapı */
-    if (a.cesit === 'otobus') {
-      this.kutu(gx + 0.02, gy + 0.02, 4 + govdeY, boyX - 0.04, boyY - 0.04, 11, this.sabitTon(a.renk, 1.08));
-      /* cam şeridi */
-      this.kutu(gx + 0.08, gy - 0.01, 4 + govdeY - 5, boyX - 0.16, 0.04, 6, '#9fc4e0');
-      this.kutu(gx + 0.08, gy + boyY - 0.03, 4 + govdeY - 5, boyX - 0.16, 0.04, 6, '#9fc4e0');
-    } else if (a.buyuk) {
-      this.kutu(gx + boyX - 0.42, gy + 0.03, 4 + govdeY, 0.4, boyY - 0.06, 13, this.sabitTon(a.renk, 1.1));
+    this.golgeCiz(gp.x, gp.y + 1.5,
+      Math.max(4, (w + d) * this.TW / 4 * this.kam.olcek * 0.72),
+      Math.max(2, (w + d) * this.TH / 4 * this.kam.olcek * 0.9), 0.3);
+
+    /* --- tekerlekler --- */
+    var tR = olcu.tekerR;
+    if (yatay) {
+      this.kutu(gx + 0.1, gy - 0.025, 0, tR, d + 0.05, 4.5, '#1f242b');
+      this.kutu(gx + w - 0.1 - tR, gy - 0.025, 0, tR, d + 0.05, 4.5, '#1f242b');
+      if (cesit === 'tir' || cesit === 'otobus') this.kutu(gx + w * 0.55, gy - 0.025, 0, tR, d + 0.05, 4.5, '#1f242b');
     } else {
-      this.kutu(gx + 0.18, gy + 0.04, 4 + govdeY, boyX - 0.4, boyY - 0.08, 9, '#cfe0ee');
-      if (a.cesit === 'taksi') {
-        this.kutu(gx + boyX * 0.42, gy + boyY * 0.3, 4 + govdeY + 9, 0.16, 0.1, 4, '#2b3444');
+      this.kutu(gx - 0.025, gy + 0.1, 0, w + 0.05, tR, 4.5, '#1f242b');
+      this.kutu(gx - 0.025, gy + d - 0.1 - tR, 0, w + 0.05, tR, 4.5, '#1f242b');
+      if (cesit === 'tir' || cesit === 'otobus') this.kutu(gx - 0.025, gy + d * 0.55, 0, w + 0.05, tR, 4.5, '#1f242b');
+    }
+
+    var taban = 3.5;
+    var ustTon = this.sabitTon(a.renk, 1.06);
+    var camRenk = this.gece() ? '#2b3a4d' : '#a9cfe8';
+
+    if (cesit === 'motor') {
+      this.kutu(gx + w * 0.2, gy + d * 0.2, taban, w * 0.6, d * 0.6, olcu.govde, a.renk);
+      this.kutu(gx + w * 0.35, gy + d * 0.3, taban + olcu.govde, w * 0.3, d * 0.4, 5, '#2b3444');
+      return;
+    }
+
+    /* --- gövde --- */
+    this.kutu(gx, gy, taban, w, d, olcu.govde, a.renk);
+
+    if (cesit === 'tir') {
+      /* çekici + dorse */
+      var kabinUz = 0.42;
+      if (yatay) {
+        var kx = ileriX > 0 ? gx + w - kabinUz : gx;
+        this.kutu(kx, gy + 0.02, taban + olcu.govde, kabinUz, d - 0.04, olcu.tavan, ustTon);
+        this.kutu(ileriX > 0 ? gx : gx + kabinUz, gy + 0.03, taban + olcu.govde, w - kabinUz, d - 0.06, olcu.tavan - 2, this.sabitTon('#dde3ea', 1));
+        /* ön cam */
+        this.kutu(ileriX > 0 ? gx + w - 0.06 : gx, gy + 0.06, taban + olcu.govde + 4, 0.06, d - 0.12, 6, camRenk);
+      } else {
+        var ky = ileriY > 0 ? gy + d - kabinUz : gy;
+        this.kutu(gx + 0.02, ky, taban + olcu.govde, w - 0.04, kabinUz, olcu.tavan, ustTon);
+        this.kutu(gx + 0.03, ileriY > 0 ? gy : gy + kabinUz, taban + olcu.govde, w - 0.06, d - kabinUz, olcu.tavan - 2, this.sabitTon('#dde3ea', 1));
+        this.kutu(gx + 0.06, ileriY > 0 ? gy + d - 0.06 : gy, taban + olcu.govde + 4, w - 0.12, 0.06, 6, camRenk);
+      }
+    } else if (cesit === 'otobus') {
+      this.kutu(gx + 0.02, gy + 0.02, taban + olcu.govde, w - 0.04, d - 0.04, olcu.tavan, ustTon);
+      /* yan cam şeridi */
+      if (yatay) {
+        this.kutu(gx + 0.1, gy - 0.015, taban + olcu.govde + 4, w - 0.2, 0.04, 6, camRenk);
+        this.kutu(gx + 0.1, gy + d - 0.025, taban + olcu.govde + 4, w - 0.2, 0.04, 6, camRenk);
+      } else {
+        this.kutu(gx - 0.015, gy + 0.1, taban + olcu.govde + 4, 0.04, d - 0.2, 6, camRenk);
+        this.kutu(gx + w - 0.025, gy + 0.1, taban + olcu.govde + 4, 0.04, d - 0.2, 6, camRenk);
+      }
+    } else if (cesit === 'traktor') {
+      this.kutu(gx + w * 0.25, gy + d * 0.15, taban + olcu.govde, w * 0.5, d * 0.7, olcu.tavan, ustTon);
+      this.kutu(gx + w * 0.28, gy + d * 0.18, taban + olcu.govde + olcu.tavan, w * 0.44, d * 0.64, 2, '#2b3444');
+    } else {
+      /* binek / minibüs: kabin gövdenin ortasında, biraz dar */
+      var kUz = cesit === 'minibus' ? w * 0.72 : w * 0.52;
+      var kEn = cesit === 'minibus' ? d * 0.84 : d * 0.78;
+      var kx2, ky2;
+      if (yatay) {
+        kx2 = gx + (ileriX > 0 ? w * 0.18 : w - kUz - w * 0.18);
+        ky2 = gy + (d - kEn) / 2;
+      } else {
+        kUz = cesit === 'minibus' ? w * 0.84 : w * 0.78;
+        kEn = cesit === 'minibus' ? d * 0.72 : d * 0.52;
+        kx2 = gx + (w - kUz) / 2;
+        ky2 = gy + (ileriY > 0 ? d * 0.18 : d - kEn - d * 0.18);
+      }
+      this.kutu(kx2, ky2, taban + olcu.govde, kUz, kEn, olcu.tavan, ustTon);
+      /* camlar */
+      if (yatay) {
+        this.kutu(kx2 + 0.03, ky2 - 0.015, taban + olcu.govde + 2.5, kUz - 0.06, 0.035, olcu.tavan - 4, camRenk);
+        this.kutu(kx2 + 0.03, ky2 + kEn - 0.02, taban + olcu.govde + 2.5, kUz - 0.06, 0.035, olcu.tavan - 4, camRenk);
+      } else {
+        this.kutu(kx2 - 0.015, ky2 + 0.03, taban + olcu.govde + 2.5, 0.035, kEn - 0.06, olcu.tavan - 4, camRenk);
+        this.kutu(kx2 + kUz - 0.02, ky2 + 0.03, taban + olcu.govde + 2.5, 0.035, kEn - 0.06, olcu.tavan - 4, camRenk);
+      }
+      if (cesit === 'taksi') {
+        this.kutu(kx2 + kUz * 0.3, ky2 + kEn * 0.3, taban + olcu.govde + olcu.tavan, kUz * 0.4, kEn * 0.4, 3.5, '#2b3444');
       }
     }
-    /* fren lambası */
-    if (a.fren && a.durum !== 'park') {
-      var lp = this.ekran(a.gx - Math.cos(a.aci || 0) * boyX * 0.45, a.gy - Math.sin(a.aci || 0) * boyY * 0.45, 9);
-      c.fillStyle = 'rgba(240,82,82,.9)';
-      c.beginPath(); c.arc(lp.x, lp.y, 2.4 * this.kam.olcek, 0, Math.PI * 2); c.fill();
-    }
-    /* gece farları */
-    if (this.gece() && a.durum !== 'park') {
-      var fp = this.ekran(a.gx + (a.aci > -1.6 && a.aci < 1.6 ? boyX * 0.5 : -boyX * 0.5), a.gy, 9);
-      c.fillStyle = 'rgba(255,240,190,.75)';
-      c.beginPath(); c.arc(fp.x, fp.y, 3.2 * this.kam.olcek, 0, Math.PI * 2); c.fill();
+
+    /* --- farlar ve stoplar --- */
+    var o = this.kam.olcek;
+    var onX = a.gx + ileriX * w * 0.46, onY2 = a.gy + ileriY * d * 0.46;
+    var arkaX = a.gx - ileriX * w * 0.46, arkaY = a.gy - ileriY * d * 0.46;
+    if (a.durum !== 'park' && a.durum !== 'parkta') {
+      if (this.gece()) {
+        var fp = this.ekran(onX, onY2, 7);
+        var fg = c.createRadialGradient(fp.x, fp.y, 0, fp.x, fp.y, 22 * o);
+        fg.addColorStop(0, 'rgba(255,240,190,.5)');
+        fg.addColorStop(1, 'rgba(255,240,190,0)');
+        c.fillStyle = fg;
+        c.beginPath(); c.arc(fp.x, fp.y, 22 * o, 0, Math.PI * 2); c.fill();
+      }
+      var p1 = this.ekran(onX, onY2, 7);
+      c.fillStyle = this.gece() ? '#fff6d8' : 'rgba(255,248,220,.9)';
+      c.beginPath(); c.ellipse(p1.x, p1.y, 2 * o, 1.3 * o, 0, 0, Math.PI * 2); c.fill();
+      var p2 = this.ekran(arkaX, arkaY, 7);
+      c.fillStyle = a.fren ? '#ff4d4d' : 'rgba(190,60,60,.85)';
+      c.beginPath(); c.ellipse(p2.x, p2.y, (a.fren ? 2.4 : 1.7) * o, 1.2 * o, 0, 0, Math.PI * 2); c.fill();
     }
   },
 
