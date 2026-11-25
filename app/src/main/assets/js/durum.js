@@ -288,6 +288,7 @@ const D = {
   /* ---- kayıt ---- */
   kaydet: function () {
     try {
+      this.s.kapanis = Date.now();
       localStorage.setItem(KAYIT_ANAHTAR, JSON.stringify(this.s));
       return true;
     } catch (e) { return false; }

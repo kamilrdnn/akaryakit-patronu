@@ -30,7 +30,9 @@ const dosyalar = [
   ['js/durum.js', ['D', 'KAYIT_ANAHTAR', 'tl', 'tlTam', 'say', 'litre', 'yuzde', 'ikiHane', 'rastgele', 'rastgeleTam', 'secRast', 'kisitla', 'id']],
   ['js/sim.js', ['SIM']],
   ['js/izo.js', ['IZO']],
+  ['js/ses.js', ['SES']],
   ['js/servis.js', ['SERVIS']],
+  ['js/mini.js', ['MINI']],
   ['js/arayuz.js', ['UI']],
   ['js/guncelle.js', ['GUNCELLE']],
   ['js/main.js', ['OYUN']]
@@ -47,7 +49,7 @@ function calistir(ad, fn) {
   try { fn(); } catch (e) { console.log('  ✗ ' + ad + ' hata: ' + e.message + ' | ' + (e.stack || '').split('\n')[1]); hata++; }
 }
 
-const { D, SIM, UI, SERVIS, VERI, GUNCELLE, OYUN, IZO } = w;
+const { D, SIM, UI, SERVIS, VERI, GUNCELLE, OYUN, IZO, MINI, SES } = w;
 
 console.log('UI TEST 1 — açılış ekranı');
 calistir('acilisCiz', () => OYUN.acilisCiz());
@@ -462,8 +464,8 @@ console.log('UI TEST 9 — döngü, kayıt, güncelleme denetimi');
 calistir('tik', () => { for (let i = 0; i < 300; i++) { SIM.tik(D.s.hiz); UI.tikCiz(); } });
 kontrol(D.kaydet(), 'kayıt çalışmalı');
 calistir('guncelleme', () => GUNCELLE.kontrol(true));
-calistir('hız', () => { UI.hizDegis(); UI.hizDegis(); });
-kontrol([1,2,3].indexOf(D.s.hiz) >= 0, 'hız geçerli olmalı');
+calistir('hız', () => { UI.hizDegis(2); UI.hizDegis(5); });
+kontrol([1,2,3,5].indexOf(D.s.hiz) >= 0, 'hız geçerli olmalı');
 calistir('yönetim', () => UI.sekmeGec('daha'));
 const daha = w.document.getElementById('govde').innerHTML;
 kontrol(daha.indexOf('cipSerit') > 0, 'alt sekme şeridi olmalı');
@@ -485,12 +487,112 @@ UI.altSekmeGec('daha', 'ozet');
 calistir('sıfırla', () => { UI.sifirlaOnay(); UI.sifirla(); });
 kontrol(D.s.gun === 1 && D.s.subeler.length === 1, 'sıfırlama yeni oyun başlatmalı');
 
+console.log('UI TEST 9b — mini oyunlar, filo, taşıma, jeneratör');
+{
+  const sbm = D.sube();
+  D.s.para = 90000000; D.s.seviye = 20;
+  for (let i = 0; i < sbm.beton.length; i++) sbm.beton[i] = true;
+
+  /* --- oto yıkama --- */
+  const yerY = SIM.yerAc(sbm, 'bina');
+  SIM.binaKur(sbm, yerY, 'yikama');
+  const mus = { id: 'mx', arac: 'Otomobil', emoji: '🚗', yakit: 'benzin' };
+  calistir('yıkama başlat', () => MINI.yikamaBaslat(mus, null));
+  kontrol(w.document.getElementById('mini').classList.contains('ac'), 'mini katmanı açılmalı');
+  calistir('yıkama program', () => MINI.yikamaProgram(1));
+  calistir('yıkama durdur', () => MINI.yikamaDurdur());
+  kontrol(w.document.getElementById('mini').innerHTML.indexOf('Sonuç') > 0, 'yıkama sonucu çizilmeli');
+  calistir('mini kapat', () => MINI.kapat());
+
+  /* --- yağ değişimi --- */
+  SIM.binaKur(sbm, SIM.yerAc(sbm, 'bina'), 'yag');
+  calistir('yağ başlat', () => MINI.yagBaslat(mus, null));
+  calistir('yağ seç', () => MINI.yagSec(0));
+  calistir('filtre seç', () => MINI.yagFiltre(true));
+  calistir('yağ bitir', () => MINI.yagBitir());
+  calistir('mini kapat', () => MINI.kapat());
+
+  /* --- market kasası --- */
+  SIM.binaKur(sbm, SIM.yerAc(sbm, 'bina'), 'market');
+  SIM.marketTumunuDoldur(sbm);
+  calistir('kasa başlat', () => MINI.kasaBaslat());
+  if (MINI.acik && MINI.veri && MINI.veri.sepet) {
+    const ilk = MINI.veri.sepet[0].u.id;
+    calistir('ürün okut', () => MINI.kasaOkut(ilk));
+    calistir('kasa bitir', () => MINI.kasaBitir());
+  }
+  calistir('mini kapat', () => MINI.kapat());
+
+  /* --- LPG güvenlik --- */
+  let lpgSonuc = null;
+  calistir('lpg onay', () => MINI.lpgOnay(v => { lpgSonuc = v; }));
+  calistir('lpg adım', () => { MINI.lpgIlerle(); MINI.lpgIlerle(); MINI.lpgIlerle(); });
+  kontrol(lpgSonuc === true, 'lpg adımları tamamlanınca devam edilmeli');
+
+  /* --- ses motoru (AudioContext yok: çökmemeli) --- */
+  calistir('ses çağrıları', () => { SES.cal('kasa'); SES.cal('hata'); SES.dolumBasla(); SES.dolumDur(); SES.ayar(false); SES.ayar(true); });
+
+  /* --- filo anlaşması --- */
+  sbm.tank.dizel.dolu = 20000;
+  calistir('filo teklif', () => SIM.filoTeklifleriUret());
+  kontrol(D.s.filoTeklif.length > 0, 'filo teklifi üretilmeli');
+  const ft = D.s.filoTeklif[0];
+  calistir('filo imzala', () => SIM.filoImzala(ft.id));
+  kontrol(D.s.filolar.length === 1, 'filo anlaşması listeye girmeli');
+  D.s.saat = D.s.filolar[0].saatler[0];
+  const kuyrukOnce = sbm.kuyruk.length;
+  calistir('konvoy', () => SIM.filoKonvoy(sbm));
+  kontrol(sbm.kuyruk.length > kuyrukOnce, 'konvoy araçları kuyruğa girmeli');
+  calistir('filo paneli', () => { UI.altSekmeGec('daha', 'filo'); UI.sekmeGec('daha'); });
+  kontrol(w.document.getElementById('govde').innerHTML.indexOf('Toplu') > 0, 'filo paneli çizilmeli');
+  calistir('filo gün sonu', () => SIM.filolariIsle());
+
+  /* --- yapı taşıma --- */
+  const pomp = D.pompalar(sbm)[0].i;
+  let bosHedef = -1;
+  for (let i = 0; i < sbm.yapi.length; i++) if (!sbm.yapi[i] && sbm.beton[i]) { bosHedef = i; break; }
+  if (bosHedef >= 0) {
+    sbm.yapi[pomp].mesgul = null;
+    calistir('yapı taşı', () => SIM.yapiTasi(sbm, pomp, bosHedef));
+    kontrol(sbm.yapi[bosHedef] && sbm.yapi[bosHedef].t === 'pompa', 'pompa yeni hücrede olmalı');
+    kontrol(!sbm.yapi[pomp], 'eski hücre boşalmalı');
+  }
+
+  /* --- jeneratör deposu --- */
+  const jy = SIM.yerAc(sbm, 'bina');
+  sbm.tank.dizel.dolu = 5000;
+  SIM.binaKur(sbm, jy, 'jenerator');
+  kontrol(sbm.yapi[jy].depo > 0, 'jeneratör kurulunca dolmalı');
+  sbm.yapi[jy].depo = 0;
+  calistir('jeneratör doldur', () => SIM.jeneratorDoldur(sbm, jy));
+  kontrol(sbm.yapi[jy].depo > 0, 'jeneratör elle doldurulabilmeli');
+  calistir('jeneratör kartı', () => UI.yapiModal(jy));
+  kontrol(w.document.getElementById('modalIc').innerHTML.indexOf('yakıt deposu') > 0, 'jeneratör deposu kartta görünmeli');
+  calistir('modal kapat', () => UI.modalKapat());
+
+  /* --- çevrimdışı kazanç --- */
+  D.s.ist.gunluk = [{ gun: 1, ciro: 120000, gider: 40000 }, { gun: 2, ciro: 150000, gider: 50000 }];
+  D.s.kapanis = Date.now() - 2 * 3600 * 1000;
+  const cd = SIM.cevrimdisiHesapla();
+  kontrol(cd && cd.kazanc > 0, 'çevrimdışı kazanç hesaplanmalı');
+  const paraOnceCd = D.s.para;
+  calistir('çevrimdışı modal', () => UI.cevrimdisiModal(cd));
+  calistir('çevrimdışı al', () => UI.cevrimdisiAl());
+  kontrol(D.s.para > paraOnceCd, 'çevrimdışı kazanç kasaya girmeli');
+  D.s.kapanis = Date.now();
+  kontrol(SIM.cevrimdisiHesapla() === null, 'kısa sürede çevrimdışı kazanç olmamalı');
+
+  /* --- ayar anahtarları --- */
+  calistir('ses anahtarı', () => { UI.sesDegis(); UI.sesDegis(); });
+  calistir('lpg anahtarı', () => { UI.lpgGuvenlikDegis(); UI.lpgGuvenlikDegis(); });
+}
+
 console.log('UI TEST 10 — bildirimler ve konsol hataları');
 calistir('bildir', () => { for (let i = 0; i < 8; i++) UI.bildir('Başlık ' + i, 'metin', 'iyi'); });
 kontrol(w.document.getElementById('bildirimler').children.length <= 4, 'en fazla 4 bildirim durmalı');
 kontrol(konsolHatalari.length === 0, 'yakalanmamış JS hatası olmamalı: ' + konsolHatalari.join(' | '));
 
 console.log('');
-if (hata === 0) console.log('✅ ARAYÜZ TESTLERİ GEÇTİ (10 başlık)');
+if (hata === 0) console.log('✅ ARAYÜZ TESTLERİ GEÇTİ (11 başlık)');
 else console.log('❌ ' + hata + ' ARAYÜZ HATASI');
 process.exit(hata ? 1 : 0);

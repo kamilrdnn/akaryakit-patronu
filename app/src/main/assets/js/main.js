@@ -11,9 +11,25 @@ var OYUN = {
     document.getElementById('acilis').style.display = 'none';
     document.getElementById('uygulama').style.display = 'flex';
     UI.kur();
+    /* ilk dokunuşta ses motorunu uyandır (tarayıcı kuralı) */
+    try {
+      var uyandir = function () {
+        if (window.SES) SES.uyandir();
+        document.removeEventListener('touchstart', uyandir);
+        document.removeEventListener('click', uyandir);
+      };
+      document.addEventListener('touchstart', uyandir);
+      document.addEventListener('click', uyandir);
+    } catch (e) {}
     this.dongu();
     if (yeniMi) {
       UI.bildir('Hoş geldin patron', 'İki pompan ve yarım dolu tankların var. Müşteri gelince pompaya dokun.', 'iyi');
+    } else {
+      /* çevrimdışı kazanç */
+      try {
+        var cd = SIM.cevrimdisiHesapla();
+        if (cd) setTimeout(function () { UI.cevrimdisiModal(cd); }, 400);
+      } catch (e) {}
     }
     /* sessiz güncelleme denetimi */
     setTimeout(function () { try { GUNCELLE.kontrol(false); } catch (e) {} }, 2500);

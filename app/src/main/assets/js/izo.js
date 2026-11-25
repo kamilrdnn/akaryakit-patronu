@@ -428,15 +428,21 @@ const IZO = {
     var hedefSayi = Math.min(5, Math.round(D.lok(sb).trafik * 2 * (SIM.saatKat(D.s.saat) || 0.3)));
     if (say < hedefSayi && Math.random() < dt * 0.9) {
       var saga = Math.random() < 0.5;
-      var renkler = ['#d64545', '#3f7fd0', '#e0a92e', '#4aa96c', '#8a8f99', '#2f3b52'];
+      var zar = Math.random();
+      var cesit, renk, buyuk = false;
+      if (zar < 0.08) { cesit = 'otobus'; renk = '#2f8f5f'; buyuk = true; }
+      else if (zar < 0.14) { cesit = 'tir'; renk = ['#3f7fd0', '#d64545', '#8a8f99'][Math.floor(Math.random() * 3)]; buyuk = true; }
+      else if (zar < 0.2) { cesit = 'taksi'; renk = '#e8b21f'; }
+      else if (zar < 0.26) { cesit = 'minibus'; renk = '#dfe3e8'; }
+      else { cesit = 'oto'; renk = ['#d64545', '#3f7fd0', '#e0a92e', '#4aa96c', '#8a8f99', '#2f3b52', '#c96a2c', '#f0f2f5'][Math.floor(Math.random() * 8)]; }
       this.arabalar.push({
-        mid: null,
+        mid: null, cesit: cesit,
         gx: saga ? -5 : sb.w + 5,
         gy: sb.h + (saga ? 1.3 : 1.72),
-        renk: renkler[Math.floor(Math.random() * renkler.length)],
-        buyuk: Math.random() < 0.15,
+        renk: renk,
+        buyuk: buyuk,
         yol: [{ gx: saga ? sb.w + 5.5 : -5.5, gy: sb.h + (saga ? 1.3 : 1.72) }],
-        durum: 'gecis', hiz: 2.2 + Math.random() * 1.4, sil: false
+        durum: 'gecis', hiz: (buyuk ? 1.7 : 2.4) + Math.random() * 1.3, sil: false
       });
     }
   },
@@ -551,7 +557,7 @@ const IZO = {
     this.isaretler = [];
     this._balonSayisi = 0;
 
-    var cimenPal = ['#6ca950', '#69a54d', '#70ad54', '#67a24b', '#6eab52'];
+    var cimenPal = this.cimenPaleti();
     var cimenRenk = [];
     for (var cp = 0; cp < cimenPal.length; cp++) cimenRenk.push(this.ton(cimenPal[cp], I));
     var asfalt = this.ton('#3b4149', I);
@@ -616,11 +622,22 @@ const IZO = {
       else this.uyariIsareti(ii.gx, ii.gy, ii.z, ii.renk, '!');
     }
 
+    /* hava olayları */
+    this.havaCiz();
+
     /* uçan yazılar */
     this.ucanCiz();
   },
 
   /* zemin karolarını doğrudan çiz */
+  cimenPaleti: function () {
+    var sezon = VERI.sezonSira[D.s.sezonIdx];
+    if (sezon === 'kis') return ['#d8e3e8', '#d2dee4', '#dce7eb', '#cfdbe2', '#e2ecef'];
+    if (sezon === 'sonbahar') return ['#8a9a4e', '#93a254', '#849447', '#9aa85c', '#8f9e52'];
+    if (sezon === 'ilkbahar') return ['#73b857', '#6fb453', '#79bd5c', '#6cb050', '#7dc061'];
+    return ['#6ca950', '#69a54d', '#70ad54', '#67a24b', '#6eab52'];
+  },
+
   zeminCiz: function (sb, minGX, maxGX, minGY, maxGY, cimenRenk, asfalt, beton, toprak, I) {
     for (var t = minGX + minGY; t <= maxGX + maxGY; t++) {
       var gxBas = Math.max(minGX, t - maxGY), gxSon = Math.min(maxGX, t - minGY);
@@ -675,7 +692,7 @@ const IZO = {
     this.cz = tc;
     this.kam = { x: -x0, y: -y0, olcek: 1, hx: -x0, hy: -y0, holcek: 1, vx: 0, vy: 0, kuruldu: true };
     try {
-      var cimenPal = ['#6ca950', '#69a54d', '#70ad54', '#67a24b', '#6eab52'];
+      var cimenPal = this.cimenPaleti();
       var cimenRenk = [];
       for (var cp = 0; cp < cimenPal.length; cp++) cimenRenk.push(this.ton(cimenPal[cp], I));
       this.zeminCiz(sb, minGX, maxGX, minGY, maxGY, cimenRenk,
@@ -723,6 +740,48 @@ const IZO = {
       c.ellipse(p.x, p.y, r * 1.5, r, 0, 0, Math.PI * 2);
       c.fill();
     }
+  },
+
+  /* yağmur / kar tanecikleri — ekran uzayında, ucuz */
+  havaCiz: function () {
+    var sezon = VERI.sezonSira[D.s.sezonIdx];
+    var kar = sezon === 'kis';
+    var yagmur = sezon === 'sonbahar' || sezon === 'ilkbahar';
+    if (!kar && !yagmur) { this._hava = null; return; }
+    var c = this.cz;
+    var adet = kar ? 60 : 70;
+    if (!this._hava || this._hava.length !== adet || this._havaTur !== sezon) {
+      this._hava = [];
+      this._havaTur = sezon;
+      for (var i = 0; i < adet; i++) {
+        this._hava.push({
+          x: Math.random(), y: Math.random(),
+          h: kar ? 0.10 + Math.random() * 0.12 : 0.55 + Math.random() * 0.45,
+          s: Math.random() * 6.28, r: kar ? 1.2 + Math.random() * 1.4 : 1
+        });
+      }
+    }
+    var t = Date.now() / 1000;
+    c.save();
+    if (kar) {
+      c.fillStyle = 'rgba(255,255,255,.75)';
+      for (var k = 0; k < this._hava.length; k++) {
+        var p = this._hava[k];
+        var py = ((p.y + t * p.h * 0.12) % 1) * this.boy;
+        var px = (p.x * this.en + Math.sin(t * 0.7 + p.s) * 16) % this.en;
+        c.beginPath(); c.arc(px, py, p.r, 0, Math.PI * 2); c.fill();
+      }
+    } else {
+      c.strokeStyle = 'rgba(190,215,240,.42)';
+      c.lineWidth = 1.1;
+      for (var y2 = 0; y2 < this._hava.length; y2++) {
+        var q = this._hava[y2];
+        var qy = ((q.y + t * q.h * 0.55) % 1) * this.boy;
+        var qx = (q.x * this.en + qy * 0.14) % this.en;
+        c.beginPath(); c.moveTo(qx, qy); c.lineTo(qx - 2.2, qy + 11); c.stroke();
+      }
+    }
+    c.restore();
   },
 
   satilikTabela: function (gx, gy) {
@@ -1208,11 +1267,19 @@ const IZO = {
     this.kutu(gx + boyX - 0.22, gy - 0.02, 0, 0.14, boyY + 0.04, 5, '#23282f');
     /* gövde */
     this.kutu(gx, gy, 4, boyX, boyY, govdeY, a.renk);
-    /* kabin */
-    if (a.buyuk) {
+    /* kabin / üst yapı */
+    if (a.cesit === 'otobus') {
+      this.kutu(gx + 0.02, gy + 0.02, 4 + govdeY, boyX - 0.04, boyY - 0.04, 11, this.sabitTon(a.renk, 1.08));
+      /* cam şeridi */
+      this.kutu(gx + 0.08, gy - 0.01, 4 + govdeY - 5, boyX - 0.16, 0.04, 6, '#9fc4e0');
+      this.kutu(gx + 0.08, gy + boyY - 0.03, 4 + govdeY - 5, boyX - 0.16, 0.04, 6, '#9fc4e0');
+    } else if (a.buyuk) {
       this.kutu(gx + boyX - 0.42, gy + 0.03, 4 + govdeY, 0.4, boyY - 0.06, 13, this.sabitTon(a.renk, 1.1));
     } else {
       this.kutu(gx + 0.18, gy + 0.04, 4 + govdeY, boyX - 0.4, boyY - 0.08, 9, '#cfe0ee');
+      if (a.cesit === 'taksi') {
+        this.kutu(gx + boyX * 0.42, gy + boyY * 0.3, 4 + govdeY + 9, 0.16, 0.1, 4, '#2b3444');
+      }
     }
     /* fren lambası */
     if (a.fren && a.durum !== 'park') {

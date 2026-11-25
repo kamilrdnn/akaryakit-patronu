@@ -1243,6 +1243,46 @@ const SIM = {
     return true;
   },
 
+  /* =========================================================
+     ÇEVRİMDIŞI KAZANÇ
+     ========================================================= */
+  cevrimdisiHesapla: function () {
+    var s = D.s;
+    if (!s.kapanis) return null;
+    var gecen = Date.now() - s.kapanis;
+    if (gecen < 4 * 60 * 1000) return null;                 /* 4 dk altı sayılmaz */
+    var saat = Math.min(8, gecen / 3600000);                /* en çok 8 saat */
+
+    /* son günlerin ortalama saatlik kârı */
+    var gunluk = s.ist.gunluk || [];
+    var topKar = 0, n = 0;
+    for (var i = Math.max(0, gunluk.length - 5); i < gunluk.length; i++) {
+      topKar += (gunluk[i].ciro - gunluk[i].gider);
+      n++;
+    }
+    var gunlukKar = n ? topKar / n : 0;
+    if (gunlukKar <= 0) return null;
+
+    /* personel olmadan istasyon yarı kapasite çalışır */
+    var sb = D.sube();
+    var pompaci = this.personelSayisi(sb, 'pompaci');
+    var mudur = this.personelSayisi(sb, 'mudur');
+    var verim = kisitla(0.18 + pompaci * 0.12 + mudur * 0.18, 0.18, 0.72);
+
+    var kazanc = Math.round((gunlukKar / 24) * saat * verim);
+    if (kazanc < 1) return null;
+    return { kazanc: kazanc, saat: saat, verim: verim, pompaci: pompaci, mudur: mudur };
+  },
+
+  cevrimdisiAl: function (o) {
+    if (!o) return false;
+    D.s.para += o.kazanc;
+    D.s.ist.ciro += o.kazanc;
+    D.s.ist.bugunCiro += o.kazanc;
+    D.kaydet();
+    return true;
+  },
+
   jeneratorKap: function (y) { return 90 * (y.sv || 1); },
 
   jeneratorDoldur: function (sb, k) {

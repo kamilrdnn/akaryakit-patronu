@@ -33,6 +33,7 @@ const UI = {
      KURULUM
      ========================================================= */
   kur: function () {
+    if (window.SES) SES.ayar(!(D.s.ayar && D.s.ayar.ses === false));
     this.fabCiz();
     try { IZO.kur(); } catch (e) { /* tuval yoksa oyun yine çalışır */ }
     this.sekmeGec('istasyon');
@@ -895,6 +896,7 @@ const UI = {
     h += '<div class="kv"><span>Kasiyer</span><b>' + (kasiyer ? kasiyer.ad + ' (' + kasiyer.beceri + ')' : '<span class="sariY">yok · market yarı verimle çalışıyor</span>') + '</b></div>';
     h += '<div class="btngrup" style="margin-top:10px">';
     h += '<button class="btn kucuk" onclick="UI.marketDoldur()">🛒 Rafları doldur</button>';
+    h += '<button class="btn kucuk" onclick="MINI.kasaBaslat()">🧾 Kasaya geç</button>';
     if (!kasiyer) h += '<button class="btn kucuk ikincil" onclick="UI.sekmeGec(\'personel\')">🧑‍💼 Kasiyer al</button>';
     h += '</div></div>';
 
@@ -1426,8 +1428,24 @@ const UI = {
     });
     h += '</div></div>';
 
+    var sesAcik = !(s2.ayar && s2.ayar.ses === false);
+    var lpgG = !(s2.ayar && s2.ayar.lpgGuvenlik === false);
+    h += '<div class="kart"><div class="baslik">Ses ve yardımcılar</div>';
+    h += '<div class="anahtarSatir"><div><div class="ad">🔊 Oyun sesleri</div><div class="alt">Dolum, kasa, uyarı ve başarım efektleri</div></div>';
+    h += '<button class="anahtar' + (sesAcik ? ' acik' : '') + '" onclick="UI.sesDegis()"><i></i></button></div>';
+    h += '<div class="anahtarSatir"><div><div class="ad">💨 LPG güvenlik adımı</div><div class="alt">LPG dolumunda motor/yolcu kontrolü sorulur</div></div>';
+    h += '<button class="anahtar' + (lpgG ? ' acik' : '') + '" onclick="UI.lpgGuvenlikDegis()"><i></i></button></div>';
+    h += '</div>';
+
+    h += '<div class="kart"><div class="baslik">Oyun hızı</div>';
+    h += '<div class="not">Zaman akışını hızlandırır; müşteriler ve günler daha çabuk geçer.</div>';
+    h += '<div class="hizSerit">';
+    [1, 2, 3, 5].forEach(function (hz) {
+      h += '<button class="hizDugme' + (s2.hiz === hz ? ' aktif' : '') + '" onclick="UI.hizDegis(' + hz + ')">' + hz + '×</button>';
+    });
+    h += '</div></div>';
+
     h += '<div class="kart"><div class="baslik">Oyun</div>';
-    h += '<div class="kv"><span>Hız</span><b>' + s2.hiz + '×</b></div>';
     h += '<div class="btngrup" style="margin-top:8px">';
     h += '<button class="btn kucuk ikincil" onclick="D.kaydet()&&UI.bildir(\'Kaydedildi\',\'\',\'iyi\')">💾 Kaydet</button>';
     h += '<button class="btn kucuk ikincil" onclick="UI.guncellemeKontrol()">⬇ Güncelleme denetle</button>';
@@ -1500,6 +1518,51 @@ const UI = {
     this.bildir('Yeni oyun', 'Kasaba istasyonunda yeniden başladın.', 'iyi');
   },
 
+  cevrimdisiModal: function (cd) {
+    var saat = Math.floor(cd.saat);
+    var dk = Math.round((cd.saat - saat) * 60);
+    var sure = (saat ? saat + ' sa ' : '') + dk + ' dk';
+    var h = '<div class="cdBas">🌙</div>';
+    h += '<div class="cdSure">Sen yokken ' + sure + ' geçti</div>';
+    h += '<div class="cdPara">+' + tl(cd.kazanc) + '</div>';
+    h += '<div class="kv"><span>Kadro verimi</span><b>%' + say(cd.verim * 100, 0) + '</b></div>';
+    h += '<div class="kv"><span>Pompacı</span><b>' + cd.pompaci + '</b></div>';
+    h += '<div class="kv"><span>Müdür</span><b>' + (cd.mudur ? 'var' : 'yok') + '</b></div>';
+    h += '<div class="not">Daha fazla pompacı ve bir müdür, sen yokken istasyonun daha verimli çalışmasını sağlar.</div>';
+    h += '<button class="btn genis" style="margin-top:12px" onclick="UI.cevrimdisiAl()">💰 KASAYA AL</button>';
+    this._cd = cd;
+    this.modal('Çevrimdışı kazanç', h);
+  },
+  cevrimdisiAl: function () {
+    if (SIM.cevrimdisiAl(this._cd)) {
+      if (window.SES) SES.cal('para');
+      this.bildir('Çevrimdışı kazanç', tl(this._cd.kazanc) + ' kasaya eklendi.', 'iyi');
+    }
+    this._cd = null;
+    this.modalKapat();
+  },
+
+  hizDegis: function (h) {
+    D.s.hiz = h;
+    D.kaydet();
+    this.bildir('Oyun hızı', h + '× ayarlandı.', 'iyi');
+    this.panelYenile();
+  },
+
+  sesDegis: function () {
+    if (!D.s.ayar) D.s.ayar = {};
+    D.s.ayar.ses = D.s.ayar.ses === false;
+    if (window.SES) { SES.uyandir(); SES.ayar(D.s.ayar.ses !== false); SES.cal('buton'); }
+    D.kaydet();
+    this.panelYenile();
+  },
+  lpgGuvenlikDegis: function () {
+    if (!D.s.ayar) D.s.ayar = {};
+    D.s.ayar.lpgGuvenlik = D.s.ayar.lpgGuvenlik === false;
+    D.kaydet();
+    this.panelYenile();
+  },
+
   dolumModu: function (m) {
     if (!D.s.ayar) D.s.ayar = {};
     D.s.ayar.dolum = m;
@@ -1530,6 +1593,7 @@ const UI = {
     this._sonBildirim = imza;
     this._sonBildirimZ = Date.now();
 
+    if (window.SES && tip === 'kotu') SES.cal('uyari');
     var d = document.createElement('div');
     d.className = 'bld ' + (tip || '');
     d.innerHTML = '<b>' + baslik + '</b>' + (metin || '');

@@ -55,6 +55,7 @@ const SERVIS = {
   },
 
   kapat: function () {
+    if (window.SES) SES.dolumDur();
     this.acik = false;
     this.basili = false;
     if (this.rafId) cancelAnimationFrame(this.rafId);
@@ -199,6 +200,7 @@ const SERVIS = {
     this.mod = 'tam';
     this.basili = true;
     this.sonFrame = performance.now();
+    if (window.SES) SES.dolumBasla();
     var t = document.getElementById('svTetik');
     if (t) t.classList.add('basili');
     UI.bildir('Ön ayar', say(v, 2) + ' ' + VERI.yakitlar[this.m.yakit].birim + ' dolduruluyor…', 'iyi');
@@ -207,6 +209,7 @@ const SERVIS = {
   onAyarDur: function () {
     this.onAyar = 0;
     this.basili = false;
+    if (window.SES) SES.dolumDur();
     var t = document.getElementById('svTetik');
     var v = document.getElementById('svYavas');
     if (t) t.classList.remove('basili');
@@ -227,6 +230,7 @@ const SERVIS = {
     var v = document.getElementById('svYavas');
     if (t) t.classList.toggle('basili', durum && this.mod === 'tam');
     if (v) v.classList.toggle('basili', durum && this.mod === 'yavas');
+    if (window.SES) { if (durum) SES.dolumBasla(); else SES.dolumDur(); }
     if (durum) this.sonFrame = performance.now();
   },
 
@@ -389,6 +393,10 @@ const SERVIS = {
     document.getElementById('servis').innerHTML = h;
 
     D.kaydet();
+    if (window.SES) {
+      SES.dolumDur();
+      SES.cal(r.tip === 'yanlis' ? 'hata' : (r.isabet === 'tam' ? 'basari' : 'kasa'));
+    }
     try { if (window.AndroidKabuk) AndroidKabuk.titret(r.isabet === 'tam' ? 90 : 25); } catch (e) {}
   },
 
