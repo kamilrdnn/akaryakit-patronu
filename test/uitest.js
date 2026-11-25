@@ -573,6 +573,30 @@ console.log('UI TEST 9b — mini oyunlar, filo, taşıma, jeneratör');
   kontrol(w.document.getElementById('modalIc').innerHTML.indexOf('yakıt deposu') > 0, 'jeneratör deposu kartta görünmeli');
   calistir('modal kapat', () => UI.modalKapat());
 
+  /* --- istasyon düzenleme --- */
+  {
+    const sbd = D.sube();
+    D.s.para = 90000000;
+    /* yapıları kasten dağınık yerleştir */
+    const pompaIdx = D.pompalar(sbd).map(p => p.i);
+    const binaIdx = D.binalar(sbd).map(b => b.i);
+    const toplamOnce = pompaIdx.length + binaIdx.length;
+    const pomp0 = D.pompalar(sbd)[0];
+    const pers = SIM.adayUret('pompaci');
+    SIM.iseAl(sbd, pers);
+    SIM.pompaAta(sbd, pers.id, pomp0.i);
+    calistir('düzenle', () => SIM.istasyonDuzenle(sbd));
+    const toplamSonra = D.pompalar(sbd).length + D.binalar(sbd).length;
+    kontrol(toplamSonra === toplamOnce, 'düzenleme yapı kaybetmemeli: ' + toplamOnce + ' -> ' + toplamSonra);
+    const atanan = sbd.personel.filter(x => x.id === pers.id)[0];
+    kontrol(atanan && atanan.pompa !== null && sbd.yapi[atanan.pompa] && sbd.yapi[atanan.pompa].t === 'pompa',
+      'pompacı ataması yeni pompaya taşınmalı');
+    /* pompalar ön şeritte olmalı */
+    const onSerit = D.pompalar(sbd).every(p => Math.floor(p.i / sbd.w) <= sbd.h - 2);
+    kontrol(onSerit, 'pompalar ön şeride yerleşmeli');
+    calistir('düzenleme onayı', () => { UI.duzenleOnay(); UI.modalKapat(); });
+  }
+
   /* --- yedekleme --- */
   D.s.para = 1234567;
   calistir('yedek al', () => UI.yedekAl());

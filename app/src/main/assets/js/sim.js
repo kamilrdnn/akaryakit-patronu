@@ -801,6 +801,8 @@ const SIM = {
     if (m.arac === 'Tır' || m.arac === 'Otobüs') girisSansi *= 1.5;
     if (this.olayVar('turist')) girisSansi *= 1.6;
     if (Math.random() > kisitla(girisSansi, 0, 0.8)) return 0;
+    /* müşteri markete uğrayacak: aracı otoparka yönlendir */
+    if (window.IZO && IZO.marketNiyeti) IZO.marketNiyeti(m.id);
 
     var adet = 1 + (Math.random() < 0.45 ? 1 : 0) + (Math.random() < 0.18 ? 1 : 0);
     var gelir = 0;
@@ -1497,6 +1499,129 @@ const SIM = {
     }
     if (en < 0) return -1;
     return this.betonDok(sb, en) ? en : -1;
+  },
+
+  /* =========================================================
+     İSTASYONU BAŞTAN DÜZENLE
+     Pompalar yola bakan şeritte aralıklı, market ve tesisler arkada,
+     depo/enerji kenarda. Gerekli yerlere beton döker.
+     ========================================================= */
+  duzenlemeBedeli: function (sb) {
+    var adet = D.pompalar(sb).length + D.binalar(sb).length;
+    return Math.round(12000 * adet + 25000);
+  },
+
+  duzenlemeOnizle: function (sb) {
+    var pompalar = [], binalar = [];
+    for (var i = 0; i < sb.yapi.length; i++) {
+      var y = sb.yapi[i];
+      if (!y) continue;
+      if (y.t === 'pompa') pompalar.push(y); else binalar.push(y);
+    }
+    /* binaları türüne göre önceliklendir: market/kafe öne yakın, depo/enerji kenara */
+    var onSira = { market: 1, kafe: 2, restoran: 3, wc: 4, havasu: 5, atm: 6, totem: 0 };
+    var kenar = { depo: 1, gunes: 2, jenerator: 3, smr: 4, tirpark: 5, yikama: 6, yag: 7, adblue: 8 };
+    binalar.sort(function (a, b) {
+      var ao = onSira[a.t] !== undefined ? onSira[a.t] : 50;
+      var bo = onSira[b.t] !== undefined ? onSira[b.t] : 50;
+      return ao - bo;
+    });
+
+    /* --- pompa şeridi: en ön satırdan bir yukarısı --- */
+    var plan = [];               /* {idx, yapi} */
+    var kullanilan = {};
+    var pompaSatiri = Math.max(0, sb.h - 2);
+    var sut = 0;
+    for (var p = 0; p < pompalar.length; p++) {
+      var yer = -1;
+      /* aynı satırda birer boşluk bırakarak ilerle; satır dolarsa bir üst satır */
+      for (var deneme = 0; deneme < sb.w * 3 && yer < 0; deneme++) {
+        var satir = pompaSatiri - Math.floor(sut / Math.ceil(sb.w / 2));
+        var sutun = (sut % Math.ceil(sb.w / 2)) * 2;
+        sut++;
+        if (satir < 0 || sutun >= sb.w) continue;
+        var aday = satir * sb.w + sutun;
+        if (kullanilan[aday]) continue;
+        yer = aday;
+      }
+      if (yer < 0) continue;
+      kullanilan[yer] = true;
+      plan.push({ idx: yer, yapi: pompalar[p] });
+    }
+
+    /* --- binalar: arka satırlardan başlayarak satranç düzeni --- */
+    var bAday = [];
+    for (var gy = 0; gy < sb.h; gy++) {
+      for (var gx = 0; gx < sb.w; gx++) {
+        var k = gy * sb.w + gx;
+        if (kullanilan[k]) continue;
+        if (gy >= sb.h - 1) continue;                 /* en ön şerit manevra */
+        var puan = (sb.h - gy) * 10 + ((gx + gy) % 2 === 0 ? 4 : 0);
+        /* pompa şeridine komşu olanları sona at */
+        if (Math.abs(gy - pompaSatiri) <= 0) puan -= 40;
+        bAday.push({ k: k, puan: -puan });
+      }
+    }
+    bAday.sort(function (a, b) { return a.puan - b.puan; });
+    for (var b2 = 0; b2 < binalar.length && b2 < bAday.length; b2++) {
+      plan.push({ idx: bAday[b2].k, yapi: binalar[b2] });
+      kullanilan[bAday[b2].k] = true;
+    }
+    return plan;
+  },
+
+  istasyonDuzenle: function (sb) {
+    var plan = this.duzenlemeOnizle(sb);
+    var toplam = D.pompalar(sb).length + D.binalar(sb).length;
+    if (plan.length < toplam) {
+      UI.bildir('Yer yetmiyor', 'Tüm yapıları düzgün yerleştirmek için arsa küçük. Önce arsa genişlet.', 'kotu');
+      return false;
+    }
+    var bedel = this.duzenlemeBedeli(sb);
+    if (!D.harca(bedel)) return false;
+
+    /* pompacı atamalarını ve müşterileri koru */
+    var eskiPompaYeri = {};                       /* eski indeks -> yapı */
+    for (var i = 0; i < sb.yapi.length; i++) if (sb.yapi[i]) eskiPompaYeri[i] = sb.yapi[i];
+
+    var yeniYapi = new Array(sb.yapi.length).fill(null);
+    var yapiYeniYeri = {};                        /* yapı nesnesi -> yeni indeks */
+    for (var p = 0; p < plan.length; p++) {
+      yeniYapi[plan[p].idx] = plan[p].yapi;
+      if (!sb.beton[plan[p].idx]) sb.beton[plan[p].idx] = true;   /* düzenleme betonu kapsar */
+    }
+    sb.yapi = yeniYapi;
+
+    /* personel ve kuyruk referanslarını yeni indekslere taşı */
+    var eskiden = {};
+    for (var e in eskiPompaYeri) eskiden[e] = eskiPompaYeri[e];
+    for (var pi = 0; pi < plan.length; pi++) {
+      for (var ek in eskiden) {
+        if (eskiden[ek] === plan[pi].yapi) { yapiYeniYeri[ek] = plan[pi].idx; break; }
+      }
+    }
+    for (var ps = 0; ps < sb.personel.length; ps++) {
+      var pz = sb.personel[ps];
+      if (pz.pompa !== null && pz.pompa !== undefined && yapiYeniYeri[pz.pompa] !== undefined) {
+        pz.pompa = yapiYeniYeri[pz.pompa];
+      } else if (pz.tip === 'pompaci') pz.pompa = null;
+    }
+    for (var kq = 0; kq < sb.kuyruk.length; kq++) {
+      var mq = sb.kuyruk[kq];
+      if (mq.pompa !== null && mq.pompa !== undefined) {
+        mq.pompa = (yapiYeniYeri[mq.pompa] !== undefined) ? yapiYeniYeri[mq.pompa] : null;
+        if (mq.pompa === null) mq.durum = 'bekliyor';
+      }
+    }
+
+    if (window.IZO) {
+      IZO._zAnahtar = '';
+      IZO._otoparkAnahtar = '';
+      IZO.arabalar = [];
+      IZO.susle(sb);
+    }
+    UI.bildir('🧹 İstasyon düzenlendi', 'Pompalar yola bakan şeride, tesisler arkaya alındı · ' + tl(bedel), 'iyi');
+    return true;
   },
 
   /* yapıyı arsa içinde başka bir betonlu hücreye taşı */

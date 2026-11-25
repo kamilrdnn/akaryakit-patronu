@@ -650,7 +650,14 @@ const UI = {
 
   /* istasyondaki tüm yapılar: sahnede arkada kalsa bile buradan yönetilir */
   yapilarHtml: function (sb) {
-    var h = '<div class="kart"><div class="baslik">İstasyondaki yapılar</div>';
+    var h = '<div class="kart"><div class="baslik">🧹 İstasyon düzeni</div>';
+    h += '<div class="not">Tüm yapıları tek seferde düzgün yerleştirir: pompalar yola bakan şeritte birer boşlukla, market ve tesisler arkada, depolar kenarda. Pompacı atamaların korunur.</div>';
+    h += '<div class="kv"><span>Yapı sayısı</span><b>' + (D.pompalar(sb).length + D.binalar(sb).length) + '</b></div>';
+    h += '<div class="kv"><span>Düzenleme bedeli</span><b>' + tl(SIM.duzenlemeBedeli(sb)) + '</b></div>';
+    h += '<button class="btn genis" style="margin-top:9px" onclick="UI.duzenleOnay()">🧹 İstasyonu düzenle</button>';
+    h += '</div>';
+
+    h += '<div class="kart"><div class="baslik">İstasyondaki yapılar</div>';
     h += '<div class="not">Sahnede bir yapının arkası kapalı kalırsa buradan kartını açabilir, yükseltebilir, taşıyabilir ya da yıkabilirsin.</div>';
     var say2 = 0;
     for (var i = 0; i < sb.yapi.length; i++) {
@@ -716,6 +723,25 @@ const UI = {
   },
 
   girisYukselt: function () { if (SIM.girisYukselt(D.sube())) this.panelYenile(); },
+
+  duzenleOnay: function () {
+    var sb = D.sube();
+    var h = '<div class="not">Bütün pompa ve tesisler yeniden yerleştirilecek:</div>';
+    h += '<div class="kv"><span>Pompalar</span><b>yola bakan şeride, aralarında boşlukla</b></div>';
+    h += '<div class="kv"><span>Market, kafe, WC</span><b>arka sıraya, girişe yakın</b></div>';
+    h += '<div class="kv"><span>Depo, enerji, yıkama</span><b>kenarlara</b></div>';
+    h += '<div class="kv"><span>Bedel</span><b>' + tl(SIM.duzenlemeBedeli(sb)) + '</b></div>';
+    h += '<div class="not">Gereken yerlere beton bedelsiz dökülür. Pompacı atamaları ve bekleyen müşteriler korunur.</div>';
+    h += '<button class="btn genis" style="margin-top:10px" onclick="UI.duzenleYap()">🧹 Düzenle</button>';
+    h += '<button class="btn ikincil genis" style="margin-top:8px" onclick="UI.modalKapat()">Vazgeç</button>';
+    this.modal('İstasyon düzeni', h);
+  },
+  duzenleYap: function () {
+    if (SIM.istasyonDuzenle(D.sube())) {
+      this.modalKapat();
+      this.sekmeGec('istasyon');
+    }
+  },
 
   /* ilk uygun boş zemine kur */
   bosZeminBul: function (sb, otoBeton) {

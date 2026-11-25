@@ -231,6 +231,28 @@ fs.writeFileSync(path.join(__dirname, 'sahne-tabela.png'), tuval.toBuffer('image
   }
 }
 
+/* markete uğrayan müşteri otoparka geçmeli */
+{
+  const cepler = IZO.otoparkYerleri(sb);
+  kontrol(cepler.length > 0, 'otopark cebi olmalı');
+  const ar2 = IZO.arabalar.filter(a => a.mid && a.durum !== 'gidiyor')[0];
+  if (ar2) {
+    IZO.marketNiyeti(ar2.mid);
+    sb.kuyruk = sb.kuyruk.filter(m => m.id !== ar2.mid);
+    IZO.musteriArabalari(sb);
+    kontrol(ar2.durum === 'parkta', 'market müşterisi otoparka yönelmeli: ' + ar2.durum);
+    kontrol(ar2.parkSuresi > 0, 'markette geçireceği süre olmalı');
+    /* park edip yaya çıkarmalı, süre dolunca çıkışa gitmeli */
+    ar2.bekle = 0; ar2.yol = [];
+    IZO.yayaGuncelle(sb, 0.1);
+    const yayaVar = (IZO.yayalar || []).some(y => y.aracId === ar2.mid);
+    kontrol(yayaVar, 'park eden araçtan müşteri inmeli');
+    ar2.parkSuresi = 0.01;
+    IZO.guncelle(0.2);
+    kontrol(ar2.durum === 'gidiyor', 'market dönüşü araç çıkışa geçmeli: ' + ar2.durum);
+  }
+}
+
 console.log('SAHNE TEST 5 — tek pompalı yeni şube ve boş arsa');
 D.yeni();
 IZO._sahneAnahtar = '';
