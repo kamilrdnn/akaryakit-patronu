@@ -24,7 +24,7 @@ function kos(ad, kur, sn){
   const sb=D.sube(); kur(sb);
   sb.tank.benzin.dolu=sb.tank.benzin.kap||9000;sb.tank.dizel.dolu=sb.tank.dizel.kap||9000;sb.tank.lpg.dolu=3000;
   IZO._sahneAnahtar=null; IZO.kur(); D.s.saat=13;
-  const iz=new Map(); let enUzunDuran=0, yan=0, toplamKare=0, binis=0, servis=0, maxArac=0, cikan=0;
+  const iz=new Map(); let enUzunDuran=0, yan=0, toplamKare=0, binis=0, servis=0, maxArac=0, cikan=0, uzakDolum=0;
   const dt=1/30;
   for(let k=0;k<sn*30;k++){
     saat+=dt*1000;
@@ -35,6 +35,7 @@ function kos(ad, kur, sn){
     if(process.env.TIK){ IZO.arabalar.forEach(a=>{ if(a._tikali>5.9&&a._tikali<5.95){ const ca=Math.cos(a.aci),sa=Math.sin(a.aci); const bl=IZO.arabalar.filter(b=>b!==a&&Math.hypot(b.gx-a.gx,b.gy-a.gy)<1.6&&((b.gx-a.gx)*ca+(b.gy-a.gy)*sa)>0).map(b=>[b.durum,b.mid?'m':'t',b.gx.toFixed(2),b.gy.toFixed(2),(b.yol||[]).length,(b._tikali||0).toFixed(1),(b.bekle||0).toFixed(1)]); console.log('TIK',a.durum,a.mid?'m':'t',a.gx.toFixed(2),a.gy.toFixed(2),a.aci.toFixed(2),JSON.stringify(a.yol[0]),'<-',JSON.stringify(bl)); } }); }
     if(process.env.IZ){ IZO.arabalar.forEach(a=>{ if(a.mid&&a.bekYeri&&(!a.yol||!a.yol.length)&&Math.abs(a.gx-a.bekYeri.gx)>0.3&&!a._log){a._log=1;console.log('KOPUK',k,a.durum,a.gx.toFixed(2),a.gy.toFixed(2),JSON.stringify(a.bekYeri),a._onceYol);} a._onceYol=JSON.stringify(a.yol)+a.durum; }); }
     maxArac=Math.max(maxArac,IZO.arabalar.length);
+    sb.kuyruk.forEach(m=>{ if(m.pompa!==null&&m.durum==='pompada'&&!m.yolda){ const a=IZO.arabalar.find(x=>x.mid===m.id); const px=m.pompa%sb.w,py=Math.floor(m.pompa/sb.w); if(!a||Math.hypot(a.gx-px-0.52,a.gy-py-0.82)>0.3) uzakDolum++; } });
     IZO.arabalar.forEach(a=>{
       let z=iz.get(a); if(!z){ z={gx:a.gx,gy:a.gy,dur:0}; iz.set(a,z); }
       const dx=a.gx-z.gx, dy=a.gy-z.gy, u=Math.hypot(dx,dy);
@@ -60,6 +61,7 @@ function kos(ad, kur, sn){
   kontrol(yuzde<1.5, ad+': yan giden araç %'+yuzde.toFixed(2));
   kontrol(binis<sn*2, ad+': iç içe araç '+binis);
   kontrol(maxArac>0, ad+': hiç araç yok');
+  kontrol(uzakDolum===0, ad+': araç pompada değilken dolum açık ('+uzakDolum+' kare)');
   (IZO.yayalar||[]).forEach(p=>kontrol(isFinite(p.gx)&&isFinite(p.gy),'yaya konumu bozuk'));
 }
 console.log('FİZİK TEST — sürüş ve yürüyüş');

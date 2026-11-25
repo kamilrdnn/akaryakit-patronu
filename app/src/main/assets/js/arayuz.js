@@ -382,6 +382,7 @@ const UI = {
     var y = sb.yapi[k];
     if (y && y.t === 'pompa' && y.mesgul) {
       var m = SIM.musteriBul(sb, y.mesgul);
+      if (m && m.durum === 'pompada' && m.yolda) { this.bildir('🚗 Araç pompaya yanaşıyor…'); return; }
       if (m && m.durum === 'pompada') { this.pompaSecim(k, m); return; }
     }
     if (!sb.beton[k]) this.betonModal(k);

@@ -375,6 +375,7 @@ const SIM = {
     for (var i = sb.kuyruk.length - 1; i >= 0; i--) {
       var m = sb.kuyruk[i];
       if (m.durum === 'servis') continue;
+      if (m.yolda) continue;                           // aracı pompaya yanaşırken sabrı tükenmez
       var hiz = m.durum === 'pompada' ? 0.55 : 1;      // pompaya geçtiyse daha sabırlı
       if (D.binaSayisi(sb, 'kafe')) hiz *= 0.82;
       m.sabirKalan -= dk * hiz;
@@ -433,6 +434,7 @@ const SIM = {
       var m = this.musteriBul(sb, p.mesgul);
       if (!m) { p.mesgul = null; continue; }
       if (m.durum === 'servis') continue;   // oyuncu elle dolduruyor
+      if (m.yolda) continue;                // araç henüz pompaya yanaşmadı
 
       /* gerçekçi akış: araç yanaşır, kapak açılır, tabanca takılır */
       if (m.hazirlik === undefined) m.hazirlik = rastgele(1.6, 3.2) * (1.4 - pompaci.beceri / 180);

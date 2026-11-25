@@ -1249,7 +1249,7 @@
     }
     if (p.mesgul) {
       var m = SIM.musteriBul(sb, p.mesgul);
-      if (m && (m.durum === 'pompada' || m.durum === 'servis')) {
+      if (m && !m.yolda && (m.durum === 'pompada' || m.durum === 'servis')) {
         if (m.durum === 'pompada') {
           this._balonSayisi = (this._balonSayisi || 0) + 1;
           this.isaretler.push({ tip: 'bekleyen', gx: gx + 0.5, gy: gy + 0.5, m: m, balon: this._balonSayisi <= 2, i: i });
@@ -2018,6 +2018,57 @@
       try { this.binaCizIc(sb, i, gx, gy, b); } catch (e) { }
       this._vurusKapali = ev;
       c.restore();
+    }
+  };
+})();
+
+
+/* =========================================================
+   BÖLÜM 5 — araç pompaya varmadan dolum başlamaz
+   ========================================================= */
+(function () {
+  var Z = IZO;
+
+  /* sahne ilk kurulduğunda (oyun açılışı, şube değişimi) araçlar yerlerinde belirir */
+  var eskiGuncelle = Z.guncelle;
+  Z.guncelle = function (dt) {
+    var sb = D.sube();
+    this._yerinde = (D.s.aktif + ':' + sb.w + 'x' + sb.h) !== this._sahneAnahtar;
+    try { eskiGuncelle.call(this, dt); } finally { this._yerinde = false; }
+  };
+
+  var eskiYap2 = Z.arabaYap;
+  Z.arabaYap = function (sb, m, sira) {
+    var a = eskiYap2.call(this, sb, m, sira);
+    if (this._yerinde && a.yol && a.yol.length) {
+      var son = a.yol[a.yol.length - 1];
+      a.gx = son.gx; a.gy = son.gy; a.yol = [];
+      a.aci = m.pompa !== null ? Math.PI : 0;
+      a._yon = 1; a.durum = 'park'; a._rotaPompa = m.pompa;
+    }
+    return a;
+  };
+
+  var eskiMus2 = Z.musteriArabalari;
+  Z.musteriArabalari = function (sb) {
+    eskiMus2.call(this, sb);
+    var simdi = Date.now(), araba = {};
+    for (var i = 0; i < this.arabalar.length; i++) if (this.arabalar[i].mid) araba[this.arabalar[i].mid] = this.arabalar[i];
+    for (var k = 0; k < sb.kuyruk.length; k++) {
+      var m = sb.kuyruk[k];
+      if (m.pompa === null) { if (m.yolda) m.yolda = false; continue; }
+      var a = araba[m.id];
+      if (!a) { m.yolda = false; continue; }
+      var px = m.pompa % sb.w, py = Math.floor(m.pompa / sb.w);
+      var hx = px + 0.52, hy = py + 0.82;
+      var vardi = (!a.yol || !a.yol.length) && Math.abs(a.gx - hx) < 0.15 && Math.abs(a.gy - hy) < 0.15;
+      if (vardi) { m.yolda = false; a._atama = 0; continue; }
+      if (a._atamaP !== m.pompa || !a._atama) { a._atamaP = m.pompa; a._atama = simdi; }
+      if (simdi - a._atama > 30000 || !a.yol || !a.yol.length) {
+        /* çok uzun sürdü ya da rotasız kaldı: aracı yerine al, oyun tıkanmasın */
+        a.gx = hx; a.gy = hy; a.yol = []; a.aci = Math.PI; a.durum = 'park';
+        m.yolda = false; a._atama = 0;
+      } else m.yolda = true;
     }
   };
 })();
