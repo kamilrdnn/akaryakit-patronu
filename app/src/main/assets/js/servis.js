@@ -360,7 +360,10 @@ const SERVIS = {
       else if (r.isabet === 'iyi') { bas = '👍 İyi Dolum'; renk = 'var(--yesil)'; }
       else if (r.isabet === 'tasma') { bas = '💧 Taştı'; renk = 'var(--kirmizi)'; }
       else { bas = '🙂 Satış Tamam'; renk = 'var(--mavi)'; }
+      if (r.kacak) { bas = '🏃 Ödemeden Kaçtı'; renk = 'var(--kirmizi)'; }
       alt += 'Hedef ' + say(hedef, 2) + ' · verilen ' + say(verilen, 2) + ' (' + (r.fark >= 0 ? '+' : '') + say(r.fark, 2) + ')<br>';
+      if (r.premium) alt += '<span class="sariY">✨ Katkılı ürün satıldı</span><br>';
+      if (r.kartli) alt += '<span class="mini">💳 Sadakat kartlı müşteri</span><br>';
       alt += 'Satış: <b>' + tl(r.ciro) + '</b>';
       if (r.bahsis > 0.5) alt += ' · Bahşiş: <b class="sariY">+' + tl(r.bahsis) + '</b>' + (this.onAyarliSatis ? ' <span class="mini">(ön ayar: yarı bahşiş)</span>' : '');
       if (r.dokulen > 0.05) alt += '<br>Dökülen: <b class="kirmiziY">' + say(r.dokulen, 2) + ' L</b>';

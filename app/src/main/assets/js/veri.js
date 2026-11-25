@@ -159,6 +159,22 @@ const VERI = {
     { ad: 'Kurye Ağı',         yakit: 'benzin', emoji: '🛵' }
   ],
 
+  /* ---------------- pazarlama programları ---------------- */
+  programlar: {
+    sadakat: {
+      ad: 'Sadakat Kartı', emoji: '💳', kurulum: 180000, aylik: 26000, seviyeSart: 3,
+      aciklama: 'Kart sahibi müşteriler düzenli gelir. Trafiği artırır, küçük bir iskonto ister.'
+    },
+    premium: {
+      ad: 'Katkılı Yakıt', emoji: '✨', kurulum: 320000, aylik: 42000, seviyeSart: 4,
+      aciklama: 'Katkılı ürün satarsın: litre başı kâr artar, fiyata duyarlı müşterilerin bir kısmı kaçar.'
+    },
+    yikamaAbone: {
+      ad: 'Yıkama Aboneliği', emoji: '🧼', kurulum: 140000, aylik: 18000, seviyeSart: 5,
+      aciklama: 'Aylık abonelik geliri; yıkama tesisi varsa her gün sabit gelir getirir.'
+    }
+  },
+
   /* ---------------- toplu (filo) anlaşmaları ---------------- */
   filoAnlasmalar: [
     { id:'belediye',  ad:'Belediye Otobüs Filosu', emoji:'🚌', arac:'Otobüs',      yakit:'dizel',  aracSayi:[3,5], aracL:[110,190], iskonto:[0.05,0.09], gun:[8,16], seviyeSart:2,  saatler:[6,14,22], aciklama:'Sabah, öğle ve gece vardiyasında otobüsler depoya uğrar.' },

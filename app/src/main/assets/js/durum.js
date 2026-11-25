@@ -116,6 +116,8 @@ const D = {
       market: { stok: {}, fiyat: {}, ciro: 0, kayipSatis: 0, gunlukSatis: {} },
       uyari: {},
       tedarikci: 'standart',
+      program: { sadakat: false, premium: false, yikamaAbone: false },
+      kartliMusteri: 0,
       gunlukYakit: { benzin: 0, dizel: 0, lpg: 0, ev: 0 },
       bugun: { musteri: 0, isabet: 0, litre: 0, marketUrun: 0, ciro: 0, bakim: 0, kacan: 0, tankBos: 0, kuyrukDolu: 0 },
       temizlik: 100,
@@ -325,6 +327,11 @@ const D = {
     if (!s.sozlesmeTeklif) s.sozlesmeTeklif = [];
     if (!s.filolar) s.filolar = [];
     if (!s.filoTeklif) s.filoTeklif = [];
+    for (var pi = 0; pi < s.subeler.length; pi++) {
+      var psb = s.subeler[pi];
+      if (!psb.program) psb.program = { sadakat: false, premium: false, yikamaAbone: false };
+      if (typeof psb.kartliMusteri !== 'number') psb.kartliMusteri = 0;
+    }
     if (!s.gorevler) s.gorevler = [];
     if (typeof s.gorevGun !== 'number') s.gorevGun = 0;
     if (typeof s.krediNotu !== 'number') s.krediNotu = 55;

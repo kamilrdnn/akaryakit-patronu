@@ -862,16 +862,40 @@ const IZO = {
       c.textAlign = 'center';
       c.fillText('sv' + p.sv, sp.x, sp.y);
     }
-    /* bekleyen müşteri halkası */
+    /* bekleyen müşteri halkası + hortum */
     if (p.mesgul) {
       var m = SIM.musteriBul(sb, p.mesgul);
-      if (m && m.durum === 'pompada') {
-        this._balonSayisi = (this._balonSayisi || 0) + 1;
-        this.isaretler.push({ tip: 'bekleyen', gx: gx + 0.5, gy: gy + 0.5, m: m, balon: this._balonSayisi <= 2 });
+      if (m && (m.durum === 'pompada' || m.durum === 'servis')) {
+        if (m.durum === 'pompada') {
+          this._balonSayisi = (this._balonSayisi || 0) + 1;
+          this.isaretler.push({ tip: 'bekleyen', gx: gx + 0.5, gy: gy + 0.5, m: m, balon: this._balonSayisi <= 2 });
+        }
+        this.hortumCiz(gx, gy, p, m);
       }
     }
     /* gece aydınlatması */
     if (this.gece()) this.isikHuzmesi(gx + 0.5, gy + 0.3, catiH);
+  },
+
+  /* pompadan araca uzanan hortum */
+  hortumCiz: function (gx, gy, p, m) {
+    var arac = null;
+    for (var i = 0; i < this.arabalar.length; i++) if (this.arabalar[i].mid === m.id) arac = this.arabalar[i];
+    if (!arac || arac.durum === 'geliyor' || arac.durum === 'gidiyor') return;
+    var c = this.cz, o = this.kam.olcek;
+    var a = this.ekran(gx + 0.46, gy + 0.2, 16);               /* tabanca ağzı */
+    var b = this.ekran(arac.gx - 0.1, arac.gy + 0.05, 11);     /* aracın yakıt kapağı */
+    var orta = { x: (a.x + b.x) / 2, y: Math.max(a.y, b.y) + 9 * o };   /* sarkma */
+    c.strokeStyle = 'rgba(26,32,42,.85)';
+    c.lineWidth = Math.max(1.3, 2.4 * o);
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(a.x, a.y);
+    c.quadraticCurveTo(orta.x, orta.y, b.x, b.y);
+    c.stroke();
+    /* tabanca ucu */
+    c.fillStyle = VERI.yakitlar[m.yakit].renk;
+    c.beginPath(); c.arc(b.x, b.y, 2.4 * o, 0, Math.PI * 2); c.fill();
   },
 
   binaCiz: function (sb, i, gx, gy, b) {
@@ -1192,6 +1216,20 @@ const IZO = {
     /* dükkân tentesi */
     if (s.alt === 'dukkan') {
       this.kutu(s.gx + 0.05, s.gy - 0.16, 9, s.w - 0.1, 0.2, 2.5, '#d9534f');
+      /* gece neon tabela */
+      if (gece) {
+        var np = this.ekran(s.gx + s.w / 2, s.gy - 0.1, 13);
+        var ng = c.createRadialGradient(np.x, np.y, 0, np.x, np.y, 26 * this.kam.olcek);
+        ng.addColorStop(0, 'rgba(255,180,90,.5)');
+        ng.addColorStop(1, 'rgba(255,180,90,0)');
+        c.fillStyle = ng;
+        c.beginPath(); c.arc(np.x, np.y, 26 * this.kam.olcek, 0, Math.PI * 2); c.fill();
+      }
+    }
+    /* kışın çatı karı */
+    if (VERI.sezonSira[D.s.sezonIdx] === 'kis') {
+      var catiZ = h + (s.alt === 'ev' || s.alt === 'dukkan' ? 5 : (s.alt === 'depo' ? 4 : 3.5));
+      this.kutu(s.gx - 0.03, s.gy - 0.03, catiZ, s.w + 0.06, s.h + 0.06, 1.6, '#eef4f8');
     }
   },
 

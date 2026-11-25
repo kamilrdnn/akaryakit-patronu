@@ -570,6 +570,24 @@ console.log('UI TEST 9b — mini oyunlar, filo, taşıma, jeneratör');
   kontrol(w.document.getElementById('modalIc').innerHTML.indexOf('yakıt deposu') > 0, 'jeneratör deposu kartta görünmeli');
   calistir('modal kapat', () => UI.modalKapat());
 
+  /* --- pazarlama programları --- */
+  D.s.seviye = 20; D.s.para = 90000000;
+  calistir('sadakat aç', () => SIM.programAc(sbm, 'sadakat'));
+  kontrol(sbm.program.sadakat === true, 'sadakat programı açılmalı');
+  calistir('premium aç', () => SIM.programAc(sbm, 'premium'));
+  kontrol(sbm.program.premium === true, 'katkılı yakıt açılmalı');
+  calistir('program paneli', () => { UI.sekmeGec('fiyat'); });
+  kontrol(w.document.getElementById('govde').innerHTML.indexOf('Pazarlama') > 0, 'program paneli çizilmeli');
+  const paraP = D.s.para;
+  calistir('program gideri', () => SIM.programlariIsle());
+  kontrol(D.s.para !== paraP, 'program gider/gelir işlemeli');
+  calistir('sadakat kapat', () => SIM.programAc(sbm, 'sadakat'));
+  kontrol(sbm.program.sadakat === false, 'program kapatılabilmeli');
+
+  /* --- ciro grafiği --- */
+  calistir('grafik', () => UI.ciroGrafigi([{gun:1,ciro:100,gider:50},{gun:2,ciro:200,gider:90}]));
+  kontrol(UI.ciroGrafigi([{gun:1,ciro:100,gider:50},{gun:2,ciro:200,gider:90}]).indexOf('<svg') > 0, 'grafik svg üretmeli');
+
   /* --- çevrimdışı kazanç --- */
   D.s.ist.gunluk = [{ gun: 1, ciro: 120000, gider: 40000 }, { gun: 2, ciro: 150000, gider: 50000 }];
   D.s.kapanis = Date.now() - 2 * 3600 * 1000;

@@ -130,6 +130,7 @@ const SIM = {
     this.kredileriIsle();
     this.sozlesmeleriIsle();
     this.filolariIsle();
+    this.programlariIsle();
     /* günlük sayaçları sıfırla ve yeni görev ver */
     s.subeler.forEach(function (sbx) {
       sbx.gunlukYakit = { benzin: 0, dizel: 0, lpg: 0, ev: 0 };
@@ -243,6 +244,10 @@ const SIM = {
     if (this.olayVar('hava')) k *= 0.7;
     if (this.olayVar('savas')) k *= 0.78;
     if (sb.kesinti && !D.gucYeterli(sb)) k *= 0.5;
+    if (sb.program) {
+      if (sb.program.sadakat) k *= 1.12;
+      if (sb.program.premium) k *= 0.96;
+    }
     return k * 2.2 * pompa;
   },
 
@@ -347,7 +352,9 @@ const SIM = {
       sabirKalan: arac.sabir * rastgele(0.8, 1.25),
       pompa: null,
       verilen: 0,
-      durum: 'bekliyor'
+      durum: 'bekliyor',
+      kartli: !!(sb.program && sb.program.sadakat && Math.random() < 0.34),
+      premium: !!(sb.program && sb.program.premium && yakit !== 'ev' && Math.random() < 0.38)
     };
   },
 
@@ -450,6 +457,8 @@ const SIM = {
     var yk = m.yakit;
     var fiyat = sb.fiyat[yk];
     if (m.filo) fiyat = +(fiyat * (1 - (m.iskonto || 0))).toFixed(3);
+    if (m.premium) fiyat = +(fiyat * 1.09).toFixed(3);
+    if (m.kartli) fiyat = +(fiyat * 0.985).toFixed(3);
     var maliyet = yk === 'ev' ? this.elektrikMaliyet(sb) : D.toptanFiyat(yk);
     var sonuc = { tip: 'ok' };
 
@@ -491,6 +500,31 @@ const SIM = {
     var ciro = satilan * fiyat;
     var kar = satilan * (fiyat - maliyet) - dokulen * maliyet;
 
+    /* --- ödemeden kaçan müşteri --- */
+    var kacak = false;
+    if (!m.filo && !m.kartli && satilan > 8) {
+      var kamera = D.binaSayisi(sb, 'kamera');
+      var risk = (elle ? 0.004 : 0.016) * (1 + (100 - sb.memnuniyet) / 150);
+      if (D.s.saat >= 23 || D.s.saat <= 4) risk *= 1.8;
+      if (kamera) risk *= 0.12;
+      if (Math.random() < risk) {
+        kacak = true;
+        if (kamera) {
+          /* kamera kaydı: plaka tespit, tahsilat yapılır */
+          UI.bildir('📹 Kaçak yakalandı', 'Araç ödemeden kaçtı ama kamera plakayı aldı; ' + tl(ciro) + ' tahsil edildi.', 'uyari');
+          kacak = false;
+          D.s.ist.kacak = (D.s.ist.kacak || 0) + 0;
+        } else {
+          ciro = 0;
+          kar = -(satilan * maliyet) - dokulen * maliyet;
+          D.s.ist.kacak = (D.s.ist.kacak || 0) + 1;
+          D.s.ist.kacakTl = (D.s.ist.kacakTl || 0) + satilan * fiyat;
+          sb.memnuniyet = kisitla(sb.memnuniyet - 1, 0, 100);
+          UI.bildir('🏃 Ödemeden kaçtı!', say(satilan, 0) + ' ' + VERI.yakitlar[yk].birim + ' alıp gitti. Güvenlik kamerası bu işi bitirir.', 'kotu');
+        }
+      }
+    }
+
     /* --- bahşiş / memnuniyet --- */
     var bahsis = 0, isabet = 'orta';
     var mutlulukKat = (sb.temizlik / 100) * 0.3 + 0.7;
@@ -519,9 +553,12 @@ const SIM = {
     }
 
     /* --- ek tesis geliri + sezon kampanyası --- */
-    var ekGelir = this.ekTesisGeliri(sb, m);
-    ekGelir += this.marketSatis(sb, m);
-    ekGelir += this.kampanyaIlerlet(sb);
+    var ekGelir = 0;
+    if (!kacak) {
+      ekGelir = this.ekTesisGeliri(sb, m);
+      ekGelir += this.marketSatis(sb, m);
+      ekGelir += this.kampanyaIlerlet(sb);
+    } else { bahsis = 0; }
 
     s.para += ciro + bahsis + ekGelir;
     s.ist.ciro += ciro + ekGelir;
@@ -556,7 +593,8 @@ const SIM = {
 
     return {
       tip: 'ok', isabet: isabet, satilan: satilan, dokulen: dokulen,
-      ciro: ciro, bahsis: bahsis, kar: kar, ekGelir: ekGelir, xp: xp, fark: fark
+      ciro: ciro, bahsis: bahsis, kar: kar, ekGelir: ekGelir, xp: xp, fark: fark,
+      kacak: !!kacak, kartli: !!m.kartli, premium: !!m.premium
     };
   },
 
@@ -1241,6 +1279,50 @@ const SIM = {
     if (window.IZO) { IZO.susle(sb); IZO._zAnahtar = ''; }
     UI.bildir('Taşındı', (y.t === 'pompa' ? 'Pompa' : VERI.binalar[y.t].ad) + ' yeni yerine kuruldu · ' + tl(bedel), 'iyi');
     return true;
+  },
+
+  /* =========================================================
+     PAZARLAMA PROGRAMLARI
+     ========================================================= */
+  programAc: function (sb, id) {
+    var t = VERI.programlar[id];
+    if (!t) return false;
+    if (!sb.program) sb.program = {};
+    if (sb.program[id]) {
+      sb.program[id] = false;
+      UI.bildir(t.ad + ' kapatildi', 'Aylik gideri durdu.', 'uyari');
+      return true;
+    }
+    if (D.s.seviye < t.seviyeSart) { UI.bildir('Seviye yetersiz', t.ad + ' icin seviye ' + t.seviyeSart + ' gerekiyor.', 'kotu'); return false; }
+    if (id === 'yikamaAbone' && !D.binaSayisi(sb, 'yikama')) { UI.bildir('Yikama tesisi yok', 'Once oto yikama kur.', 'kotu'); return false; }
+    if (!D.harca(t.kurulum)) return false;
+    sb.program[id] = true;
+    D.s.marka = kisitla(D.s.marka + 2, 0, 100);
+    UI.bildir(t.emoji + ' ' + t.ad + ' acildi', t.aciklama, 'iyi');
+    return true;
+  },
+
+  programlariIsle: function () {
+    var s = D.s;
+    for (var i = 0; i < s.subeler.length; i++) {
+      var sb = s.subeler[i];
+      if (!sb.program || sb.devredildi) continue;
+      for (var id in sb.program) {
+        if (!sb.program[id]) continue;
+        var t = VERI.programlar[id];
+        if (!t) continue;
+        var gun = Math.round(t.aylik / 30);
+        s.para -= gun;
+        s.ist.bugunGider += gun;
+        if (id === 'yikamaAbone') {
+          var yik = D.binaSayisi(sb, 'yikama');
+          var gelir = Math.round(gun * (1.7 + yik * 0.35) * (0.7 + sb.memnuniyet / 200));
+          s.para += gelir;
+          s.ist.bugunCiro += gelir;
+        }
+        if (id === 'sadakat') sb.memnuniyet = kisitla(sb.memnuniyet + 0.6, 0, 100);
+      }
+    }
   },
 
   /* =========================================================

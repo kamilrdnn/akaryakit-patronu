@@ -209,6 +209,22 @@ input[type=range]{width:100%}
 .cdSure{text-align:center;font-size:13px;color:var(--sol);margin-top:4px}
 .cdPara{text-align:center;font-size:30px;font-weight:800;color:var(--yesil);margin:8px 0 12px}
 
+.grafikKutu{background:#0d1522;border:1px solid var(--cizgi);border-radius:12px;padding:8px;margin-top:8px}
+.grafikKutu svg{width:100%;height:132px;display:block}
+.grafikLejant{display:flex;gap:14px;justify-content:center;margin-top:7px;font-size:11px;color:var(--sol)}
+.grafikLejant span{display:flex;align-items:center;gap:5px}
+.grafikLejant i{width:9px;height:9px;border-radius:3px;display:block}
+
+.progKart{
+  background:linear-gradient(170deg,#1b2740,#141d2f);border:1px solid var(--cizgi);
+  border-radius:15px;padding:12px;margin-top:10px
+}
+.progKart.acik{border-color:#2a7f4f;box-shadow:inset 0 0 0 1px rgba(62,196,122,.18)}
+.pkUst{display:flex;align-items:flex-start;gap:11px;margin-bottom:8px}
+.pkIk{font-size:25px;width:42px;height:42px;flex:0 0 42px;border-radius:13px;background:rgba(255,255,255,.07);display:grid;place-items:center}
+.pkUst .ad{font-size:14.5px;font-weight:800}
+.pkUst .alt{font-size:11.5px;color:var(--sol);line-height:1.35;margin-top:3px}
+
 /* ---------- mini oyunlar ---------- */
 #mini{
   position:fixed;inset:0;z-index:66;display:none;align-items:center;justify-content:center;

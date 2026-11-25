@@ -700,7 +700,8 @@ const UI = {
      ========================================================= */
   fiyatHtml: function () {
     var sb = D.sube(), s = D.s;
-    var h = '<div class="kart"><div class="baslik">Pompa fiyatların</div>';
+    var h = this.programHtml(sb);
+    h += '<div class="kart"><div class="baslik">Pompa fiyatların</div>';
     h += '<div class="not">Rakibin altına inersen trafik artar, marjın düşer. Üstüne çıkarsan müşteri azalır ama her litre daha çok kâr bırakır.</div>';
     VERI.yakitSira.forEach(function (y) {
       var yk = VERI.yakitlar[y];
@@ -1247,6 +1248,68 @@ const UI = {
     return h;
   },
 
+  /* son günlerin ciro/gider grafiği (saf SVG) */
+  ciroGrafigi: function (gunluk) {
+    var veri = gunluk.slice(-14);
+    var enb = 1;
+    for (var i = 0; i < veri.length; i++) enb = Math.max(enb, veri[i].ciro, veri[i].gider);
+    var W = 320, H = 120, pad = 6;
+    var gen = (W - pad * 2) / veri.length;
+    var h = '<div class="kart"><div class="baslik">Ciro / gider eğrisi</div>';
+    h += '<div class="grafikKutu"><svg viewBox="0 0 ' + W + ' ' + (H + 18) + '" preserveAspectRatio="none">';
+    /* yatay kılavuzlar */
+    for (var g = 1; g <= 3; g++) {
+      var gy = H - (H * g / 4);
+      h += '<line x1="0" y1="' + gy + '" x2="' + W + '" y2="' + gy + '" stroke="rgba(255,255,255,.07)" stroke-width="1"/>';
+    }
+    for (var k = 0; k < veri.length; k++) {
+      var x = pad + k * gen;
+      var hc = Math.max(1, (veri[k].ciro / enb) * (H - 10));
+      var hg = Math.max(1, (veri[k].gider / enb) * (H - 10));
+      var bw = gen * 0.34;
+      h += '<rect x="' + (x + gen * 0.08) + '" y="' + (H - hc) + '" width="' + bw + '" height="' + hc + '" rx="2" fill="#3ec47a"/>';
+      h += '<rect x="' + (x + gen * 0.5) + '" y="' + (H - hg) + '" width="' + bw + '" height="' + hg + '" rx="2" fill="#e2683a"/>';
+    }
+    /* net çizgi */
+    var nokta = [];
+    for (var n = 0; n < veri.length; n++) {
+      var net = veri[n].ciro - veri[n].gider;
+      var ny = H - kisitla((net / enb) * (H - 10), -H + 12, H - 10);
+      nokta.push((pad + n * gen + gen / 2) + ',' + ny);
+    }
+    h += '<polyline points="' + nokta.join(' ') + '" fill="none" stroke="#ffd166" stroke-width="2" stroke-linejoin="round"/>';
+    h += '<text x="2" y="' + (H + 14) + '" fill="#8c98a8" font-size="9">gün ' + veri[0].gun + '</text>';
+    h += '<text x="' + (W - 42) + '" y="' + (H + 14) + '" fill="#8c98a8" font-size="9">gün ' + veri[veri.length - 1].gun + '</text>';
+    h += '</svg></div>';
+    h += '<div class="grafikLejant"><span><i style="background:#3ec47a"></i>Ciro</span><span><i style="background:#e2683a"></i>Gider</span><span><i style="background:#ffd166"></i>Net</span></div>';
+    h += '</div>';
+    return h;
+  },
+
+  programHtml: function (sb) {
+    var h = '<div class="kart"><div class="baslik">Pazarlama programları</div>';
+    h += '<div class="not">Açık programların aylık gideri her gün otomatik düşer; istediğin an kapatabilirsin.</div>';
+    var sira = ['sadakat', 'premium', 'yikamaAbone'];
+    for (var i = 0; i < sira.length; i++) {
+      var id = sira[i], t = VERI.programlar[id];
+      var acik = !!(sb.program && sb.program[id]);
+      var kilit = D.s.seviye < t.seviyeSart;
+      h += '<div class="progKart' + (acik ? ' acik' : '') + '">';
+      h += '<div class="pkUst"><span class="pkIk">' + t.emoji + '</span>';
+      h += '<div style="flex:1"><div class="ad">' + t.ad + (acik ? ' <span class="etiket iyi">açık</span>' : '') + '</div>';
+      h += '<div class="alt">' + t.aciklama + '</div></div></div>';
+      h += '<div class="fkSatir"><span>Kurulum</span><b>' + (acik ? 'ödendi' : tl(t.kurulum)) + '</b></div>';
+      h += '<div class="fkSatir"><span>Aylık gider</span><b class="kirmiziY">' + tl(t.aylik) + '</b></div>';
+      if (kilit) h += '<div class="fkSatir"><span>Kilit</span><b class="sariY">Seviye ' + t.seviyeSart + '</b></div>';
+      h += '<button class="btn genis ' + (acik ? 'ikincil' : '') + '" style="margin-top:8px' + (kilit && !acik ? ';opacity:.45' : '') + '" onclick="UI.programAc(\'' + id + '\')">';
+      h += (acik ? 'Programı kapat' : t.emoji + ' Programı aç') + '</button>';
+      h += '</div>';
+    }
+    h += '</div>';
+    return h;
+  },
+  programAc: function (id) { if (SIM.programAc(D.sube(), id)) this.panelYenile(); },
+
   muhasebeHtml: function () {
     var s2 = D.s, i = s2.ist;
     var h = '<div class="kart"><div class="baslik">Bugünün darboğazları</div>';
@@ -1257,6 +1320,8 @@ const UI = {
       h += '<button class="btn minik" onclick="UI.sekmeGec(\'' + o.sekme + '\')">' + o.dugme + '</button></div>';
     }
     h += '</div>';
+
+    if (i.gunluk.length > 1) h += this.ciroGrafigi(i.gunluk);
 
     if (i.gunluk.length) {
       h += '<div class="kart"><div class="baslik">Gün dökümü</div>';
