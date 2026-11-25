@@ -332,7 +332,7 @@ kontrol(w.document.getElementById('govde').innerHTML.indexOf('cipSerit') > 0, 'i
 const oncekiBina = D.binalar(D.sube()).length;
 calistir('otomatik kur', () => UI.otoKur('wc'));
 kontrol(D.binalar(D.sube()).length === oncekiBina + 1, 'tesis otomatik yerleşmeli');
-['istasyon', 'tesisler', 'enerji', 'arsa'].forEach(alt => {
+['istasyon', 'tesisler', 'enerji', 'arsa', 'yapilar'].forEach(alt => {
   calistir('inşa sekme ' + alt, () => UI.altSekmeGec('insa', alt));
   kontrol(w.document.getElementById('govde').innerHTML.length > 300, alt + ' kategorisi dolu olmalı');
 });

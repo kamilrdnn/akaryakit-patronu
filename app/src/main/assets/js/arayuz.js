@@ -551,9 +551,10 @@ const UI = {
     var sb = D.sube(), lok = D.lok(sb), s2 = D.s;
     var h = this.cipSerit('insa', [
       ['istasyon', '⛽ İstasyon'], ['tesisler', '🏪 Tesisler'],
-      ['enerji', '⚡ Enerji'], ['arsa', '🧱 Arsa']
+      ['enerji', '⚡ Enerji'], ['arsa', '🧱 Arsa'], ['yapilar', '📋 Yapılarım']
     ]);
     var k = this.altSekme.insa || 'istasyon';
+    if (k === 'yapilar') return h + this.yapilarHtml(sb);
     var bosHucre = this.bosHucreSayisi(sb);
 
     if (k === 'istasyon') {
@@ -624,6 +625,41 @@ const UI = {
 
     /* tesisler */
     h += this.tesisKartlari(sb, ['wc', 'havasu', 'market', 'totem', 'depo', 'kafe', 'mescit', 'atm', 'yangin', 'kamera', 'yikama', 'yag', 'adblue', 'ofis', 'lastikci', 'tirpark', 'restoran'], bosHucre);
+    return h;
+  },
+
+  /* istasyondaki tüm yapılar: sahnede arkada kalsa bile buradan yönetilir */
+  yapilarHtml: function (sb) {
+    var h = '<div class="kart"><div class="baslik">İstasyondaki yapılar</div>';
+    h += '<div class="not">Sahnede bir yapının arkası kapalı kalırsa buradan kartını açabilir, yükseltebilir, taşıyabilir ya da yıkabilirsin.</div>';
+    var say2 = 0;
+    for (var i = 0; i < sb.yapi.length; i++) {
+      var y = sb.yapi[i];
+      if (!y) continue;
+      say2++;
+      var ad, ik, alt;
+      if (y.t === 'pompa') {
+        ad = VERI.yakitlar[y.yakit].ad + ' Pompası';
+        ik = VERI.yakitlar[y.yakit].emoji;
+        alt = 'sv' + y.sv + ' · akış ' + say(D.akis(y), 1) + ' ' + VERI.yakitlar[y.yakit].birim + '/sn';
+        if (y.mesgul) alt += ' · <span class="yesilY">müşteri var</span>';
+      } else {
+        var tan = VERI.binalar[y.t];
+        ad = tan.ad;
+        ik = tan.emoji;
+        alt = 'sv' + y.sv;
+        if (y.t === 'jenerator') alt += ' · depo ' + say(y.depo || 0, 0) + ' L';
+      }
+      alt += ' · bakım %' + Math.round(y.bakim);
+      if (y.arizali) alt += ' · <span class="kirmiziY">ARIZALI</span>';
+      if (y.calismiyor) alt += ' · <span class="kirmiziY">DURDU</span>';
+      var satir = Math.floor(i / sb.w) + 1, sutun = (i % sb.w) + 1;
+      h += '<div class="satir"><div class="sol"><div class="ikon">' + ik + '</div>';
+      h += '<div><div class="ad">' + ad + '</div><div class="alt">' + alt + '<br><span class="mini">konum ' + satir + '. sıra, ' + sutun + '. sütun</span></div></div></div>';
+      h += '<button class="btn minik" onclick="UI.yapiModal(' + i + ')">Aç</button></div>';
+    }
+    if (!say2) h += '<div class="bos">Henüz yapı yok.</div>';
+    h += '</div>';
     return h;
   },
 

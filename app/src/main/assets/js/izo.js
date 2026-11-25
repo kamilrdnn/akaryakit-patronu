@@ -203,7 +203,7 @@ const IZO = {
   },
 
   /* silindir (tank, reaktör) */
-  silindir: function (gx, gy, z, cap, h, renk) {
+  silindir: function (gx, gy, z, cap, h, renk, vurusa) {
     var I = this.isik();
     var mx = gx + cap / 2, my = gy + cap / 2;
     var ustM = this.ekran(mx, my, z + h), altM = this.ekran(mx, my, z);
@@ -220,6 +220,16 @@ const IZO = {
     c.fill();
     c.fillStyle = this.ton(renk, 1.05 * I);
     c.beginPath(); c.ellipse(ustM.x, ustM.y, rx, ry, 0, 0, Math.PI * 2); c.fill();
+    if (vurusa && this.vurus) {
+      this.vurus.push({
+        tip: vurusa.tip, i: vurusa.i,
+        poly: [
+          { x: ustM.x - rx, y: ustM.y - ry }, { x: ustM.x + rx, y: ustM.y - ry },
+          { x: altM.x + rx, y: altM.y }, { x: altM.x + rx, y: altM.y + ry },
+          { x: altM.x - rx, y: altM.y + ry }, { x: altM.x - rx, y: altM.y }
+        ]
+      });
+    }
   },
 
   /* =========================================================
@@ -603,6 +613,7 @@ const IZO = {
     c.fillRect(0, 0, this.en, this.boy);
 
     this.vurus = [];
+    this.vurusUst = [];
     this.isaretler = [];
     this._balonSayisi = 0;
 
@@ -672,7 +683,7 @@ const IZO = {
     /* işaret katmanı: binalar arkada kalsa da müşteri hep görünür */
     for (var is = 0; is < this.isaretler.length; is++) {
       var ii = this.isaretler[is];
-      if (ii.tip === 'bekleyen') this.bekleyenHalka(ii.gx, ii.gy, ii.m, ii.balon);
+      if (ii.tip === 'bekleyen') this.bekleyenHalka(ii.gx, ii.gy, ii.m, ii.balon, ii.i);
       else this.uyariIsareti(ii.gx, ii.gy, ii.z, ii.renk, '!');
     }
 
@@ -942,7 +953,7 @@ const IZO = {
       if (m && (m.durum === 'pompada' || m.durum === 'servis')) {
         if (m.durum === 'pompada') {
           this._balonSayisi = (this._balonSayisi || 0) + 1;
-          this.isaretler.push({ tip: 'bekleyen', gx: gx + 0.5, gy: gy + 0.5, m: m, balon: this._balonSayisi <= 2 });
+          this.isaretler.push({ tip: 'bekleyen', gx: gx + 0.5, gy: gy + 0.5, m: m, balon: this._balonSayisi <= 2, i: i });
         }
         this.hortumCiz(gx, gy, p, m);
       }
@@ -976,12 +987,23 @@ const IZO = {
     var kayit = this.cz;
     var merkez = this.ekran(gx + 0.5, gy + 0.5, 0);
     var kucult = 0.84;
+    var once = this.vurus.length;
     kayit.save();
     kayit.translate(merkez.x, merkez.y);
     kayit.scale(kucult, kucult);
     kayit.translate(-merkez.x, -merkez.y);
     try { this.binaCizIc(sb, i, gx, gy, b); } catch (e) { }
     kayit.restore();
+    /* dokunma siluetleri de aynı ölçekle küçülsün, yoksa komşunun dokunuşunu çalar */
+    for (var v = once; v < this.vurus.length; v++) {
+      var poly = this.vurus[v].poly;
+      for (var n = 0; n < poly.length; n++) {
+        poly[n] = {
+          x: merkez.x + (poly[n].x - merkez.x) * kucult,
+          y: merkez.y + (poly[n].y - merkez.y) * kucult
+        };
+      }
+    }
   },
 
   binaCizIc: function (sb, i, gx, gy, b) {
@@ -992,9 +1014,9 @@ const IZO = {
     if (t === 'depo') {
       this.golge(gx + 0.08, gy + 0.08, 0.84, 0.84, 0.3);
       this.kutu(gx + 0.05, gy + 0.05, 0, 0.9, 0.9, 3, '#aab3bd', { tip: 'hucre', i: i });
-      this.silindir(gx + 0.12, gy + 0.14, 3, 0.36, 26 + b.sv * 4, '#e8edf2');
-      this.silindir(gx + 0.54, gy + 0.14, 3, 0.36, 22 + b.sv * 4, '#5aa9e6');
-      this.silindir(gx + 0.32, gy + 0.56, 3, 0.34, 20 + b.sv * 3, '#d9e2ea');
+      this.silindir(gx + 0.12, gy + 0.14, 3, 0.36, 26 + b.sv * 4, '#e8edf2', { tip: 'hucre', i: i });
+      this.silindir(gx + 0.54, gy + 0.14, 3, 0.36, 22 + b.sv * 4, '#5aa9e6', { tip: 'hucre', i: i });
+      this.silindir(gx + 0.32, gy + 0.56, 3, 0.34, 20 + b.sv * 3, '#d9e2ea', { tip: 'hucre', i: i });
       return;
     }
     if (t === 'gunes') {
@@ -1017,7 +1039,7 @@ const IZO = {
     if (t === 'smr') {
       this.golge(gx + 0.05, gy + 0.05, 0.9, 0.9, 0.34);
       this.kutu(gx + 0.02, gy + 0.02, 0, 0.96, 0.96, 5, '#aeb6bf', { tip: 'hucre', i: i });
-      this.silindir(gx + 0.18, gy + 0.18, 5, 0.62, 46, '#dde3ea');
+      this.silindir(gx + 0.18, gy + 0.18, 5, 0.62, 46, '#dde3ea', { tip: 'hucre', i: i });
       this.silindir(gx + 0.3, gy + 0.3, 51, 0.38, 10, '#8fa8c6');
       return;
     }
@@ -1064,7 +1086,7 @@ const IZO = {
       this.golge(gx + 0.1, gy + 0.1, 0.8, 0.8, 0.3);
       this.kutu(gx + 0.1, gy + 0.1, 0, 0.8, 0.8, 2, '#c3cbd4');
       this.kutu(gx + 0.16, gy + 0.16, 2, 0.62, 0.62, 22, '#e9eef3', { tip: 'hucre', i: i });
-      this.silindir(gx + 0.26, gy + 0.26, 24, 0.42, 12, '#4a8f6f');
+      this.silindir(gx + 0.26, gy + 0.26, 24, 0.42, 12, '#4a8f6f', { tip: 'hucre', i: i });
       /* minare */
       this.kutu(gx + 0.8, gy + 0.2, 2, 0.08, 0.08, 46, '#e9eef3');
       this.silindir(gx + 0.79, gy + 0.19, 48, 0.1, 7, '#4a8f6f');
@@ -1464,7 +1486,7 @@ const IZO = {
   /* =========================================================
      EFEKTLER
      ========================================================= */
-  bekleyenHalka: function (gx, gy, m, balonGoster) {
+  bekleyenHalka: function (gx, gy, m, balonGoster, pompaIdx) {
     var c = this.cz;
     var o = this.kam.olcek;
     var nabiz = 1 + Math.sin(Date.now() / 260) * 0.09;
@@ -1490,6 +1512,11 @@ const IZO = {
 
     c.fillStyle = yk.renk;
     c.beginPath(); c.arc(p.x, p.y, r, 0, Math.PI * 2); c.fill();
+    /* işaretin kendisi de tıklanabilir olsun (pompa binaların arkasında kalabiliyor) */
+    if (pompaIdx !== undefined && pompaIdx !== null && this.vurusUst) {
+      this.vurusUst.push({ x: p.x, y: p.y, r: Math.max(16, r * 1.9), i: pompaIdx });
+      this.vurusUst.push({ x: zemin.x, y: zemin.y, r: Math.max(16, 20 * o), i: pompaIdx });
+    }
     c.strokeStyle = 'rgba(255,255,255,.75)';
     c.lineWidth = Math.max(1, 1.8 * o);
     c.stroke();
@@ -1641,7 +1668,7 @@ const IZO = {
       if (!self._suruk) return;
       var s = self._suruk;
       self._suruk = null;
-      if (s.tasindi || Date.now() - s.t > 600) return;
+      if (s.tasindi || Date.now() - s.t > 1200) return;
       self.kam.vx = self.kam.vy = 0;
       self.dokunuldu(s.bx, s.by);
     }
@@ -1661,7 +1688,16 @@ const IZO = {
   },
 
   dokunuldu: function (ex, ey) {
-    /* önce çizilmiş nesnelerin silueti (öndekiler önce) */
+    /* en üstte duran işaretler (bekleyen müşteri balonu) */
+    var ust = this.vurusUst || [];
+    var enYakin = null, enUz = 1e9;
+    for (var u = 0; u < ust.length; u++) {
+      var d = Math.hypot(ex - ust[u].x, ey - ust[u].y);
+      if (d <= ust[u].r && d < enUz) { enUz = d; enYakin = ust[u]; }
+    }
+    if (enYakin) { UI.hucreTik(enYakin.i); return; }
+
+    /* sonra çizilmiş nesnelerin silueti (öndekiler önce) */
     for (var i = this.vurus.length - 1; i >= 0; i--) {
       if (this.noktaIcinde(ex, ey, this.vurus[i].poly)) {
         UI.hucreTik(this.vurus[i].i);

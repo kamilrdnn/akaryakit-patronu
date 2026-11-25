@@ -149,6 +149,35 @@ Object.keys(hucreler).forEach(k => {
 });
 kontrol(bulunan > 0, 'siluet merkezleri kendi çokgeninin içinde olmalı');
 
+/* --- uçtan uca: her yapının gövdesine dokunmak kendi hücresini açmalı --- */
+{
+  const eskiTik = vm.runInContext('UI.hucreTik', ctx);
+  let gelen = null;
+  vm.runInContext('UI.hucreTik = function (k) { globalThis.__sonTik = k; };', ctx);
+  let isabet = 0, kayip = [];
+  for (let i = 0; i < sb.yapi.length; i++) {
+    const y = sb.yapi[i];
+    if (!y) continue;
+    const gx = i % sb.w, gy = Math.floor(i / sb.w);
+    /* görünen gövdenin birkaç noktasına dokun: en az biri kendi hücresini açmalı */
+    const yukseklikler = y.t === 'totem' ? [70, 80, 90] : [10, 20, 30, 42];
+    let tuttu = false, sonGelen = null;
+    for (const z of yukseklikler) {
+      const p = IZO.ekran(gx + 0.5, gy + 0.5, z);
+      vm.runInContext('globalThis.__sonTik = null;', ctx);
+      IZO.dokunuldu(p.x, p.y);
+      gelen = vm.runInContext('globalThis.__sonTik', ctx);
+      sonGelen = gelen;
+      if (gelen === i) { tuttu = true; break; }
+    }
+    if (tuttu) isabet++;
+    else kayip.push(i + '(' + y.t + ')→' + sonGelen);
+  }
+  kontrol(kayip.length === 0, 'her yapı kendi dokunuşunu almalı, kaçanlar: ' + kayip.join(', '));
+  kontrol(isabet > 5, 'yeterli yapı sınanmalı: ' + isabet);
+  vm.runInContext('UI.hucreTik = function () {};', ctx);
+}
+
 /* boş araziye dokunma karo hesabına düşmeli */
 const hedef = IZO.ekran(0.5, 0.5, 0);
 const karo = IZO.karo(hedef.x, hedef.y);
