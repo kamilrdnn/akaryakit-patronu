@@ -262,6 +262,80 @@ kontrol(!SIM.pompaUygun(pompaK, 'ev'), 'yakıt pompası elektrik vermemeli');
 const nozullar = SERVIS.nozullar(pompaK, sbk);
 kontrol(nozullar.length === 3, 'serviste üç tabanca olmalı: ' + nozullar.join(','));
 
+console.log('UI TEST 2i — görevler, sözleşmeler, tedarikçi, sipariş adımları');
+D.s.para = 90000000; D.s.seviye = 20;
+calistir('görev üret', () => SIM.gorevleriYenile());
+kontrol(D.s.gorevler.length === 3, 'günlük 3 görev olmalı: ' + D.s.gorevler.length);
+const gv = D.s.gorevler[0];
+kontrol(gv.hedef > 0 && gv.odul > 0, 'görev hedefi ve ödülü olmalı');
+/* ilerleme ve ödül */
+const sbG = D.sube();
+sbG.bugun = { musteri: 9999, isabet: 9999, litre: 999999, marketUrun: 9999, ciro: 9999999, bakim: 99, kacan: 0, tankBos: 0, kuyrukDolu: 0 };
+kontrol(SIM.gorevIlerleme(gv) >= gv.hedef, 'görev ilerlemesi okunmalı');
+const paraG = D.s.para;
+calistir('görev ödülü', () => SIM.gorevOdulAl(gv.id));
+kontrol(D.s.para > paraG && gv.alindi, 'görev ödülü verilmeli');
+kontrol(SIM.gorevOdulAl(gv.id) === false, 'aynı görev iki kez ödenmemeli');
+
+calistir('sözleşme teklifi', () => SIM.sozlesmeTeklifleriUret());
+kontrol(D.s.sozlesmeTeklif.length > 0, 'sözleşme teklifi üretilmeli');
+const tk1 = D.s.sozlesmeTeklif[0];
+calistir('sözleşme imzala', () => SIM.sozlesmeImzala(tk1.id));
+kontrol(D.s.sozlesmeler.length === 1, 'sözleşme imzalanmalı');
+/* taahhüt tutulunca teşvik, tutulmayınca kesinti */
+const sz = D.s.sozlesmeler[0];
+const sbS = D.s.subeler[sz.sube];
+sbS.gunlukYakit[sz.yakit] = sz.gunlukL + 10;
+const paraS = D.s.para;
+calistir('sözleşme günü', () => SIM.sozlesmeleriIsle());
+kontrol(D.s.para > paraS, 'taahhüt tutunca teşvik gelmeli');
+if (D.s.sozlesmeler.length) {
+  D.s.subeler[D.s.sozlesmeler[0].sube].gunlukYakit[D.s.sozlesmeler[0].yakit] = 0;
+  const paraS2 = D.s.para;
+  SIM.sozlesmeleriIsle();
+  kontrol(D.s.para < paraS2, 'taahhüt tutmayınca kesinti olmalı');
+}
+
+/* tedarikçi sipariş fiyatını ve süresini değiştirmeli */
+const sbT = D.sube();
+sbT.tank.benzin.dolu = 0;
+sbT.siparis.length = 0;
+sbT.tedarikci = 'hizli';
+D.s.rafineri.aktif = false;
+calistir('hızlı tedarik', () => SIM.siparisVer(sbT, 'benzin', 1000));
+const hizliSure = sbT.siparis[0].kalan, hizliBirim = sbT.siparis[0].birim;
+sbT.siparis.length = 0;
+sbT.tedarikci = 'toptanci';
+calistir('toptancı tedarik', () => SIM.siparisVer(sbT, 'benzin', 1000));
+const yavasSure = sbT.siparis[0].kalan, yavasBirim = sbT.siparis[0].birim;
+kontrol(hizliBirim > yavasBirim, 'hızlı tedarikçi daha pahalı olmalı');
+kontrol(hizliSure < yavasSure, 'hızlı tedarikçi daha çabuk gelmeli');
+sbT.siparis.length = 0;
+sbT.tedarikci = 'standart';
+
+/* sipariş paneli adım düğmeleri */
+UI.sekmeGec('siparis');
+const sp = w.document.getElementById('govde').innerHTML;
+kontrol(sp.indexOf('MAX') > 0 && sp.indexOf('FULL') > 0, 'sipariş kısayolları olmalı');
+kontrol(sp.indexOf('Tedarikçi') > 0, 'tedarikçi seçimi olmalı');
+calistir('MAX', () => UI.siparisOran('benzin', 1));
+const kapB = D.tankKap(D.sube(), 'benzin');
+kontrol(UI.siparisMiktar.benzin > 0, 'MAX miktarı doldurmalı');
+calistir('adım', () => UI.siparisAdim('benzin', -200));
+kontrol(UI.siparisMiktar.benzin <= kapB, 'adım kapasiteyi aşmamalı');
+
+/* inşaat otomatik yerleşim */
+UI.sekmeGec('insa');
+kontrol(w.document.getElementById('govde').innerHTML.indexOf('cipSerit') > 0, 'inşaat kategorileri olmalı');
+const oncekiBina = D.binalar(D.sube()).length;
+calistir('otomatik kur', () => UI.otoKur('wc'));
+kontrol(D.binalar(D.sube()).length === oncekiBina + 1, 'tesis otomatik yerleşmeli');
+['istasyon', 'tesisler', 'enerji', 'arsa'].forEach(alt => {
+  calistir('inşa sekme ' + alt, () => UI.altSekmeGec('insa', alt));
+  kontrol(w.document.getElementById('govde').innerHTML.length > 300, alt + ' kategorisi dolu olmalı');
+});
+UI.sekmeGec('istasyon');
+
 console.log('UI TEST 3 — hücre tıklama ve modallar');
 UI.sekmeGec('istasyon');
 const sb = D.sube();
@@ -390,10 +464,24 @@ kontrol(D.kaydet(), 'kayıt çalışmalı');
 calistir('guncelleme', () => GUNCELLE.kontrol(true));
 calistir('hız', () => { UI.hizDegis(); UI.hizDegis(); });
 kontrol([1,2,3].indexOf(D.s.hiz) >= 0, 'hız geçerli olmalı');
-calistir('istatistik', () => UI.sekmeGec('daha'));
+calistir('yönetim', () => UI.sekmeGec('daha'));
 const daha = w.document.getElementById('govde').innerHTML;
-kontrol(daha.indexOf('İstatistik') > 0, 'istatistik bölümü olmalı');
+kontrol(daha.indexOf('cipSerit') > 0, 'alt sekme şeridi olmalı');
+kontrol(daha.indexOf('Ömür boyu') > 0, 'özet istatistikleri olmalı');
 kontrol(daha.indexOf('Rafineri') > 0, 'rafineri bölümü olmalı');
+
+/* alt sekmeler */
+['muhasebe', 'gorevler', 'sozlesme', 'basarim', 'ayarlar'].forEach(alt => {
+  calistir('alt sekme ' + alt, () => UI.altSekmeGec('daha', alt));
+  const ic = w.document.getElementById('govde').innerHTML;
+  kontrol(ic.length > 400, alt + ' sekmesi dolu olmalı');
+  kontrol(ic.indexOf('undefined') < 0, alt + ' sekmesinde undefined olmamalı');
+  kontrol(ic.indexOf('NaN') < 0, alt + ' sekmesinde NaN olmamalı');
+});
+calistir('muhasebe', () => UI.altSekmeGec('daha', 'muhasebe'));
+kontrol(w.document.getElementById('govde').innerHTML.indexOf('darboğaz') > 0 ||
+        w.document.getElementById('govde').innerHTML.indexOf('Darboğaz') >= 0, 'darboğaz listesi olmalı');
+UI.altSekmeGec('daha', 'ozet');
 calistir('sıfırla', () => { UI.sifirlaOnay(); UI.sifirla(); });
 kontrol(D.s.gun === 1 && D.s.subeler.length === 1, 'sıfırlama yeni oyun başlatmalı');
 

@@ -38,29 +38,30 @@ günceller; oyun kendi içinden güncellendiği için APK'yı elle göndermeye g
 - Tank %25 altına inince uyarı (tanker yoldaysa susar), market stoğu uyarısı.
 - Daha büyük parseller: kasaba 5×5 … metropol 9×9, pompa sınırları yükseltildi.
 - 16 başarım, sezon kampanyası, hile paneli (para/seviye/tank/bakım).
-- **Motor tarafı hazır, arayüzü bekleyen**: tedarikçi seçimi (toptancı/standart/hızlı),
-  kurumsal sözleşmeler (`SIM.sozlesmeTeklifleriUret`, `sozlesmeImzala`, `sozlesmeleriIsle`),
-  günlük görevler (`gorevleriYenile`, `gorevIlerleme`, `gorevOdulAl`),
-  darboğaz analizi (`SIM.darbogazlar`).
+- Tedarikçi seçimi (toptancı %8 ucuz-yavaş / standart / hızlı %7 pahalı-çabuk).
+- Kurumsal sözleşmeler: günlük litre taahhüdü, günlük teşvik, eksik günde kesinti, bitişte prim.
+- Günlük görevler: her gün 3 görev, ilerleme çubuğu, ödül alma.
+- Muhasebe görünümü: bugünün darboğazları + doğrudan ilgili panele götüren düğmeler, gün dökümü,
+  günlük gider tablosu.
+- Panel içi sekme şeritleri: Yönetim (Özet·Muhasebe·Görevler·Sözleşmeler·Başarımlar·Ayarlar),
+  İnşaat (İstasyon·Tesisler·Enerji·Arsa).
+- Sipariş paneli: −/+ adım, MAX, %25/%50/%75/FULL kısayolları, tedarikçi kartları.
+- Fiyat paneli: kaydırıcı + −/+ adım düğmeleri, fiyatın müşteri akışına etkisi yüzdesi.
+- Otomatik yerleşim: mağazadan satın alınan pompa/tesis ilk uygun boş zemine kurulur,
+  zemin yoksa beton kendiliğinden dökülür. "Hepsini tamir et" düğmesi.
 
 ## Sıradaki işler
 
-1. **Panel arayüzleri** — motor hazır, ekranları yazılacak:
-   - Yönetim paneline alt sekmeler: Özet · Muhasebe (darboğazlar + gün dökümü) · Görevler ·
-     Sözleşmeler · Başarımlar · Ayarlar.
-   - İnşaat paneline kategori sekmeleri: İstasyon · Tesisler · Enerji · Arsa.
-   - Sipariş paneli: −/+ ve MAX düğmeleri, %25/%50/%75/FULL kısayolları, tedarikçi seçimi.
-   - Fiyat paneli: kaydırıcının yanına −/+ adım düğmeleri, "bu fiyatla müşteri akışı %X".
-2. **Mini oyunlar**: oto yıkama (program + süre), yağ değişimi (doğru yağ/filtre),
+1. **Mini oyunlar**: oto yıkama (program + süre), yağ değişimi (doğru yağ/filtre),
    market kasası (hızlı okutma), LPG dolumunda güvenlik adımı.
-3. **Ses**: WebAudio ile kodla üretilen efektler (dolum, kasa, buton, araç, başarım) ve ayarı.
-4. **Konfor**: çevrimdışı kazanç (kapalıyken müdürlü şubeler), 5× hız, ciro grafiği,
+2. **Ses**: WebAudio ile kodla üretilen efektler (dolum, kasa, buton, araç, başarım) ve ayarı.
+3. **Konfor**: çevrimdışı kazanç (kapalıyken müdürlü şubeler), 5× hız, ciro grafiği,
    ilk oyun rehberi, kaydı dosyaya yedekleme/geri yükleme.
-5. **Oynanış derinliği**: sadakat kartı, premium (katkılı) yakıt, ödemeden kaçan müşteri ve
+4. **Oynanış derinliği**: sadakat kartı, premium (katkılı) yakıt, ödemeden kaçan müşteri ve
    kameranın etkisi, vardiya/gece kapatma.
-6. **Sahne cilası**: yağmur ve kar partikülleri, dolumda hortumun araca uzanması,
+5. **Sahne cilası**: yağmur ve kar partikülleri, dolumda hortumun araca uzanması,
    gece neon tabela, araç çeşitliliğinin artırılması.
-7. **Dağıtım**: Google Play için AAB üretimi, mağaza görselleri ve gizlilik metni.
+6. **Dağıtım**: Google Play için AAB üretimi, mağaza görselleri ve gizlilik metni.
 
 ## Kullanıcının oyun hakkındaki tercihleri
 
