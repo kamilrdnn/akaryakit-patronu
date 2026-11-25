@@ -1,7 +1,7 @@
 {
-  "versionCode": 120,
-  "versionName": "1.2.14",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.14/AkaryakitPatronu-1.2.14.apk",
-  "size": 2980810,
-  "notes": "Gerçekçi araç ve dolum akışı"
+  "versionCode": 121,
+  "versionName": "1.2.15",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.15/AkaryakitPatronu-1.2.15.apk",
+  "size": 2984026,
+  "notes": "Otopark, pompaya paralel yanaşma ve tek tuşla istasyon düzeni"
 }
