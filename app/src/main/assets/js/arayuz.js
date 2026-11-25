@@ -215,12 +215,6 @@ const UI = {
     document.getElementById('ust').innerHTML = h;
   },
 
-  hizDegis: function () {
-    var sira = [1, 2, 3];
-    D.s.hiz = sira[(sira.indexOf(D.s.hiz) + 1) % sira.length];
-    this.ustCiz();
-  },
-
   /* =========================================================
      HUD — izometrik sahnenin üstü
      ========================================================= */
@@ -397,6 +391,15 @@ const UI = {
       '<div class="mBas"><h3>' + baslik + '</h3><button class="kapat" onclick="UI.modalKapat()">✕</button></div>' + ic;
     document.getElementById('modal').classList.add('ac');
     this.modalAcik = true;
+    /* dokunuşun ardından tarayıcının ürettiği click modalı anında kapatmasın */
+    this._modalAcilis = Date.now();
+  },
+
+  /* modal perdesine dokunma */
+  perdeTik: function (e) {
+    if (!e || !e.target || e.target.id !== 'modal') return;
+    if (Date.now() - (this._modalAcilis || 0) < 450) return;   /* hayalet click */
+    this.modalKapat();
   },
   modalKapat: function () {
     document.getElementById('modal').classList.remove('ac');
@@ -551,7 +554,7 @@ const UI = {
   insaHtml: function () {
     var sb = D.sube(), lok = D.lok(sb), s2 = D.s;
     var h = this.cipSerit('insa', [
-      ['istasyon', '⛽ İstasyon'], ['tesisler', '🏪 Tesisler'],
+      ['istasyon', '⛽ Pompa'], ['tesisler', '🏪 Tesis'],
       ['enerji', '⚡ Enerji'], ['arsa', '🧱 Arsa'], ['yapilar', '📋 Yapılarım']
     ]);
     var k = this.altSekme.insa || 'istasyon';
@@ -559,18 +562,34 @@ const UI = {
     var bosHucre = this.bosHucreSayisi(sb);
 
     if (k === 'istasyon') {
-      h += '<div class="kart"><div class="baslik">Pompalar · ' + D.pompalar(sb).length + '/' + lok.maxPompa + '</div>';
-      h += '<div class="not">Her pompa benzin, dizel ve LPG verir; seçtiğin tür tam hızda akar. Elektrik için ayrı şarj ünitesi gerekir.</div>';
-      h += '<div class="sek" style="margin-top:10px">';
+      var pompaDolu = D.pompalar(sb).length >= lok.maxPompa;
+      h += '<div class="kart"><div class="baslikSatir"><div class="baslik" style="margin:0">Pompa kur</div>';
+      h += '<span class="limitRozet' + (pompaDolu ? ' dolu' : '') + '">' + D.pompalar(sb).length + '/' + lok.maxPompa + '</span></div>';
+      h += '<div class="not">Tek dokunuşla uygun boş alana kurulur. Her pompa benzin, dizel ve LPG verir.</div>';
+      h += '<div class="kurIzgara">';
       VERI.yakitSira.forEach(function (y) {
         var f = VERI.pompa.fiyat[y];
-        var dolu = D.pompalar(sb).length >= lok.maxPompa;
-        h += '<button class="sec" ' + (dolu || s2.para < f ? 'style="opacity:.45"' : '') + ' onclick="UI.otoPompa(\'' + y + '\')">';
-        h += '<div class="st">' + VERI.yakitlar[y].emoji + ' ' + (y === 'ev' ? 'Şarj Ünitesi' : VERI.yakitlar[y].ad + ' pompası') + '</div>';
-        h += '<div class="ss">' + tl(f) + ' · akış ' + say(y === 'ev' ? VERI.pompa.evAkis[0] : VERI.pompa.akis[0], 1) + ' ' + VERI.yakitlar[y].birim + '/sn · güç ' + VERI.pompa.guc[y] + ' kW</div></button>';
+        var kapali = pompaDolu || s2.para < f;
+        h += '<button class="kurKart' + (kapali ? ' kapali' : '') + '" onclick="UI.otoPompa(\'' + y + '\')">';
+        h += '<span class="kkIk">' + VERI.yakitlar[y].emoji + '</span>';
+        h += '<span class="kkAd">' + (y === 'ev' ? 'Şarj' : VERI.yakitlar[y].ad) + '</span>';
+        h += '<span class="kkFiyat">' + tl(f) + '</span></button>';
       });
+      h += '</div></div>';
+
+      /* giriş / çıkış düzeni */
+      var gsv = SIM.girisSeviye(sb);
+      h += '<div class="kart"><div class="baslik">🛣️ Giriş / Çıkış düzeni · seviye ' + gsv + '/4</div>';
+      h += '<div class="not">Kapılar genişledikçe araçlar daha hızlı girip çıkar: müşteri akışı ve kuyruk kapasitesi artar.</div>';
+      h += '<div class="kv"><span>Müşteri akışı</span><b class="yesilY">+%' + say((SIM.girisKat(sb) - 1) * 100, 0) + '</b></div>';
+      h += '<div class="kv"><span>Ek kuyruk yeri</span><b>+' + (gsv - 1) + '</b></div>';
+      if (gsv < 4) h += '<button class="btn genis" style="margin-top:9px" onclick="UI.girisYukselt()">⬆ Genişlet · ' + tl(SIM.girisBedeli(sb)) + '</button>';
+      else h += '<div class="not">En geniş düzene ulaştın.</div>';
       h += '</div>';
+
+      h += '<div class="kart"><div class="baslik">Kurulu pompalar</div>';
       var po = D.pompalar(sb);
+      if (!po.length) h += '<div class="bos">Henüz pompa yok.</div>';
       for (var p = 0; p < po.length; p++) {
         var pp = po[p].p;
         h += '<div class="satir" onclick="UI.yapiModal(' + po[p].i + ')"><div class="sol"><div class="ikon">' + (pp.yakit === 'ev' ? '🔌' : '⛽') + '</div>';
@@ -672,27 +691,31 @@ const UI = {
 
   tesisKartlari: function (sb, tipler, bosHucre) {
     var s2 = D.s;
-    var h = '<div class="kart"><div class="baslik">Kurulabilir tesisler · ' + bosHucre + ' boş zemin</div>';
-    h += '<div class="not">Satın alınca ilk uygun boş zemine kurulur. Sahnede dokunup yükseltebilir, bakım yapabilir ya da yıkabilirsin.</div>';
-    h += '<div class="sek" style="margin-top:10px">';
+    var h = '<div class="kart"><div class="baslikSatir"><div class="baslik" style="margin:0">Tesis kur</div>';
+    h += '<span class="limitRozet">' + bosHucre + ' boş alan</span></div>';
+    h += '<div class="not">Dokun, uygun boş alana kurulsun. Ayrıntı için kurduktan sonra üstüne dokun.</div>';
+    h += '<div class="kurIzgara">';
     for (var i = 0; i < tipler.length; i++) {
       var t = tipler[i], tan = VERI.binalar[t];
       if (!tan) continue;
       var kilit = s2.seviye < tan.seviyeSart;
       var pahali = s2.para < tan.fiyat;
       var adet = D.binaSayisi(sb, t);
-      h += '<button class="sec" ' + (kilit || pahali ? 'style="opacity:.45"' : '') + ' onclick="UI.otoKur(\'' + t + '\')">';
-      h += '<div class="st">' + tan.emoji + ' ' + tan.ad + (adet ? ' <span class="etiket">' + adet + '</span>' : '') + '</div>';
-      h += '<div class="ss">' + tl(tan.fiyat) + (kilit ? ' · <span class="kirmiziY">Sv ' + tan.seviyeSart + '</span>' : '');
-      if (tan.uretim) h += '<br>+' + tan.uretim + ' kW üretim';
-      else if (tan.guc) h += '<br>' + tan.guc + ' kW tüketim';
-      if (tan.gelir) h += ' · ziyaret başı ' + tl(tan.gelir);
-      if (tan.konfor) h += ' · konfor +' + tan.konfor;
-      h += '<br>' + tan.aciklama + '</div></button>';
+      h += '<button class="kurKart' + (kilit || pahali ? ' kapali' : '') + '" onclick="UI.' + (kilit ? 'kilitBilgi(\'' + t + '\')' : 'otoKur(\'' + t + '\')') + '">';
+      h += '<span class="kkIk">' + tan.emoji + (adet ? '<i class="kkAdet">' + adet + '</i>' : '') + '</span>';
+      h += '<span class="kkAd">' + tan.ad + '</span>';
+      h += '<span class="kkFiyat">' + (kilit ? 'Sv ' + tan.seviyeSart : tl(tan.fiyat)) + '</span></button>';
     }
     h += '</div></div>';
     return h;
   },
+
+  kilitBilgi: function (t) {
+    var tan = VERI.binalar[t];
+    this.bildir('🔒 ' + tan.ad, 'Seviye ' + tan.seviyeSart + ' gerekiyor. ' + tan.aciklama, 'uyari');
+  },
+
+  girisYukselt: function () { if (SIM.girisYukselt(D.sube())) this.panelYenile(); },
 
   /* ilk uygun boş zemine kur */
   bosZeminBul: function (sb, otoBeton) {
@@ -1232,7 +1255,9 @@ const UI = {
     var h = this.cipSerit('daha', [
       ['ozet', '📊 Özet'], ['muhasebe', '🧾 Muhasebe'],
       ['gorevler', '🎯 Görevler', hazirGorev || ''], ['sozlesme', '✍️ Sözleşmeler'],
-      ['filo', '🤝 Toplu Anlaşma'], ['marka', '🪧 Markam'], ['basarim', '🏆 Başarımlar'], ['ayarlar', '⚙️ Ayarlar']
+      ['filo', '🤝 Toplu Anlaşma'], ['marka', '🪧 Markam'],
+      ['sikayet', '💬 Geri Bildirim', (D.sube().sikayetler || []).filter(function (x) { return !x.okundu; }).length || ''],
+      ['basarim', '🏆 Başarımlar'], ['ayarlar', '⚙️ Ayarlar']
     ]);
     var k = this.altSekme.daha || 'ozet';
     if (k === 'muhasebe') return h + this.muhasebeHtml();
@@ -1240,6 +1265,7 @@ const UI = {
     if (k === 'sozlesme') return h + this.sozlesmeHtml();
     if (k === 'filo') return h + this.filoHtml();
     if (k === 'marka') return h + this.markaHtml();
+    if (k === 'sikayet') return h + this.sikayetHtml();
     if (k === 'basarim') return h + this.basarimHtml();
     if (k === 'ayarlar') return h + this.ayarlarHtml();
     return h + this.ozetHtml();
@@ -1438,15 +1464,36 @@ const UI = {
       }
       h += '</div>';
     }
-    h += '<div class="kart"><div class="baslik">Teklifler</div>';
-    h += '<div class="not">Kurumsal müşteri günlük taahhüt ister. Normal satışların taahhüde sayılır; tuttuğun gün teşvik alırsın, tutmadığın gün kesinti yersin. Sonunda eksiksizse prim.</div>';
+    var slimit = SIM.sozlesmeLimit();
+    h += '<div class="kart"><div class="baslikSatir"><div class="baslik" style="margin:0">Teklifler</div>';
+    h += '<span class="limitRozet' + (s2.sozlesmeler.length >= slimit ? ' dolu' : '') + '">' + s2.sozlesmeler.length + '/' + slimit + ' sözleşme</span></div>';
+    h += '<div class="not">Kurumsal müşteri günlük taahhüt ister; normal satışların bu taahhüde sayılır. Teklifler her saat tazelenir, pazarlıkla litre fiyatını yükseltebilirsin.</div>';
     for (var t = 0; t < s2.sozlesmeTeklif.length; t++) {
       var tk = s2.sozlesmeTeklif[t];
-      h += '<div class="satir"><div class="sol"><div class="ikon">' + tk.emoji + '</div><div><div class="ad">' + tk.ad + ' · ' + VERI.yakitlar[tk.yakit].ad + '</div>';
-      h += '<div class="alt">' + tk.gun + ' gün · günde ' + say(tk.gunlukL, 0) + ' L · ' + say(tk.fiyat, 2) + ' ₺/L<br>prim ' + tl(tk.prim) + ' · ceza ' + tl(tk.ceza) + '</div></div></div>';
-      h += '<button class="btn minik" onclick="UI.sozlesmeImzala(\'' + tk.id + '\')">İmzala</button></div>';
+      var stem = SIM.sozlesmeTeminat(tk);
+      var sParaYeter = s2.para >= stem;
+      var sYerVar = s2.sozlesmeler.length < slimit;
+      var rakipDusuk = tk.rakipFiyat < tk.fiyat;
+      h += '<div class="filoKart"><div class="fkUst"><span class="fkIk">' + tk.emoji + '</span>';
+      h += '<div style="flex:1"><div class="ad">' + tk.ad + (tk.pazarlik ? ' <span class="etiket iyi">pazarlık ×' + tk.pazarlik + '</span>' : '') + '</div>';
+      h += '<div class="alt">' + VERI.yakitlar[tk.yakit].ad + ' taahhüdü</div></div>';
+      h += '<span class="sureRozet">' + (tk.sure || 3) + ' sa</span></div>';
+      h += '<div class="fkSatir"><span>Günlük taahhüt</span><b>' + say(tk.gunlukL, 0) + ' L</b></div>';
+      h += '<div class="fkSatir"><span>Litre fiyatı</span><b class="yesilY">' + say(tk.fiyat, 2) + ' ₺</b></div>';
+      h += '<div class="fkSatir"><span>Rakip teklifi</span><b class="' + (rakipDusuk ? 'yesilY' : 'kirmiziY') + '">' + say(tk.rakipFiyat, 2) + ' ₺' + (rakipDusuk ? ' (sen öndesin)' : ' (rakip cazip)') + '</b></div>';
+      h += '<div class="fkSatir"><span>Süre</span><b>' + tk.gun + ' gün</b></div>';
+      h += '<div class="fkSatir"><span>Bitiş primi</span><b class="yesilY">' + tl(tk.prim) + '</b></div>';
+      h += '<div class="fkSatir"><span>Eksik gün cezası</span><b class="kirmiziY">' + tl(Math.round(tk.ceza / tk.gun)) + '/gün</b></div>';
+      h += '<div class="fkSatir"><span>Gerekli nakit</span><b class="' + (sParaYeter ? '' : 'kirmiziY') + '">' + tl(stem) + '</b></div>';
+      h += '<div class="btngrup" style="margin-top:9px">';
+      h += '<button class="btn kucuk ikincil" onclick="UI.sozlesmePazarlik(\'' + tk.id + '\')">💬 Pazarlık et</button>';
+      h += '<button class="btn kucuk" style="flex:1' + (sParaYeter && sYerVar ? '' : ';opacity:.45') + '" onclick="UI.sozlesmeImzala(\'' + tk.id + '\')">✍️ İmzala</button>';
+      h += '</div>';
+      if (!sYerVar) h += '<div class="mini kirmiziY" style="margin-top:6px">Sözleşme limitin dolu.</div>';
+      else if (!sParaYeter) h += '<div class="mini kirmiziY" style="margin-top:6px">Kasanda ' + tl(stem) + ' olmalı (teminat).</div>';
+      h += '</div>';
     }
-    if (!s2.sozlesmeTeklif.length) h += '<div class="bos">Şu an teklif yok, yarın yenilenir.</div>';
+    if (!s2.sozlesmeTeklif.length) h += '<div class="bos">Şu an teklif yok — bir sonraki saatte yenileri gelir.</div>';
     h += '</div>';
     return h;
   },
@@ -1473,34 +1520,116 @@ const UI = {
       }
       h += '</div>';
     }
-    h += '<div class="kart"><div class="baslik">Filo teklifleri</div>';
-    h += '<div class="not">Toplu anlaşmada araçlar belirlenen saatlerde konvoy halinde gelir. İskontolu satarsın ama hacim garantilidir; peşinat anında ödenir. Günlük hedefin %80\'ini tutturamazsan kesinti var.</div>';
+    var limit = SIM.filoLimit();
+    h += '<div class="kart"><div class="baslikSatir"><div class="baslik" style="margin:0">Filo teklifleri</div>';
+    h += '<span class="limitRozet' + (s2.filolar.length >= limit ? ' dolu' : '') + '">' + s2.filolar.length + '/' + limit + ' anlaşma</span></div>';
+    h += '<div class="not">Araçlar belirlenen saatlerde konvoy halinde gelir; hacim garantili, iskonto senden. Teklifler her saat tazelenir — pazarlık edersen şartlar iyileşir ama firmayı kaybedebilirsin.</div>';
     for (var t = 0; t < s2.filoTeklif.length; t++) {
       var tk = s2.filoTeklif[t];
       var saatMetin = [];
       for (var q = 0; q < tk.saatler.length; q++) saatMetin.push(ikiHane(tk.saatler[q]) + ':00');
+      var tem = SIM.filoTeminat(tk);
+      var paraYeter = s2.para >= tem;
+      var yerVar = s2.filolar.length < limit;
+      var rakipIyi = tk.rakipIskonto < tk.iskonto;
       h += '<div class="filoKart"><div class="fkUst"><span class="fkIk">' + tk.emoji + '</span>';
-      h += '<div><div class="ad">' + tk.ad + '</div><div class="alt">' + tk.aciklama + '</div></div></div>';
+      h += '<div style="flex:1"><div class="ad">' + tk.ad + (tk.pazarlik ? ' <span class="etiket iyi">pazarlık ×' + tk.pazarlik + '</span>' : '') + '</div>';
+      h += '<div class="alt">' + tk.aciklama + '</div></div>';
+      h += '<span class="sureRozet">' + tk.sure + ' sa</span></div>';
       h += '<div class="fkSatir"><span>Yakıt</span><b>' + VERI.yakitlar[tk.yakit].ad + '</b></div>';
       h += '<div class="fkSatir"><span>Konvoy</span><b>' + tk.aracSayi + ' araç × ' + say(tk.aracL, 0) + ' L</b></div>';
       h += '<div class="fkSatir"><span>Saatler</span><b>' + saatMetin.join(' · ') + '</b></div>';
       h += '<div class="fkSatir"><span>Günlük hacim</span><b>' + say(tk.gunlukL, 0) + ' L</b></div>';
       h += '<div class="fkSatir"><span>İskonto</span><b class="sariY">%' + say(tk.iskonto * 100, 1) + '</b></div>';
+      h += '<div class="fkSatir"><span>Rakip istasyon</span><b class="' + (rakipIyi ? 'kirmiziY' : 'yesilY') + '">%' + say(tk.rakipIskonto * 100, 1) + (rakipIyi ? ' (daha ucuz)' : ' (sen öndesin)') + '</b></div>';
       h += '<div class="fkSatir"><span>Süre</span><b>' + tk.gun + ' gün</b></div>';
       h += '<div class="fkSatir"><span>Peşinat</span><b class="yesilY">' + tl(tk.pesin) + '</b></div>';
       h += '<div class="fkSatir"><span>Bitiş primi</span><b class="yesilY">' + tl(tk.prim) + '</b></div>';
-      h += '<button class="btn genis" style="margin-top:8px" onclick="UI.filoImzala(\'' + tk.id + '\')">🤝 Anlaşmayı imzala</button></div>';
+      h += '<div class="fkSatir"><span>Gerekli nakit</span><b class="' + (paraYeter ? '' : 'kirmiziY') + '">' + tl(tem) + '</b></div>';
+      h += '<div class="btngrup" style="margin-top:9px">';
+      h += '<button class="btn kucuk ikincil" onclick="UI.filoPazarlik(\'' + tk.id + '\')">💬 Pazarlık et</button>';
+      h += '<button class="btn kucuk" style="flex:1' + (paraYeter && yerVar ? '' : ';opacity:.45') + '" onclick="UI.filoImzala(\'' + tk.id + '\')">🤝 İmzala</button>';
+      h += '</div>';
+      if (!yerVar) h += '<div class="mini kirmiziY" style="margin-top:6px">Anlaşma limitin dolu — biri bitmeden yenisini alamazsın.</div>';
+      else if (!paraYeter) h += '<div class="mini kirmiziY" style="margin-top:6px">Kasanda ' + tl(tem) + ' olmalı (teminat).</div>';
+      h += '</div>';
     }
-    if (!s2.filoTeklif.length) h += '<div class="bos">Şu an filo teklifi yok. Seviyen yükseldikçe ve yakıt çeşidin arttıkça gelir.</div>';
+    if (!s2.filoTeklif.length) h += '<div class="bos">Şu an filo teklifi yok. Bir sonraki saatte yenileri gelir.</div>';
     h += '</div>';
     return h;
   },
 
   filoImzala: function (tid) { if (SIM.filoImzala(tid)) this.panelYenile(); },
+  filoPazarlik: function (tid) { SIM.filoPazarlik(tid); this.panelYenile(); },
+  sozlesmePazarlik: function (tid) { SIM.sozlesmePazarlik(tid); this.panelYenile(); },
 
   /* =========================================================
      MARKA / TABELA TASARIMI
      ========================================================= */
+  /* =========================================================
+     MÜŞTERİ GERİ BİLDİRİMİ
+     ========================================================= */
+  sikayetHtml: function () {
+    var sb = D.sube();
+    var h = '';
+    var mem = Math.round(sb.memnuniyet);
+    var durum = mem >= 80 ? ['Çok iyi', 'yesilY', '😄'] : mem >= 60 ? ['İdare eder', 'sariY', '🙂'] : mem >= 40 ? ['Kötüleşiyor', 'sariY', '😐'] : ['Kriz', 'kirmiziY', '😠'];
+
+    h += '<div class="kart"><div class="memUst">';
+    h += '<div class="memYuz">' + durum[2] + '</div>';
+    h += '<div style="flex:1"><div class="baslik" style="margin:0">Müşteri memnuniyeti</div>';
+    h += '<div class="memCubuk"><i style="width:' + mem + '%;background:' + (mem >= 70 ? 'linear-gradient(90deg,#2a7f4f,#3ec47a)' : mem >= 40 ? 'linear-gradient(90deg,#8a6a1f,#f0b429)' : 'linear-gradient(90deg,#8a2b2b,#f05252)') + '"></i></div>';
+    h += '<div class="mini">%' + mem + ' · <b class="' + durum[1] + '">' + durum[0] + '</b> · marka puanı %' + Math.round(D.s.marka) + '</div></div></div>';
+    h += '<div class="not">Memnuniyet düşerse müşteri akışı azalır, yükselirse bahşiş ve marka puanı artar.</div></div>';
+
+    /* en sık şikayetler */
+    var ozet = SIM.sikayetOzeti(sb);
+    h += '<div class="kart"><div class="baslik">En çok şikâyet edilenler</div>';
+    if (!ozet.length) h += '<div class="bos">Henüz şikâyet yok — iyi gidiyorsun.</div>';
+    for (var i = 0; i < Math.min(5, ozet.length); i++) {
+      var o = ozet[i];
+      h += '<div class="satir"><div class="sol"><div class="ikon">' + o.emoji + '</div>';
+      h += '<div><div class="ad">' + o.ad + ' <span class="etiket kotu">' + o.adet + '</span></div>';
+      h += '<div class="alt">' + o.cozum + '</div></div></div>';
+      h += '<button class="btn minik" onclick="UI.sekmeGec(\'' + o.sekme + '\')">Çöz</button></div>';
+    }
+    h += '</div>';
+
+    /* son geri bildirimler */
+    h += '<div class="kart"><div class="baslik">Son geri bildirimler</div>';
+    var karisik = [];
+    (sb.sikayetler || []).slice(0, 12).forEach(function (x) { karisik.push({ k: 's', x: x }); });
+    (sb.ovguler || []).slice(0, 8).forEach(function (x) { karisik.push({ k: 'o', x: x }); });
+    karisik.sort(function (a, b) {
+      if (b.x.gun !== a.x.gun) return b.x.gun - a.x.gun;
+      return (b.x.saat || '').localeCompare(a.x.saat || '');
+    });
+    if (!karisik.length) h += '<div class="bos">Henüz geri bildirim yok.</div>';
+    for (var j = 0; j < Math.min(14, karisik.length); j++) {
+      var e = karisik[j].x, iyi = karisik[j].k === 'o';
+      h += '<div class="geri ' + (iyi ? 'iyi' : 'kotu') + '">';
+      h += '<div class="gUst"><span class="gIk">' + e.emoji + '</span>';
+      h += '<span class="gAd">' + e.arac + '</span>';
+      h += '<span class="gZaman">Gün ' + e.gun + ' · ' + e.saat + '</span></div>';
+      h += '<div class="gMetin">' + (iyi ? e.metin : '“' + e.metin + '”') + '</div>';
+      h += '</div>';
+    }
+    if (karisik.length) {
+      h += '<button class="btn kucuk ikincil genis" style="margin-top:10px" onclick="UI.sikayetTemizle()">Şikâyet defterini temizle</button>';
+    }
+    h += '</div>';
+
+    /* okundu işaretle */
+    (sb.sikayetler || []).forEach(function (x) { x.okundu = true; });
+    return h;
+  },
+
+  sikayetTemizle: function () {
+    SIM.sikayetTemizle(D.sube());
+    this.bildir('Defter temizlendi', 'Şikâyet kayıtları silindi.', 'iyi');
+    this.panelYenile();
+  },
+
   markaRengi: function (id) {
     for (var i = 0; i < VERI.tabelaRenkleri.length; i++) if (VERI.tabelaRenkleri[i].id === id) return VERI.tabelaRenkleri[i];
     return VERI.tabelaRenkleri[0];
@@ -1653,6 +1782,7 @@ const UI = {
     h += '<button class="btn kucuk ikincil" onclick="UI.sifirlaOnay()">🗑 Sıfırla</button>';
     h += '<button class="btn kucuk ikincil" onclick="UI.yedekAl()">📤 Yedek al</button>';
     h += '<button class="btn kucuk ikincil" onclick="UI.yedekYukleEkrani()">📥 Yedek yükle</button>';
+    h += '<button class="btn kucuk ikincil" onclick="UI.rehberBaslat()">📘 Öğreticiyi başlat</button>';
     h += '</div>';
     h += '<div class="not">Sürüm <b id="surumYazi">—</b> · Oyun tamamen çevrimdışı çalışır; internet yalnızca güncelleme denetiminde kullanılır.</div>';
     h += '</div>';
@@ -1772,6 +1902,27 @@ const UI = {
     D.kaydet();
   },
 
+  rehberBaslat: function () {
+    D.s.rehber = { adim: 0, kapali: false };
+    D.kaydet();
+    this.sekmeGec('istasyon');
+    this.rehberTanitim();
+  },
+
+  /* ilk açılış tanıtımı */
+  rehberTanitim: function () {
+    var h = '<div class="tanitim">';
+    h += '<div class="tnBas">⛽ Akaryakıt Patronu</div>';
+    h += '<div class="tnAlt">Üç adımda işin özü:</div>';
+    h += '<div class="tnAdim"><span>1</span><div><b>Müşteriyi doldur</b><br>Pompada araç belirince üstüne dokun, tabancayı seç, istenen miktarda bırak. Tam tutturursan bahşiş alırsın.</div></div>';
+    h += '<div class="tnAdim"><span>2</span><div><b>Tankı boş bırakma</b><br>Yakıt bitince satış durur. Yelpaze menüden 🚚 Sipariş ver, tankları doldur.</div></div>';
+    h += '<div class="tnAdim"><span>3</span><div><b>Büyüt</b><br>Pompa ekle, market ve tesis kur, personel al, toplu anlaşma imzala. Para büyüdükçe yeni şube aç.</div></div>';
+    h += '<div class="not" style="margin-top:10px">Ekranın altındaki rehber kartı sırayla ne yapacağını söyler; istediğin an ✕ ile kapatabilirsin.</div>';
+    h += '<button class="btn genis" style="margin-top:12px" onclick="UI.modalKapat()">Başlayalım</button>';
+    h += '</div>';
+    this.modal('Öğretici', h);
+  },
+
   rehberKapat: function () {
     D.s.rehber.kapali = true;
     D.kaydet();
@@ -1860,10 +2011,18 @@ const UI = {
   },
 
   hizDegis: function (h) {
+    var sira = [1, 2, 3, 5];
+    if (h === undefined || h === null) {
+      var yer = sira.indexOf(D.s.hiz);
+      h = sira[(yer + 1) % sira.length];
+    }
+    if (sira.indexOf(h) < 0) h = 1;
     D.s.hiz = h;
     D.kaydet();
+    if (window.SES) SES.cal('tik');
     this.bildir('Oyun hızı', h + '× ayarlandı.', 'iyi');
-    this.panelYenile();
+    this.ustCiz();
+    if (this.sekme === 'daha') this.panelYenile();
   },
 
   sesDegis: function () {

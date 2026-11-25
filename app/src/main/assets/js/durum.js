@@ -117,7 +117,11 @@ const D = {
       siparis: [],
       market: { stok: {}, fiyat: {}, ciro: 0, kayipSatis: 0, gunlukSatis: {} },
       uyari: {},
+      sikayetler: [],
+      ovguler: [],
+      sikayetSayac: {},
       tedarikci: 'standart',
+      giris: 1,
       program: { sadakat: false, premium: false, yikamaAbone: false },
       kartliMusteri: 0,
       gunlukYakit: { benzin: 0, dizel: 0, lpg: 0, ev: 0 },
@@ -335,6 +339,10 @@ const D = {
       var psb = s.subeler[pi];
       if (!psb.program) psb.program = { sadakat: false, premium: false, yikamaAbone: false };
       if (typeof psb.kartliMusteri !== 'number') psb.kartliMusteri = 0;
+      if (!psb.sikayetler) psb.sikayetler = [];
+      if (!psb.ovguler) psb.ovguler = [];
+      if (!psb.sikayetSayac) psb.sikayetSayac = {};
+      if (!psb.giris) psb.giris = 1;
     }
     if (!s.gorevler) s.gorevler = [];
     if (typeof s.gorevGun !== 'number') s.gorevGun = 0;

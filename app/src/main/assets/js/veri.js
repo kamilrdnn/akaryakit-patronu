@@ -159,6 +159,27 @@ const VERI = {
     { ad: 'Kurye Ağı',         yakit: 'benzin', emoji: '🛵' }
   ],
 
+  /* ---------------- müşteri şikayetleri ---------------- */
+  sikayetTipleri: {
+    bekleme:   { ad: 'Uzun kuyruk',        emoji: '⏱️', metin: 'Sıra çok uzundu, beklemeden gittim.',           etki: 2.5, cozum: 'Pompa ekle ya da pompacı al', sekme: 'insa' },
+    kirli:     { ad: 'Kirli istasyon',     emoji: '🧹', metin: 'İstasyon çok kirliydi, bir daha uğramam.',       etki: 2.0, cozum: 'Temizlik yap', sekme: 'personel' },
+    stokYok:   { ad: 'Yakıt yok',          emoji: '🚫', metin: 'İstediğim yakıt tükenmişti.',                    etki: 3.0, cozum: 'Tank siparişi ver', sekme: 'siparis' },
+    pahali:    { ad: 'Fiyat yüksek',       emoji: '💸', metin: 'Rakipten pahalıydı, yarım depo aldım.',          etki: 1.5, cozum: 'Fiyatı gözden geçir', sekme: 'fiyat' },
+    ariza:     { ad: 'Arızalı pompa',      emoji: '🔧', metin: 'Pompa bozuktu, zaman kaybettim.',                etki: 2.8, cozum: 'Bakım/tamir yaptır', sekme: 'insa' },
+    tasma:     { ad: 'Yakıt taştı',        emoji: '💧', metin: 'Deponun ağzından taştı, aracım kirlendi.',        etki: 3.5, cozum: 'Dolumda hedefe dikkat et', sekme: 'daha' },
+    yanlis:    { ad: 'Yanlış yakıt',       emoji: '❌', metin: 'Aracıma yanlış yakıt verdiniz!',                  etki: 6.0, cozum: 'Tabancayı doğru seç', sekme: 'daha' },
+    wcYok:     { ad: 'Tuvalet yok',        emoji: '🚻', metin: 'Tuvalet yoktu, mola veremedim.',                 etki: 1.2, cozum: 'WC kur', sekme: 'insa' },
+    marketYok: { ad: 'Market boş',         emoji: '🛒', metin: 'Marketin rafları boştu.',                        etki: 1.4, cozum: 'Market stoğu al', sekme: 'market' },
+    karanlik:  { ad: 'Aydınlatma yok',     emoji: '💡', metin: 'Gece istasyon karanlıktı, güvensiz hissettim.',  etki: 1.6, cozum: 'Elektrik kesintisini çöz', sekme: 'insa' }
+  },
+  ovguTipleri: [
+    { emoji: '⭐', metin: 'Tam istediğim kadar doldurdunuz, teşekkürler!' },
+    { emoji: '😊', metin: 'Hızlı ve temiz hizmet, yine geleceğim.' },
+    { emoji: '👏', metin: 'Pompacı çok ilgiliydi.' },
+    { emoji: '💚', metin: 'Market ve tuvalet tertemizdi.' },
+    { emoji: '🏆', metin: 'Bölgenin en iyi istasyonu burası.' }
+  ],
+
   /* ---------------- marka / tabela tasarımı ---------------- */
   tabelaRenkleri: [
     { id: 'turuncu', ad: 'Turuncu', pano: '#e2683a', yazi: '#ffffff' },

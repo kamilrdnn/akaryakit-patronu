@@ -288,6 +288,58 @@ input[type=range]{width:100%}
 .renkDugme span{font-size:9px;font-weight:700;opacity:.8}
 .renkDugme.aktif{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
 
+.memUst{display:flex;align-items:center;gap:13px;margin-bottom:8px}
+.memYuz{font-size:38px;line-height:1}
+.memCubuk{height:9px;border-radius:5px;background:#202b3d;overflow:hidden;margin:7px 0 5px;position:relative}
+.memCubuk>i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;display:block}
+.geri{
+  border-left:3px solid var(--kirmizi);background:rgba(255,255,255,.04);
+  border-radius:9px;padding:8px 10px;margin-top:8px
+}
+.geri.iyi{border-left-color:var(--yesil)}
+.gUst{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--sol)}
+.gIk{font-size:15px}
+.gAd{font-weight:700;color:var(--yazi)}
+.gZaman{margin-left:auto;font-size:10.5px}
+.gMetin{font-size:13px;margin-top:3px;line-height:1.35}
+
+.baslikSatir{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.limitRozet{
+  background:rgba(62,196,122,.16);border:1px solid rgba(62,196,122,.4);color:#8ef0b8;
+  border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;white-space:nowrap
+}
+.limitRozet.dolu{background:rgba(240,82,82,.16);border-color:rgba(240,82,82,.45);color:#ffb3b3}
+.sureRozet{
+  background:rgba(255,255,255,.08);border-radius:8px;padding:3px 8px;font-size:10.5px;
+  font-weight:800;color:var(--sol);white-space:nowrap
+}
+
+.kurIzgara{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.kurKart{
+  background:var(--kart);border:1px solid var(--cizgi);border-radius:14px;
+  padding:11px 6px 9px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  transition:transform .12s ease,border-color .15s
+}
+.kurKart:active{transform:scale(.95);border-color:var(--ana)}
+.kurKart.kapali{opacity:.42}
+.kkIk{font-size:25px;line-height:1;position:relative}
+.kkAdet{
+  position:absolute;top:-4px;right:-10px;background:var(--mavi);color:#fff;border-radius:9px;
+  min-width:16px;height:16px;font-size:9.5px;font-weight:800;font-style:normal;
+  display:grid;place-items:center;padding:0 3px
+}
+.kkAd{font-size:11.5px;font-weight:700;text-align:center;line-height:1.2}
+.kkFiyat{font-size:11px;color:var(--sol);font-weight:700}
+
+.tanitim .tnBas{font-size:20px;font-weight:900;text-align:center}
+.tanitim .tnAlt{text-align:center;color:var(--sol);font-size:12.5px;margin:4px 0 12px}
+.tnAdim{display:flex;gap:11px;align-items:flex-start;margin-top:11px;font-size:13px;line-height:1.4}
+.tnAdim>span{
+  flex:0 0 26px;width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(180deg,var(--ana2),var(--ana));color:#fff;
+  display:grid;place-items:center;font-weight:900;font-size:13px
+}
+
 /* ---------- mini oyunlar ---------- */
 #mini{
   position:fixed;inset:0;z-index:66;display:none;align-items:center;justify-content:center;

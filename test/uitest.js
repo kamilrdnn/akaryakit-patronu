@@ -134,7 +134,7 @@ kontrol(D.s.basarimlar.length === sayiB, 'aynı başarım iki kez verilmemeli');
 console.log('UI TEST 2d — izometrik hesaplar');
 kontrol(typeof IZO.izo === 'function', 'IZO yüklenmeli');
 const pz = IZO.izo(2, 3);
-kontrol(pz.x === (2 - 3) * 32 && pz.y === (2 + 3) * 16, 'izo izdüşümü doğru olmalı');
+kontrol(pz.x === (2 - 3) * IZO.TW / 2 && pz.y === (2 + 3) * IZO.TH / 2, 'izo izdüşümü doğru olmalı');
 IZO.kam = { x: 100, y: 50, olcek: 1, kuruldu: true };
 const geri = IZO.karo(IZO.izo(4, 2).x + 100, IZO.izo(4, 2).y + 50);
 kontrol(Math.abs(geri.gx - 4) < 0.001 && Math.abs(geri.gy - 2) < 0.001, 'ekran→karo dönüşümü tersine çalışmalı');
@@ -466,6 +466,9 @@ kontrol(D.kaydet(), 'kayıt çalışmalı');
 calistir('guncelleme', () => GUNCELLE.kontrol(true));
 calistir('hız', () => { UI.hizDegis(2); UI.hizDegis(5); });
 kontrol([1,2,3,5].indexOf(D.s.hiz) >= 0, 'hız geçerli olmalı');
+calistir('hız döngüsü', () => { UI.hizDegis(); UI.hizDegis(); });
+kontrol([1,2,3,5].indexOf(D.s.hiz) >= 0, 'argümansız hız geçerli kalmalı: ' + D.s.hiz);
+kontrol(w.document.getElementById('ust').innerHTML.indexOf('undefined') < 0, 'üst barda undefined olmamalı');
 calistir('yönetim', () => UI.sekmeGec('daha'));
 const daha = w.document.getElementById('govde').innerHTML;
 kontrol(daha.indexOf('cipSerit') > 0, 'alt sekme şeridi olmalı');
@@ -592,6 +595,18 @@ console.log('UI TEST 9b — mini oyunlar, filo, taşıma, jeneratör');
   calistir('rehber kapat', () => UI.rehberKapat());
   kontrol(D.s.rehber.kapali === true, 'rehber kapatılabilmeli');
   D.s.rehber.kapali = false;
+
+  /* --- hayalet click: modal hemen kapanmamalı --- */
+  calistir('modal aç', () => UI.modal('Deneme', '<div>içerik</div>'));
+  kontrol(UI.modalAcik === true, 'modal açılmalı');
+  calistir('hayalet click', () => UI.perdeTik({ target: { id: 'modal' } }));
+  kontrol(UI.modalAcik === true, 'dokunuştan hemen sonraki click modalı kapatmamalı');
+  UI._modalAcilis = Date.now() - 2000;
+  calistir('gerçek perde tıklaması', () => UI.perdeTik({ target: { id: 'modal' } }));
+  kontrol(UI.modalAcik === false, 'sonraki tıklama modalı kapatmalı');
+  calistir('iç tıklama', () => { UI.modal('X', 'y'); UI._modalAcilis = Date.now() - 2000; UI.perdeTik({ target: { id: 'modalIc' } }); });
+  kontrol(UI.modalAcik === true, 'modal içine tıklamak kapatmamalı');
+  calistir('kapat', () => UI.modalKapat());
 
   /* --- marka / tabela --- */
   calistir('marka paneli', () => { UI.altSekmeGec('daha', 'marka'); UI.sekmeGec('daha'); });

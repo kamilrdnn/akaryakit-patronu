@@ -6,7 +6,7 @@ const IZO = {
   tuval: null, cz: null,
   G: 1,                 // devicePixelRatio
   en: 0, boy: 0,
-  TW: 64, TH: 32,       // iso karo ölçüsü
+  TW: 84, TH: 42,       // iso karo ölçüsü (geniş parsel)
   kam: { x: 0, y: 0, olcek: 1, hx: 0, hy: 0, holcek: 1, vx: 0, vy: 0, kuruldu: false },
   arabalar: [],
   ucanlar: [],          // uçan ₺ yazıları
@@ -53,10 +53,12 @@ const IZO = {
     var sb = D.sube();
     var mx = (sb.w - 1) / 2, my = (sb.h + 1) / 2;
     var m = this.izo(mx, my);
-    var olcek = Math.min(1.45, Math.max(0.52, 5.9 / Math.max(sb.w, sb.h + 1)));
-    /* dar ekranda istasyon taşmasın */
-    var genislikGerek = (sb.w + sb.h + 2) * this.TW / 2;
-    olcek = Math.min(olcek, (this.en - 24) / genislikGerek);
+    /* tüm arsayı ekrana sığdırmaya çalışma: yapılar ferah görünsün, oyuncu kaydırsın.
+       En çok 6x5'lik bir pencere gösterilir, büyük arsalarda kamera yakın kalır. */
+    var pencereW = Math.min(sb.w, 4), pencereH = Math.min(sb.h, 4);
+    var genislikGerek = (pencereW + pencereH + 1.6) * this.TW / 2;
+    var olcek = (this.en - 16) / genislikGerek;
+    olcek = kisitla(olcek, 0.78, 1.7);
     this.kam.holcek = olcek;
     this.kam.hx = this.en / 2 - m.x * olcek;
     this.kam.hy = this.boy * 0.54 - m.y * olcek;
@@ -320,25 +322,40 @@ const IZO = {
     var kasaba = { x0: -11, x1: sb.w + 11, y0: sb.h + 4.2, y1: sb.h + 13 };   /* yolun karşısı */
     var arka = { x0: -11, x1: sb.w + 11, y0: -9, y1: -2.2 };                  /* istasyonun arkası */
 
-    /* --- kasaba: yolun karşısında sıra sıra binalar (merkez hissi) --- */
-    var binaTipleri = ['apartman', 'apartman', 'dukkan', 'ev', 'ev', 'depo', 'ofis'];
-    var binaSayi = 12 + Math.floor(rnd(5));
-    for (var b = 0; b < binaSayi; b++) {
-      var tip = binaTipleri[Math.floor(rnd(binaTipleri.length))];
-      var bw = tip === 'depo' ? 1.5 + rnd(0.5) : (tip === 'ev' ? 0.85 + rnd(0.3) : 1.0 + rnd(0.4));
-      var bh = tip === 'depo' ? 1.0 + rnd(0.35) : (tip === 'ev' ? 0.8 + rnd(0.25) : 0.95 + rnd(0.35));
-      var yer = yerBul(bw, bh, kasaba);
-      if (!yer) continue;
-      this.susler.push({
-        tip: 'kasabaBina', alt: tip, gx: yer.gx, gy: yer.gy, w: bw, h: bh,
-        kat: tip === 'apartman' ? 3 + Math.floor(rnd(3)) : (tip === 'ofis' ? 2 + Math.floor(rnd(2)) : 1),
-        renk: ['#d8c6a8', '#e0cdb2', '#c4b39b', '#cdd5dd', '#dfd8c9', '#c3cedb', '#d9b9a4', '#bfd0c4'][Math.floor(rnd(8))],
-        cati: ['#8c4b3a', '#7a4435', '#5c6672', '#9a5a44'][Math.floor(rnd(4))],
-        tohum: Math.floor(rnd(1000))
+    /* --- kasaba: sokak boyunca hizalı binalar --- */
+    var binaTipleri = ['apartman', 'dukkan', 'ev', 'ev', 'ofis', 'apartman', 'ev', 'dukkan'];
+    var sokaklar = [sb.h + 6, sb.h + 10];          /* yatay sokak satırları */
+    this.kasabaSokaklari = sokaklar.slice();
+    var sira = 0;
+    for (var sk = 0; sk < sokaklar.length; sk++) {
+      var yolY = sokaklar[sk];
+      /* sokağın iki yakası */
+      [-1, 1].forEach(function (taraf) {
+        var gyBina = taraf < 0 ? yolY - 1.9 : yolY + 1.1;
+        for (var bx = -9; bx < sb.w + 9; bx += 2.1 + rnd(0.5)) {
+          if (rnd(1) < 0.18) continue;                       /* arada boşluk */
+          var tip = binaTipleri[Math.floor(rnd(binaTipleri.length))];
+          var bw = tip === 'apartman' ? 1.15 + rnd(0.25) : (tip === 'ofis' ? 1.2 + rnd(0.2) : 0.9 + rnd(0.25));
+          var bh = tip === 'apartman' ? 0.95 + rnd(0.2) : 0.85 + rnd(0.2);
+          if (yasak(bx, gyBina, bw, bh) || cakisma(bx, gyBina, bw, bh)) continue;
+          self.susler.push({
+            tip: 'kasabaBina', alt: tip, gx: bx, gy: gyBina, w: bw, h: bh,
+            kat: tip === 'apartman' ? 3 + Math.floor(rnd(3)) : (tip === 'ofis' ? 2 + Math.floor(rnd(2)) : 1),
+            renk: ['#d8c6a8', '#e0cdb2', '#c4b39b', '#cdd5dd', '#dfd8c9', '#c3cedb', '#d9b9a4', '#bfd0c4'][Math.floor(rnd(8))],
+            cati: ['#8c4b3a', '#7a4435', '#5c6672', '#9a5a44'][Math.floor(rnd(4))],
+            tohum: Math.floor(rnd(1000)),
+            bahce: rnd(1) < 0.45
+          });
+          sira++;
+        }
       });
+      /* sokak lambaları */
+      for (var lx = -8; lx < sb.w + 9; lx += 4.2) {
+        this.susler.push({ tip: 'direk', gx: lx, gy: yolY + 0.75, w: 0.3, h: 0.3, kucuk: true });
+      }
     }
     /* cami: kasabanın simgesi */
-    var camiYer = yerBul(1.25, 1.25, kasaba, 60);
+    var camiYer = yerBul(1.25, 1.25, { x0: -8, x1: sb.w + 8, y0: sb.h + 12, y1: sb.h + 15 }, 40);
     if (camiYer) this.susler.push({ tip: 'cami', gx: camiYer.gx, gy: camiYer.gy, w: 1.25, h: 1.25 });
 
     /* --- tarlalar: arka ve yanlar --- */
@@ -724,13 +741,102 @@ const IZO = {
         if (ic && !sb.beton[gy * sb.w + gx] && (gx + gy) % 3 === 0) this.satilikTabela(gx, gy);
       }
     }
+    this.istasyonDuzeni(sb, I);
+  },
+
+  /* istasyon önü: bordür, giriş-çıkış kapıları, yön okları, şerit çizgileri */
+  istasyonDuzeni: function (sb, I) {
+    var c = this.cz, o = this.kam.olcek;
+    var sv = (SIM.girisSeviye ? SIM.girisSeviye(sb) : 1);
+    var kapiEn = 0.9 + (sv - 1) * 0.45;                 /* kapı genişliği (karo) */
+    var girisX = 0.25, cikisX = sb.w - 0.25 - kapiEn;   /* sol giriş, sağ çıkış */
+    var onY = sb.h;                                     /* apron satırı */
+
+    /* --- bordür: ön kenarda kapı boşlukları hariç --- */
+    var bordurRenk = '#d7dde4';
+    var parcalar = [];
+    if (girisX > 0) parcalar.push([0, girisX]);
+    if (cikisX > girisX + kapiEn) parcalar.push([girisX + kapiEn, cikisX]);
+    if (cikisX + kapiEn < sb.w) parcalar.push([cikisX + kapiEn, sb.w]);
+    for (var p = 0; p < parcalar.length; p++) {
+      var x1 = parcalar[p][0], x2 = parcalar[p][1];
+      if (x2 - x1 < 0.05) continue;
+      this.kutu(x1, onY + 0.94, 0, x2 - x1, 0.1, 3.5, bordurRenk);
+    }
+    /* yan bordürler */
+    this.kutu(-0.06, -0.06, 0, 0.1, sb.h + 1.02, 3.5, bordurRenk);
+    this.kutu(sb.w - 0.04, -0.06, 0, 0.1, sb.h + 1.02, 3.5, bordurRenk);
+    this.kutu(-0.06, -0.06, 0, sb.w + 0.1, 0.1, 3.5, bordurRenk);
+
+    /* --- kapı yaklaşma şeritleri --- */
+    var sarі = this.ton('#e8c44a', I);
+    function serit(xBas, xSon, yv, renk, kalin) {
+      var a = IZO.ekran(xBas, yv, 0.6), b = IZO.ekran(xSon, yv, 0.6);
+      c.strokeStyle = renk;
+      c.lineWidth = Math.max(1, (kalin || 1.4) * o);
+      c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+    }
+    /* kapı ağızlarında beyaz kılavuz */
+    serit(girisX, girisX + kapiEn, onY + 0.98, 'rgba(240,246,250,.85)', 2);
+    serit(cikisX, cikisX + kapiEn, onY + 0.98, 'rgba(240,246,250,.85)', 2);
+
+    /* --- yön okları --- */
+    this.yonOku(girisX + kapiEn / 2, onY + 0.45, 1, '#5ad17e', o);     /* içeri */
+    this.yonOku(cikisX + kapiEn / 2, onY + 0.45, -1, '#f0b429', o);    /* dışarı */
+
+    /* --- kapı direkleri + tabelalar --- */
+    this.kapiDiregi(girisX - 0.22, onY + 0.95, 'GİRİŞ', '#2f9e5e', I);
+    this.kapiDiregi(cikisX + kapiEn + 0.12, onY + 0.95, 'ÇIKIŞ', '#d9843a', I);
+
+    /* --- orta refüj (iki kapı arası) --- */
+    if (cikisX - (girisX + kapiEn) > 0.6) {
+      var rx = girisX + kapiEn + 0.16, rw = cikisX - girisX - kapiEn - 0.32;
+      this.kutu(rx, onY + 0.92, 0, rw, 0.12, 3, '#cfd6dd');
+      /* refüjde çalılar */
+      var adetC = Math.max(1, Math.round(rw / 0.55));
+      for (var ci = 0; ci < adetC; ci++) {
+        var cp = this.ekran(rx + rw * ((ci + 0.5) / adetC), onY + 0.98, 3);
+        c.fillStyle = this.ton('#4e8f45', I);
+        c.beginPath(); c.arc(cp.x, cp.y - 1.5 * o, 3.6 * o, 0, Math.PI * 2); c.fill();
+        c.fillStyle = this.ton('#5ea254', I * 1.1);
+        c.beginPath(); c.arc(cp.x - 1.1 * o, cp.y - 2.6 * o, 2.3 * o, 0, Math.PI * 2); c.fill();
+      }
+    }
+  },
+
+  yonOku: function (gx, gy, yon, renk, o) {
+    var c = this.cz;
+    var u = this.ekran(gx, gy - 0.3 * yon, 0.8);
+    var a = this.ekran(gx - 0.17, gy + 0.12 * yon, 0.8);
+    var b = this.ekran(gx + 0.17, gy + 0.12 * yon, 0.8);
+    c.fillStyle = renk;
+    c.globalAlpha = 0.85;
+    c.beginPath();
+    c.moveTo(u.x, u.y); c.lineTo(a.x, a.y); c.lineTo(b.x, b.y);
+    c.closePath(); c.fill();
+    c.globalAlpha = 1;
+  },
+
+  kapiDiregi: function (gx, gy, yazi, renk, I) {
+    var c = this.cz, o = this.kam.olcek;
+    this.kutu(gx, gy, 0, 0.1, 0.1, 26, '#b9c1c9');
+    var p = this.ekran(gx + 0.05, gy + 0.05, 26);
+    var w = Math.max(20, c.measureText(yazi).width + 12 * o);
+    c.font = 'bold ' + Math.round(7 * o) + 'px sans-serif';
+    w = c.measureText(yazi).width + 9 * o;
+    this.yuvarlakKutu(p.x - w / 2, p.y - 11 * o, w, 11 * o, 3 * o);
+    c.fillStyle = this.ton(renk, Math.max(I, 0.8));
+    c.fill();
+    c.fillStyle = '#ffffff';
+    c.textAlign = 'center';
+    c.fillText(yazi, p.x, p.y - 3 * o);
   },
 
   /* ---- zemin önbelleği: karolar her karede yeniden çizilmez ---- */
   zeminAnahtar: function (sb, I) {
     var b = 0;
     for (var i = 0; i < sb.beton.length; i++) if (sb.beton[i]) b += (i + 1) * 7;
-    return [sb.lok, sb.w, sb.h, b, D.s.sezonIdx, Math.round(I * 12)].join('|');
+    return [sb.lok, sb.w, sb.h, b, sb.giris || 1, D.s.sezonIdx, Math.round(I * 12)].join('|');
   },
 
   zeminHazirla: function (sb, I) {
@@ -918,28 +1024,28 @@ const IZO = {
     var yk = VERI.yakitlar[p.yakit];
     var I = this.isik();
     /* ada (beton kaide) */
-    this.golge(gx + 0.08, gy + 0.08, 0.84, 0.36, 0.26);
-    this.kutu(gx + 0.06, gy + 0.06, 0, 0.88, 0.38, 3, '#b9c1c9', { tip: 'hucre', i: i });
+    this.golge(gx + 0.18, gy + 0.22, 0.64, 0.32, 0.26);
+    this.kutu(gx + 0.17, gy + 0.22, 0, 0.66, 0.34, 3, '#b9c1c9', { tip: 'hucre', i: i });
     /* gövde */
     var govde = p.yakit === 'ev' ? '#2f6fa8' : '#e2683a';
-    this.kutu(gx + 0.16, gy + 0.12, 3, 0.26, 0.24, 26, govde, { tip: 'hucre', i: i });
+    this.kutu(gx + 0.24, gy + 0.26, 3, 0.22, 0.22, 26, govde, { tip: 'hucre', i: i });
     /* ekran paneli */
-    this.kutu(gx + 0.18, gy + 0.10, 16, 0.22, 0.03, 9, this.gece() ? '#9ef0b5' : '#eef3f7');
+    this.kutu(gx + 0.26, gy + 0.24, 16, 0.18, 0.03, 9, this.gece() ? '#9ef0b5' : '#eef3f7');
     /* tabanca kolu */
-    this.kutu(gx + 0.44, gy + 0.18, 14, 0.04, 0.04, 4, '#58606b');
+    this.kutu(gx + 0.48, gy + 0.3, 14, 0.04, 0.04, 4, '#58606b');
     /* ikinci sütun (çok tabancalı) */
     if (p.yakit === 'benzin' || p.yakit === 'dizel') {
-      this.kutu(gx + 0.58, gy + 0.12, 3, 0.24, 0.24, 24, govde, { tip: 'hucre', i: i });
-      this.kutu(gx + 0.60, gy + 0.10, 15, 0.20, 0.03, 8, this.gece() ? '#9ef0b5' : '#eef3f7');
+      this.kutu(gx + 0.56, gy + 0.26, 3, 0.2, 0.22, 24, govde, { tip: 'hucre', i: i });
+      this.kutu(gx + 0.58, gy + 0.24, 15, 0.16, 0.03, 8, this.gece() ? '#9ef0b5' : '#eef3f7');
     }
     /* kanopi: direk + çatı */
     var catiH = 52 + (p.sv - 1) * 2;
-    this.kutu(gx + 0.12, gy + 0.12, 3, 0.06, 0.06, catiH, '#cfd6dd');
-    this.kutu(gx + 0.82, gy + 0.12, 3, 0.06, 0.06, catiH, '#cfd6dd');
+    this.kutu(gx + 0.18, gy + 0.2, 3, 0.055, 0.055, catiH, '#cfd6dd');
+    this.kutu(gx + 0.76, gy + 0.2, 3, 0.055, 0.055, catiH, '#cfd6dd');
     var st2 = this.tabelaStili();
     var catiRenk = st2.kanopi ? st2.pano
       : (p.yakit === 'ev' ? '#3f8ccc' : (p.yakit === 'lpg' ? '#3ec47a' : '#2f9e5e'));
-    this.kutu(gx + 0.04, gy + 0.02, catiH + 3, 0.92, 0.56, 7, catiRenk, { tip: 'hucre', i: i });
+    this.kutu(gx + 0.13, gy + 0.14, catiH + 3, 0.72, 0.46, 6, catiRenk, { tip: 'hucre', i: i });
     /* seviye şeridi */
     if (p.sv > 1) {
       var sp = this.ekran(gx + 0.5, gy + 0.3, catiH + 12);
@@ -985,67 +1091,129 @@ const IZO = {
     var c = this.cz, o = this.kam.olcek, I = this.isik(), gece = this.gece();
     var sb = D.sube();
 
-    /* şekle göre ölçüler */
-    var olcu = {
-      klasik: { direk: 56, panoH: 54, panoW: 1.02, yaziB: 9 },
-      genis:  { direk: 38, panoH: 46, panoW: 1.30, yaziB: 10.5 },
-      kule:   { direk: 84, panoH: 58, panoW: 0.78, yaziB: 8 },
-      tente:  { direk: 24, panoH: 40, panoW: 1.18, yaziB: 9.5 }
-    }[st.sekil] || { direk: 56, panoH: 54, panoW: 1.02, yaziB: 9 };
+    /* şekle göre ölçüler (ekran pikseli, zoom ile ölçeklenir) */
+    var ol = {
+      klasik: { direk: 56, en: 54, bas: 20, satir: 15, kalinlik: 0.12 },
+      genis:  { direk: 34, en: 76, bas: 24, satir: 16, kalinlik: 0.14 },
+      kule:   { direk: 84, en: 44, bas: 17, satir: 13, kalinlik: 0.10 },
+      tente:  { direk: 22, en: 70, bas: 22, satir: 15, kalinlik: 0.14 }
+    }[st.sekil] || { direk: 56, en: 54, bas: 20, satir: 15, kalinlik: 0.12 };
 
-    this.golge(gx + 0.34, gy + 0.34, 0.32, 0.32, 0.3);
-    /* direk */
-    this.kutu(gx + 0.44, gy + 0.42, 0, 0.1, 0.1, olcu.direk, '#8e98a4');
-    if (st.sekil === 'genis') this.kutu(gx + 0.1, gy + 0.42, 0, 0.1, 0.1, olcu.direk, '#8e98a4');
+    /* --- direk ve kaide (izometrik) --- */
+    this.golge(gx + 0.3, gy + 0.3, 0.4, 0.4, 0.32);
+    this.kutu(gx + 0.3, gy + 0.3, 0, 0.4, 0.4, 4, '#b9c1c9', { tip: 'hucre', i: i });
+    this.kutu(gx + 0.44, gy + 0.44, 4, ol.kalinlik, ol.kalinlik, ol.direk, '#9aa4b0');
+    if (st.sekil === 'genis') this.kutu(gx + 0.2, gy + 0.44, 4, ol.kalinlik, ol.kalinlik, ol.direk, '#9aa4b0');
 
-    /* pano gövdesi */
-    var panoX = gx + (1 - olcu.panoW) / 2;
-    this.kutu(panoX, gy + 0.4, olcu.direk, olcu.panoW, 0.1, olcu.panoH, st.pano, { tip: 'hucre', i: i });
-    /* çerçeve üst şeridi */
-    this.kutu(panoX - 0.02, gy + 0.39, olcu.direk + olcu.panoH, olcu.panoW + 0.04, 0.12, 3, '#e9eef3');
+    /* --- pano (ekrana dönük levha) --- */
+    var taban = this.ekran(gx + 0.5, gy + 0.5, 4 + ol.direk);
+    var yakitlar = [];
+    ['benzin', 'dizel', 'lpg', 'ev'].forEach(function (y) {
+      if (sb.tank[y] || y === 'ev') {
+        if (y === 'ev' && !SIM.yakitVar(sb, 'ev')) return;
+        yakitlar.push(y);
+      }
+    });
+    if (!st.fiyat) yakitlar = [];
 
-    /* gece ışıması */
+    var W = ol.en * o;
+    var basH = ol.bas * o;
+    var satirH = ol.satir * o;
+    var ic = 3 * o;
+    var H = basH + (yakitlar.length ? yakitlar.length * satirH + ic * 2 : ic);
+    var x0 = taban.x - W / 2, y0 = taban.y - H;
+
+    /* gece halesi */
     if (gece) {
-      var gp = this.ekran(gx + 0.5, gy + 0.45, olcu.direk + olcu.panoH * 0.6);
-      var gr = c.createRadialGradient(gp.x, gp.y, 0, gp.x, gp.y, 54 * o);
-      gr.addColorStop(0, 'rgba(255,240,200,.28)');
-      gr.addColorStop(1, 'rgba(255,240,200,0)');
-      c.fillStyle = gr;
-      c.beginPath(); c.arc(gp.x, gp.y, 54 * o, 0, Math.PI * 2); c.fill();
+      var hg = c.createRadialGradient(taban.x, y0 + H / 2, 0, taban.x, y0 + H / 2, W * 1.5);
+      hg.addColorStop(0, 'rgba(255,240,205,.26)');
+      hg.addColorStop(1, 'rgba(255,240,205,0)');
+      c.fillStyle = hg;
+      c.beginPath(); c.arc(taban.x, y0 + H / 2, W * 1.5, 0, Math.PI * 2); c.fill();
     }
 
-    if (o < 0.42) return;   /* çok uzakta yazı okunmaz */
+    /* dış çerçeve (metalik) */
+    c.save();
+    c.shadowColor = 'rgba(0,0,0,.45)';
+    c.shadowBlur = 8 * o;
+    c.shadowOffsetY = 3 * o;
+    this.yuvarlakKutu(x0 - 2 * o, y0 - 2 * o, W + 4 * o, H + 4 * o, 4 * o);
+    c.fillStyle = gece ? '#e8eef4' : this.ton('#e8eef4', Math.max(I, 0.72));
+    c.fill();
+    c.restore();
 
-    /* marka adı */
-    var ust = this.ekran(gx + 0.5, gy + 0.45, olcu.direk + olcu.panoH - (st.fiyat ? 13 : olcu.panoH / 2 - 3));
-    c.textAlign = 'center';
-    c.font = 'bold ' + Math.round(olcu.yaziB * o) + 'px sans-serif';
-    c.fillStyle = gece ? st.yazi : this.ton(st.yazi.charAt(0) === '#' ? st.yazi : '#ffffff', Math.max(I, 0.78));
-    var yaziAd = st.logo + ' ' + st.ad;
-    /* panoya sığdır */
-    var maxW = (olcu.panoW + 0.1) * this.TW / 2 * o * 0.88;
-    var boy = olcu.yaziB;
-    while (c.measureText(yaziAd).width > maxW && boy > 5) {
-      boy -= 0.5;
-      c.font = 'bold ' + Math.round(boy * o) + 'px sans-serif';
+    /* marka başlığı */
+    var basRenk = gece ? st.pano : this.ton(st.pano, Math.max(I, 0.78));
+    this.yuvarlakKutu(x0, y0, W, basH, 3 * o);
+    c.fillStyle = basRenk;
+    c.fill();
+    /* başlık parlaması */
+    var pg = c.createLinearGradient(x0, y0, x0, y0 + basH);
+    pg.addColorStop(0, 'rgba(255,255,255,.22)');
+    pg.addColorStop(0.5, 'rgba(255,255,255,0)');
+    c.fillStyle = pg;
+    this.yuvarlakKutu(x0, y0, W, basH, 3 * o);
+    c.fill();
+
+    if (o > 0.4) {
+      var ad = st.ad;
+      var yaziB = Math.min(basH * 0.56, W / Math.max(5, ad.length) * 1.5);
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillStyle = gece ? st.yazi : this.ton(st.yazi, Math.max(I, 0.85));
+      c.font = 'bold ' + Math.round(yaziB) + 'px sans-serif';
+      while (c.measureText(st.logo + ' ' + ad).width > W - 6 * o && yaziB > 4) {
+        yaziB -= 0.5;
+        c.font = 'bold ' + Math.round(yaziB) + 'px sans-serif';
+      }
+      c.fillText(st.logo + ' ' + ad, taban.x, y0 + basH / 2 + 0.5 * o);
     }
-    c.fillText(yaziAd, ust.x, ust.y);
 
-    /* fiyat satırları */
-    if (st.fiyat) {
-      var sira = 0;
-      ['benzin', 'dizel', 'lpg'].forEach(function (yk) {
-        if (!sb.tank[yk]) return;
-        var tp = IZO.ekran(gx + 0.5, gy + 0.45, olcu.direk + olcu.panoH - 27 - sira * 11);
-        c.font = 'bold ' + Math.round(7 * o) + 'px sans-serif';
-        var metin = VERI.yakitlar[yk].kisa + '  ' + say(sb.fiyat[yk], 2);
-        var mw = c.measureText(metin).width + 8 * o;
-        c.fillStyle = 'rgba(10,16,26,.55)';
-        IZO.yuvarlakKutu(tp.x - mw / 2, tp.y - 7.5 * o, mw, 10 * o, 2.5 * o);
-        c.fill();
-        c.fillStyle = gece ? '#ffd166' : IZO.ton(VERI.yakitlar[yk].renk, 1.25);
-        c.fillText(metin, tp.x, tp.y);
-        sira++;
+    /* fiyat paneli (LED görünümü) */
+    if (yakitlar.length) {
+      var py = y0 + basH + ic * 0.4;
+      var pH = yakitlar.length * satirH + ic;
+      this.yuvarlakKutu(x0 + ic * 0.6, py, W - ic * 1.2, pH, 2.5 * o);
+      c.fillStyle = gece ? '#06090f' : '#121922';
+      c.fill();
+
+      if (o > 0.4) {
+        c.textBaseline = 'middle';
+        for (var k = 0; k < yakitlar.length; k++) {
+          var yk = yakitlar[k];
+          var sy = py + ic * 0.5 + satirH * (k + 0.5);
+          /* yakıt kısaltması */
+          c.textAlign = 'left';
+          c.font = 'bold ' + Math.round(satirH * 0.52) + 'px sans-serif';
+          c.fillStyle = VERI.yakitlar[yk].renk;
+          c.fillText(VERI.yakitlar[yk].kisa, x0 + ic * 1.6, sy);
+          /* fiyat (dijital) */
+          c.textAlign = 'right';
+          c.font = 'bold ' + Math.round(satirH * 0.68) + 'px ui-monospace, Menlo, monospace';
+          c.fillStyle = gece ? '#ffd98a' : '#f3f7fb';
+          if (gece) { c.shadowColor = 'rgba(255,200,90,.85)'; c.shadowBlur = 5 * o; }
+          c.fillText(say(sb.fiyat[yk], 2), x0 + W - ic * 1.6, sy);
+          c.shadowBlur = 0;
+          /* satır ayracı */
+          if (k < yakitlar.length - 1) {
+            c.strokeStyle = 'rgba(255,255,255,.08)';
+            c.lineWidth = Math.max(1, 0.8 * o);
+            c.beginPath();
+            c.moveTo(x0 + ic * 1.4, sy + satirH / 2);
+            c.lineTo(x0 + W - ic * 1.4, sy + satirH / 2);
+            c.stroke();
+          }
+        }
+      }
+    }
+    c.textBaseline = 'alphabetic';
+
+    /* panoyu da dokunulabilir yap */
+    if (this.vurus) {
+      this.vurus.push({
+        tip: 'hucre', i: i,
+        poly: [{ x: x0 - 2 * o, y: y0 - 2 * o }, { x: x0 + W + 2 * o, y: y0 - 2 * o },
+               { x: x0 + W + 2 * o, y: y0 + H + 2 * o }, { x: x0 - 2 * o, y: y0 + H + 2 * o }]
       });
     }
   },
@@ -1074,7 +1242,7 @@ const IZO = {
   binaCiz: function (sb, i, gx, gy, b) {
     var kayit = this.cz;
     var merkez = this.ekran(gx + 0.5, gy + 0.5, 0);
-    var kucult = 0.72;
+    var kucult = 0.58;
     var once = this.vurus.length;
     kayit.save();
     kayit.translate(merkez.x, merkez.y);
@@ -1402,22 +1570,40 @@ const IZO = {
       this.kutu(s.gx - 0.04, s.gy - 0.04, h, s.w + 0.08, s.h + 0.08, 4, '#7d8793');
     } else {
       this.kutu(s.gx - 0.05, s.gy - 0.05, h, s.w + 0.1, s.h + 0.1, 3.5, '#6f7a86');
-      /* teras su deposu */
-      this.kutu(s.gx + s.w * 0.6, s.gy + s.h * 0.25, h + 3.5, 0.3, 0.3, 7, '#aeb6bf');
+      /* teras korkuluğu */
+      this.kutu(s.gx - 0.05, s.gy - 0.05, h + 3.5, s.w + 0.1, 0.06, 2.5, '#8d98a5');
+      this.kutu(s.gx - 0.05, s.gy + s.h - 0.01, h + 3.5, s.w + 0.1, 0.06, 2.5, '#8d98a5');
     }
-    /* pencereler */
+    /* pencereler: cepheye düz boyanır (kutu değil) */
     var c = this.cz;
     var gece = this.gece();
     var kat = s.kat || 1;
+    var pencereRenk = function (yanik) { return gece ? (yanik ? 'rgba(255,218,140,.95)' : 'rgba(38,48,64,.9)') : 'rgba(126,166,200,.85)'; };
     for (var kk = 0; kk < kat; kk++) {
+      var z1 = kk * katH + 7.5, z2 = kk * katH + 3;
       for (var w = 0; w < 3; w++) {
-        var fx = s.gx + s.w * (0.18 + w * 0.28);
-        var py = kk * katH + 4;
+        var gx1 = s.gx + s.w * (0.16 + w * 0.28);
+        var gx2 = gx1 + s.w * 0.16;
         var yanik = ((s.tohum + kk * 7 + w * 13) % 10) < 6;
-        var renk = gece ? (yanik ? '#ffd98a' : '#2a3340') : '#8fb8d8';
-        this.kutu(fx, s.gy - 0.02, py, s.w * 0.17, 0.04, 4.5, renk);
+        /* ön cephe (gy + h tarafı) */
+        var a1 = this.ekran(gx1, s.gy + s.h, z1), b1 = this.ekran(gx2, s.gy + s.h, z1);
+        var a2 = this.ekran(gx2, s.gy + s.h, z2), b2 = this.ekran(gx1, s.gy + s.h, z2);
+        this.cokgen([a1, b1, a2, b2], pencereRenk(yanik));
+        /* yan cephe */
+        var gy1 = s.gy + s.h * (0.18 + w * 0.3), gy2 = gy1 + s.h * 0.16;
+        if (gy2 < s.gy + s.h) {
+          var c1 = this.ekran(s.gx + s.w, gy1, z1), d1 = this.ekran(s.gx + s.w, gy2, z1);
+          var c2 = this.ekran(s.gx + s.w, gy2, z2), d2 = this.ekran(s.gx + s.w, gy1, z2);
+          this.cokgen([c1, d1, c2, d2], pencereRenk(((s.tohum + kk * 3 + w * 5) % 10) < 5));
+        }
       }
     }
+    /* kapı */
+    var kz1 = 9, kz2 = 0.5;
+    var kx1 = s.gx + s.w * 0.42, kx2 = s.gx + s.w * 0.58;
+    var k1 = this.ekran(kx1, s.gy + s.h, kz1), k2 = this.ekran(kx2, s.gy + s.h, kz1);
+    var k3 = this.ekran(kx2, s.gy + s.h, kz2), k4 = this.ekran(kx1, s.gy + s.h, kz2);
+    this.cokgen([k1, k2, k3, k4], gece ? 'rgba(255,226,170,.8)' : 'rgba(86,66,52,.9)');
     /* dükkân tentesi */
     if (s.alt === 'dukkan') {
       this.kutu(s.gx + 0.05, s.gy - 0.16, 9, s.w - 0.1, 0.2, 2.5, '#d9534f');
@@ -1743,6 +1929,9 @@ const IZO = {
       self._suruk = null;
       if (s.tasindi || Date.now() - s.t > 1200) return;
       self.kam.vx = self.kam.vy = 0;
+      /* touchend sonrası tarayıcı bir de click üretir; açılan pencereyi
+         hemen kapatmasın diye bastırıyoruz */
+      if (e && e.cancelable && e.preventDefault) { try { e.preventDefault(); } catch (hata) {} }
       self.dokunuldu(s.bx, s.by);
     }
 

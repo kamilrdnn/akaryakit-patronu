@@ -23,7 +23,7 @@ var OYUN = {
     } catch (e) {}
     this.dongu();
     if (yeniMi) {
-      UI.bildir('Hoş geldin patron', 'İki pompan ve yarım dolu tankların var. Müşteri gelince pompaya dokun.', 'iyi');
+      setTimeout(function () { try { UI.rehberTanitim(); } catch (e) {} }, 500);
     } else {
       /* çevrimdışı kazanç */
       try {

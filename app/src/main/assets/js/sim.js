@@ -31,6 +31,7 @@ const SIM = {
   saatBasi: function () {
     var s = D.s, sb = D.sube();
     this.filoKonvoy(sb);
+    this.tekliflerTazele();
 
     /* --- elektrik --- */
     var tuk = D.gucTuketim(sb), ure = D.gucUretim(sb);
@@ -256,6 +257,7 @@ const SIM = {
       if (sb.program.sadakat) k *= 1.12;
       if (sb.program.premium) k *= 0.96;
     }
+    k *= this.girisKat(sb);
     return k * 2.2 * pompa;
   },
 
@@ -266,7 +268,7 @@ const SIM = {
     var calisan = 0;
     for (var ci = 0; ci < po.length; ci++) if (!po[ci].p.arizali) calisan++;
     /* kuyruk uzunsa müşteri istasyona hiç girmez (geçip gider, ceza yok) */
-    if (sb.kuyruk.length >= Math.max(2, Math.ceil(calisan * 1.6))) {
+    if (sb.kuyruk.length >= Math.max(2, Math.ceil(calisan * 1.6) + (this.girisSeviye(sb) - 1))) {
       if (sb.bugun) sb.bugun.kuyrukDolu++;
       return;
     }
@@ -325,6 +327,7 @@ const SIM = {
       if (hedef > mevcut) {
         hedef = mevcut * rastgele(0.5, 0.95);
         if (sb.bugun) sb.bugun.tankBos++;
+        if (Math.random() < 0.4) this.sikayet(sb, 'stokYok', { emoji: '🚗', arac: 'Müşteri' });
       }
       if (hedef < 3) return null;
     }
@@ -390,6 +393,11 @@ const SIM = {
     sb.memnuniyet = kisitla(sb.memnuniyet - (pompadaydi ? 1.1 : 0.35), 0, 100);
     if (pompadaydi) { D.s.ist.mutsuz++; D.s.marka = kisitla(D.s.marka - 0.12, 0, 100); }
     if (sb.bugun) sb.bugun.kacan++;
+    /* bekleyip giden müşteri şikâyet bırakır */
+    if (Math.random() < (pompadaydi ? 0.75 : 0.3)) {
+      var arizaliMi = pompadaydi && sb.yapi[m.pompa] && sb.yapi[m.pompa].arizali;
+      this.sikayet(sb, arizaliMi ? 'ariza' : 'bekleme', m);
+    }
   },
 
   /* bekleyen müşteriyi uygun boş pompaya ata */
@@ -489,6 +497,7 @@ const SIM = {
       s.ist.mutsuz++;
       sb.memnuniyet = kisitla(sb.memnuniyet - 7, 0, 100);
       s.marka = kisitla(s.marka - 1.4, 0, 100);
+      this.sikayet(sb, 'yanlis', m);
       return { tip: 'yanlis', kayip: kayip, verilen: m.verilen };
     }
 
@@ -591,6 +600,14 @@ const SIM = {
       var fl = this.filoBul(m.filo);
       if (fl) { fl.bugunTeslim += satilan; fl.toplamTeslim += satilan; }
     }
+
+    /* --- müşteri geri bildirimi --- */
+    if (dokulen > 0.3) this.sikayet(sb, 'tasma', m);
+    else if (!this.ortamSikayeti(sb, m)) {
+      if (isabet === 'tam' && sb.temizlik > 70 && Math.random() < 0.3) this.ovgu(sb, m);
+      else if (sb.memnuniyet > 82 && Math.random() < 0.08) this.ovgu(sb, m);
+    }
+
     this.basarimKontrol();
 
     /* izometrik sahnede uçan kazanç */
@@ -1032,7 +1049,7 @@ const SIM = {
   sozlesmeTeklifleriUret: function () {
     var s = D.s;
     s.sozlesmeTeklif = [];
-    var adet = kisitla(1 + Math.floor(s.seviye / 3), 1, 4);
+    var adet = kisitla(3 + Math.floor(s.seviye / 3), 3, 6);
     for (var i = 0; i < adet; i++) {
       var m = secRast(VERI.sozlesmeMusteriler);
       var gun = rastgeleTam(5, 14);
@@ -1043,9 +1060,34 @@ const SIM = {
       s.sozlesmeTeklif.push({
         id: id(), ad: m.ad, emoji: m.emoji, yakit: m.yakit,
         gun: gun, gunlukL: gunlukL, fiyat: fiyat,
-        prim: prim, ceza: Math.round(prim * rastgele(0.6, 1.1))
+        prim: prim, ceza: Math.round(prim * rastgele(0.6, 1.1)),
+        rakipFiyat: +(taban * rastgele(1.06, 1.22)).toFixed(2),
+        pazarlik: 0,
+        sure: rastgeleTam(2, 5)
       });
     }
+  },
+
+  sozlesmePazarlik: function (teklifId) {
+    var s = D.s;
+    for (var i = 0; i < s.sozlesmeTeklif.length; i++) {
+      var t = s.sozlesmeTeklif[i];
+      if (t.id !== teklifId) continue;
+      if (t.pazarlik >= 3) { UI.bildir('Pazarlık bitti', 'Firma son teklifini verdi.', 'uyari'); return false; }
+      var guc = 0.4 + (s.marka / 100) * 0.3 - t.pazarlik * 0.12;
+      if (Math.random() > guc) {
+        s.sozlesmeTeklif.splice(i, 1);
+        UI.bildir('✍️ Teklif geri çekildi', t.ad + ' başka istasyonla anlaştı.', 'kotu');
+        return false;
+      }
+      t.pazarlik++;
+      t.fiyat = +(t.fiyat * rastgele(1.015, 1.045)).toFixed(2);
+      t.prim = Math.round(t.prim * rastgele(1.05, 1.15));
+      t.ceza = Math.round(t.ceza * rastgele(0.88, 0.97));
+      UI.bildir('✅ Pazarlık tuttu', t.ad + ' · litre ' + say(t.fiyat, 2) + ' ₺, prim ' + tl(t.prim), 'iyi');
+      return true;
+    }
+    return false;
   },
 
   sozlesmeImzala: function (teklifId) {
@@ -1053,7 +1095,10 @@ const SIM = {
     for (var i = 0; i < s.sozlesmeTeklif.length; i++) {
       var t = s.sozlesmeTeklif[i];
       if (t.id !== teklifId) continue;
-      if (s.sozlesmeler.length >= 3) { UI.bildir('Sözleşme sınırı', 'Aynı anda en fazla 3 sözleşme yürütebilirsin.', 'kotu'); return false; }
+      var slimit = this.sozlesmeLimit();
+      if (s.sozlesmeler.length >= slimit) { UI.bildir('Sözleşme sınırı', 'Aynı anda en fazla ' + slimit + ' sözleşme yürütebilirsin. (Seviye atladıkça artar)', 'kotu'); return false; }
+      var stem = this.sozlesmeTeminat(t);
+      if (s.para < stem) { UI.bildir('Teminat yetersiz', 'Bu sözleşme için kasanda en az ' + tl(stem) + ' bulunmalı.', 'kotu'); return false; }
       s.sozlesmeler.push({
         id: t.id, ad: t.ad, emoji: t.emoji, yakit: t.yakit,
         gun: t.gun, kalanGun: t.gun, gunlukL: t.gunlukL, fiyat: t.fiyat,
@@ -1067,13 +1112,96 @@ const SIM = {
   },
 
   /* =========================================================
+     MÜŞTERİ ŞİKAYETLERİ VE ÖVGÜLERİ
+     ========================================================= */
+  sikayet: function (sb, tip, m) {
+    var t = VERI.sikayetTipleri[tip];
+    if (!t) return;
+    if (!sb.sikayetler) { sb.sikayetler = []; sb.ovguler = []; sb.sikayetSayac = {}; }
+    var kayit = {
+      id: id(), tip: tip, emoji: t.emoji, baslik: t.ad, metin: t.metin,
+      arac: m ? (m.emoji + ' ' + m.arac) : '🚗 Müşteri',
+      gun: D.s.gun, saat: ikiHane(D.s.saat) + ':' + ikiHane(D.s.dk),
+      okundu: false
+    };
+    sb.sikayetler.unshift(kayit);
+    if (sb.sikayetler.length > 40) sb.sikayetler.pop();
+    sb.sikayetSayac[tip] = (sb.sikayetSayac[tip] || 0) + 1;
+
+    /* memnuniyet ve marka etkisi */
+    var etki = t.etki * (sb.program && sb.program.sadakat ? 0.85 : 1);
+    sb.memnuniyet = kisitla(sb.memnuniyet - etki, 0, 100);
+    D.s.marka = kisitla(D.s.marka - etki * 0.25, 0, 100);
+    if (sb.bugun) sb.bugun.sikayet = (sb.bugun.sikayet || 0) + 1;
+    D.s.ist.sikayet = (D.s.ist.sikayet || 0) + 1;
+  },
+
+  ovgu: function (sb, m) {
+    if (!sb.ovguler) sb.ovguler = [];
+    var o = secRast(VERI.ovguTipleri);
+    sb.ovguler.unshift({
+      id: id(), emoji: o.emoji, metin: o.metin,
+      arac: m ? (m.emoji + ' ' + m.arac) : '🚗 Müşteri',
+      gun: D.s.gun, saat: ikiHane(D.s.saat) + ':' + ikiHane(D.s.dk)
+    });
+    if (sb.ovguler.length > 25) sb.ovguler.pop();
+    D.s.ist.ovgu = (D.s.ist.ovgu || 0) + 1;
+  },
+
+  /* satış sonrası ortam kaynaklı şikayet kontrolü */
+  ortamSikayeti: function (sb, m) {
+    /* temizlik */
+    if (sb.temizlik < 45 && Math.random() < 0.35) { this.sikayet(sb, 'kirli', m); return true; }
+    /* gece elektrik kesintisi */
+    if (sb.kesinti && !D.gucYeterli(sb) && (D.s.saat >= 19 || D.s.saat <= 6) && Math.random() < 0.3) {
+      this.sikayet(sb, 'karanlik', m); return true;
+    }
+    /* market var ama boş */
+    if (this.marketVar(sb) && Math.random() < 0.2) {
+      var bos = true;
+      for (var i = 0; i < VERI.marketUrunler.length; i++) {
+        if ((sb.market.stok[VERI.marketUrunler[i].id] || 0) > 0) { bos = false; break; }
+      }
+      if (bos) { this.sikayet(sb, 'marketYok', m); return true; }
+    }
+    /* tuvalet yokluğu (uzun yol araçları) */
+    if (!D.binaSayisi(sb, 'wc') && (m.arac === 'Tır' || m.arac === 'Otobüs') && Math.random() < 0.25) {
+      this.sikayet(sb, 'wcYok', m); return true;
+    }
+    /* fiyat */
+    var yk = m.yakit;
+    if (sb.rakip[yk] && sb.fiyat[yk] > sb.rakip[yk] * 1.08 && Math.random() < 0.28) {
+      this.sikayet(sb, 'pahali', m); return true;
+    }
+    return false;
+  },
+
+  sikayetOzeti: function (sb) {
+    var liste = [];
+    var say2 = sb.sikayetSayac || {};
+    for (var tip in say2) {
+      if (!say2[tip]) continue;
+      var t = VERI.sikayetTipleri[tip];
+      if (!t) continue;
+      liste.push({ tip: tip, ad: t.ad, emoji: t.emoji, adet: say2[tip], cozum: t.cozum, sekme: t.sekme });
+    }
+    liste.sort(function (a, b) { return b.adet - a.adet; });
+    return liste;
+  },
+
+  sikayetTemizle: function (sb) {
+    sb.sikayetler = [];
+    sb.sikayetSayac = {};
+  },
+
+  /* =========================================================
      TOPLU (FİLO) ANLAŞMALARI
      ========================================================= */
   filoTeklifleriUret: function () {
     var s = D.s;
     s.filoTeklif = [];
     var sb = D.sube();
-    var adet = kisitla(1 + Math.floor(s.seviye / 4), 1, 3);
+    var adet = kisitla(3 + Math.floor(s.seviye / 3), 3, 6);
     var havuz = [];
     for (var i = 0; i < VERI.filoAnlasmalar.length; i++) {
       var f = VERI.filoAnlasmalar[i];
@@ -1083,7 +1211,10 @@ const SIM = {
       for (var j = 0; j < s.filolar.length; j++) if (s.filolar[j].tanim === f.id) zatenVar = true;
       if (!zatenVar) havuz.push(f);
     }
-    for (var k = 0; k < adet && havuz.length; k++) {
+    var temelHavuz = havuz.slice();
+    for (var k = 0; k < adet; k++) {
+      if (!havuz.length) havuz = temelHavuz.slice();      /* havuz biterse başa dön */
+      if (!havuz.length) break;
       var idx = Math.floor(Math.random() * havuz.length);
       var t = havuz.splice(idx, 1)[0];
       var aracSayi = rastgeleTam(t.aracSayi[0], t.aracSayi[1]);
@@ -1098,17 +1229,74 @@ const SIM = {
         gun: gun, gunlukL: gunlukL, aciklama: t.aciklama,
         pesin: Math.round(gunlukL * taban * rastgele(0.25, 0.5)),
         prim: Math.round(gunlukL * gun * taban * rastgele(0.03, 0.07)),
-        ceza: Math.round(gunlukL * taban * rastgele(0.5, 0.9))
+        ceza: Math.round(gunlukL * taban * rastgele(0.5, 0.9)),
+        /* rakip istasyonun teklifi: seninkinden iyiyse müşteri kaçabilir */
+        rakipIskonto: +(iskonto + rastgele(-0.015, 0.02)).toFixed(3),
+        pazarlik: 0,
+        sure: rastgeleTam(2, 5)            /* kaç saat geçerli */
       });
     }
   },
+
+  /* teklifle pazarlık: iskontoyu düşür, primi artır — kaybetme riski var */
+  filoPazarlik: function (teklifId) {
+    var s = D.s;
+    for (var i = 0; i < s.filoTeklif.length; i++) {
+      var t = s.filoTeklif[i];
+      if (t.id !== teklifId) continue;
+      if (t.pazarlik >= 3) { UI.bildir('Pazarlık bitti', 'Bu firma daha fazla indirim kabul etmiyor.', 'uyari'); return false; }
+      /* marka puanı ve memnuniyet pazarlık gücünü artırır */
+      var guc = 0.38 + (s.marka / 100) * 0.3 + (D.sube().memnuniyet / 100) * 0.12 - t.pazarlik * 0.12;
+      if (Math.random() > guc) {
+        s.filoTeklif.splice(i, 1);
+        UI.bildir('🤝 Anlaşma bozuldu', t.ad + ' rakip istasyonla anlaştı.', 'kotu');
+        return false;
+      }
+      t.pazarlik++;
+      t.iskonto = Math.max(0.01, +(t.iskonto - rastgele(0.008, 0.02)).toFixed(3));
+      t.prim = Math.round(t.prim * rastgele(1.06, 1.18));
+      t.pesin = Math.round(t.pesin * rastgele(1.02, 1.12));
+      UI.bildir('✅ Pazarlık tuttu', t.ad + ' · iskonto %' + say(t.iskonto * 100, 1) + ', prim ' + tl(t.prim), 'iyi');
+      return true;
+    }
+    return false;
+  },
+
+  /* saat başı: teklifler tazelenir */
+  tekliflerTazele: function () {
+    var s = D.s;
+    var degisti = false;
+    /* süresi dolan filo teklifleri düşsün */
+    for (var i = s.filoTeklif.length - 1; i >= 0; i--) {
+      s.filoTeklif[i].sure--;
+      if (s.filoTeklif[i].sure <= 0) { s.filoTeklif.splice(i, 1); degisti = true; }
+    }
+    for (var j = s.sozlesmeTeklif.length - 1; j >= 0; j--) {
+      s.sozlesmeTeklif[j].sure = (s.sozlesmeTeklif[j].sure || 3) - 1;
+      if (s.sozlesmeTeklif[j].sure <= 0) { s.sozlesmeTeklif.splice(j, 1); degisti = true; }
+    }
+    /* azaldıysa yenilerini üret */
+    if (s.filoTeklif.length < 3) { this.filoTeklifleriUret(); degisti = true; }
+    if (s.sozlesmeTeklif.length < 3) { this.sozlesmeTeklifleriUret(); degisti = true; }
+    return degisti;
+  },
+
+  /* aynı anda yürütülebilecek anlaşma sayıları seviyeye göre artar */
+  filoLimit: function () { return kisitla(1 + Math.floor(D.s.seviye / 4), 1, 5); },
+  sozlesmeLimit: function () { return kisitla(2 + Math.floor(D.s.seviye / 3), 2, 7); },
+  /* imza için elde tutulması gereken nakit (teminat) */
+  filoTeminat: function (t) { return Math.round(t.ceza * 1.5); },
+  sozlesmeTeminat: function (t) { return Math.round(t.ceza * 2); },
 
   filoImzala: function (teklifId) {
     var s = D.s;
     for (var i = 0; i < s.filoTeklif.length; i++) {
       var t = s.filoTeklif[i];
       if (t.id !== teklifId) continue;
-      if (s.filolar.length >= 3) { UI.bildir('Filo sınırı', 'Aynı anda en fazla 3 toplu anlaşma yürütebilirsin.', 'kotu'); return false; }
+      var limit = this.filoLimit();
+      if (s.filolar.length >= limit) { UI.bildir('Filo sınırı', 'Aynı anda en fazla ' + limit + ' toplu anlaşma yürütebilirsin. (Seviye atladıkça artar)', 'kotu'); return false; }
+      var tem = this.filoTeminat(t);
+      if (s.para < tem) { UI.bildir('Teminat yetersiz', 'Bu anlaşma için kasanda en az ' + tl(tem) + ' bulunmalı.', 'kotu'); return false; }
       s.filolar.push({
         id: t.id, tanim: t.tanim, ad: t.ad, emoji: t.emoji, arac: t.arac, yakit: t.yakit,
         aracSayi: t.aracSayi, aracL: t.aracL, saatler: t.saatler, iskonto: t.iskonto,
@@ -1216,6 +1404,28 @@ const SIM = {
     }
     return false;
   },
+
+  /* =========================================================
+     GİRİŞ / ÇIKIŞ DÜZENİ
+     ========================================================= */
+  girisSeviye: function (sb) { return kisitla(sb.giris || 1, 1, 4); },
+  girisBedeli: function (sb) {
+    var sv = this.girisSeviye(sb);
+    return Math.round(180000 * Math.pow(2.1, sv - 1) * (1 + D.lok(sb).trafik * 0.3));
+  },
+  girisYukselt: function (sb) {
+    var sv = this.girisSeviye(sb);
+    if (sv >= 4) { UI.bildir('Maksimum', 'Giriş-çıkış düzeni en geniş hâlinde.', 'uyari'); return false; }
+    var f = this.girisBedeli(sb);
+    if (!D.harca(f)) return false;
+    sb.giris = sv + 1;
+    D.xpEkle(250);
+    if (window.IZO) IZO._zAnahtar = '';          /* zemin önbelleği yenilensin */
+    UI.bildir('🛣️ Giriş genişletildi', 'Seviye ' + sb.giris + ' · araçlar daha hızlı giriyor, kuyruk azalıyor.', 'iyi');
+    return true;
+  },
+  /* giriş düzeninin müşteri akışına etkisi */
+  girisKat: function (sb) { return 1 + (this.girisSeviye(sb) - 1) * 0.09; },
 
   /* komşu hücrelerde kaç yapı var (çapraz dahil) */
   komsuDoluluk: function (sb, i) {
