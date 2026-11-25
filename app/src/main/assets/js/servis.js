@@ -423,3 +423,6 @@ const SERVIS = {
     this.ac(pompaIdx);
   }
 };
+
+/* const ile tanımlanan nesne window üzerinde görünmez; window.SERVIS denetimleri için bağla */
+if (typeof window !== 'undefined') window.SERVIS = SERVIS;

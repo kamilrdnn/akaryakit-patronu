@@ -2294,3 +2294,6 @@ const UI = {
     try { if (window.AndroidKabuk) AndroidKabuk.titret(70); } catch (e) {}
   }
 };
+
+/* const ile tanımlanan nesne window üzerinde görünmez; window.UI denetimleri için bağla */
+if (typeof window !== 'undefined') window.UI = UI;

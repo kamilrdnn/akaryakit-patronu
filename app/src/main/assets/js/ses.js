@@ -125,3 +125,6 @@ const SES = {
     } catch (e) { try { d.kaynak.stop(); } catch (e2) {} }
   }
 };
+
+/* const ile tanımlanan nesne window üzerinde görünmez; window.SES denetimleri için bağla */
+if (typeof window !== 'undefined') window.SES = SES;

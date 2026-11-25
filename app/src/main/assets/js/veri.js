@@ -366,3 +366,6 @@ VERI.aracBul = function (ad) {
   for (var i = 0; i < VERI.araclar.length; i++) if (VERI.araclar[i].ad === ad) return VERI.araclar[i];
   return VERI.araclar[0];
 };
+
+/* const ile tanımlanan nesne window üzerinde görünmez; window.VERI denetimleri için bağla */
+if (typeof window !== 'undefined') window.VERI = VERI;

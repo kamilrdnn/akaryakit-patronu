@@ -2554,3 +2554,6 @@ const IZO = {
   },
   ortala: function () { this.kameraSifirla(); }
 };
+
+/* const ile tanımlanan nesne window üzerinde görünmez; window.IZO denetimleri için bağla */
+if (typeof window !== 'undefined') window.IZO = IZO;

@@ -54,3 +54,6 @@ const GUNCELLE = {
     catch (e) { UI.bildir('Hata', 'İndirme başlatılamadı.', 'kotu'); }
   }
 };
+
+/* const ile tanımlanan nesne window üzerinde görünmez; window.GUNCELLE denetimleri için bağla */
+if (typeof window !== 'undefined') window.GUNCELLE = GUNCELLE;

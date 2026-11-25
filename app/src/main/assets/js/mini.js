@@ -471,3 +471,6 @@ const MINI = {
     this.kapat();
   }
 };
+
+/* const ile tanımlanan nesne window üzerinde görünmez; window.MINI denetimleri için bağla */
+if (typeof window !== 'undefined') window.MINI = MINI;

@@ -2554,3 +2554,6 @@ const SIM = {
     return true;
   }
 };
+
+/* const ile tanımlanan nesne window üzerinde görünmez; window.SIM denetimleri için bağla */
+if (typeof window !== 'undefined') window.SIM = SIM;

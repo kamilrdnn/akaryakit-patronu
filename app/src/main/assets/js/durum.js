@@ -416,3 +416,6 @@ const D = {
     });
   }
 };
+
+/* const ile tanımlanan nesne window üzerinde görünmez; window.D denetimleri için bağla */
+if (typeof window !== 'undefined') window.D = D;
