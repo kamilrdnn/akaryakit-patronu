@@ -133,6 +133,14 @@ kontrol(cizDene('kış'), 'kış çizimi');
 fs.writeFileSync(path.join(__dirname, 'sahne-kis.png'), tuval.toBuffer('image/png'));
 D.s.sezonIdx = 1;
 
+/* zemin önbelleği: kapanırsa her karede ~1500 karo çizilir, oyun kasar */
+kontrol(!IZO._zDestekYok, 'zemin önbelleği devrede olmalı (hata: ' + (IZO._zHata || '-') + ')');
+kontrol(!!IZO._zOnbellek, 'zemin önbelleği üretilmeli');
+if (IZO._zOnbellek) {
+  kontrol(IZO._zOnbellek.en * IZO._zOnbellek.boy <= 7.5e6,
+    'önbellek boyutu sınırda kalmalı: ' + IZO._zOnbellek.en + 'x' + IZO._zOnbellek.boy);
+}
+
 console.log('SAHNE TEST 4 — dokunma isabeti');
 D.s.saat = 13;
 IZO.ciz();

@@ -41,7 +41,8 @@ const IZO = {
     var k = this.tuval.parentNode;
     var en = (k ? k.clientWidth : window.innerWidth) || 360;
     var boy = (k ? k.clientHeight : window.innerHeight) || 560;
-    this.G = Math.min(window.devicePixelRatio || 1, 2);
+    var hedefG = this.kaliteG || 1.6;
+    this.G = Math.min(window.devicePixelRatio || 1, hedefG);
     this.en = en; this.boy = boy;
     this.tuval.width = Math.round(en * this.G);
     this.tuval.height = Math.round(boy * this.G);
@@ -166,6 +167,103 @@ const IZO = {
   },
 
   /* nesne altına yumuşak gölge */
+  /* bir kez üretilen yumuşak gölge sprite'ı */
+  golgeSprite: function () {
+    if (this._golgeSprite) return this._golgeSprite;
+    var t;
+    try { t = document.createElement('canvas'); } catch (e) { t = null; }
+    if (!t || !t.getContext) return null;
+    var N = 64;
+    t.width = N; t.height = N;
+    var tc = t.getContext('2d');
+    if (!tc) return null;
+    var g = tc.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N / 2);
+    g.addColorStop(0, 'rgba(0,0,0,1)');
+    g.addColorStop(0.55, 'rgba(0,0,0,.42)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    tc.fillStyle = g;
+    tc.fillRect(0, 0, N, N);
+    this._golgeSprite = t;
+    return t;
+  },
+
+  /* sprite ile ucuz gölge */
+  golgeCiz: function (ekranX, ekranY, rx, ry, alfa) {
+    var sp = this.golgeSprite();
+    var c = this.cz;
+    if (!sp) {
+      c.fillStyle = 'rgba(0,0,0,' + (alfa * 0.5).toFixed(2) + ')';
+      c.beginPath(); c.ellipse(ekranX, ekranY, rx, ry, 0, 0, Math.PI * 2); c.fill();
+      return;
+    }
+    c.globalAlpha = alfa;
+    c.drawImage(sp, ekranX - rx, ekranY - ry, rx * 2, ry * 2);
+    c.globalAlpha = 1;
+  },
+
+  golge: function (gx, gy, w, d, koyu) {
+    var p = this.ekran(gx + w / 2, gy + d / 2, 0);
+    var rx = (w + d) * this.TW / 4 * this.kam.olcek * 0.72;
+    var ry = (w + d) * this.TH / 4 * this.kam.olcek * 0.72;
+    this.golgeCiz(p.x, p.y, Math.max(4, rx), Math.max(2, ry), (koyu || 0.3) * this.isik());
+  },
+
+  /** kutu: (gx,gy) köşesinden w×d karo, z yüksekliğinden h piksel yukarı */
+  kutu: function (gx, gy, z, w, d, h, renk, vurusa) {
+    var I = this.isik();
+    var ust = this.ton(renk, 1.0 * I), sag = this.ton(renk, 0.78 * I), sol = this.ton(renk, 0.58 * I);
+    var A = this.ekran(gx, gy, z + h), B = this.ekran(gx + w, gy, z + h),
+        C = this.ekran(gx + w, gy + d, z + h), Dd = this.ekran(gx, gy + d, z + h);
+    var Bk = this.ekran(gx + w, gy, z), Ck = this.ekran(gx + w, gy + d, z), Dk = this.ekran(gx, gy + d, z);
+    this.cokgen([Dd, C, Ck, Dk], sol);        // sol yüz
+    this.cokgen([B, C, Ck, Bk], sag);         // sağ yüz
+    this.cokgen([A, B, C, Dd], ust);          // üst yüz
+    /* üst kenarda ince aydınlık: kenarlar yumuşasın */
+    var cz = this.cz;
+    cz.strokeStyle = this.ton(renk, Math.min(1.25, 1.18 * I));
+    cz.lineWidth = Math.max(0.6, 0.9 * this.kam.olcek);
+    cz.beginPath();
+    cz.moveTo(Dd.x, Dd.y); cz.lineTo(A.x, A.y); cz.lineTo(B.x, B.y);
+    cz.stroke();
+    if (vurusa) this.vurus.push({ tip: vurusa.tip, i: vurusa.i, poly: [A, B, Bk, Ck, Dk, Dd] });
+    return { A: A, B: B, C: C, D: Dd };
+  },
+
+  /* nesne altına yumuşak gölge */
+  /* bir kez üretilen yumuşak gölge sprite'ı */
+  golgeSprite: function () {
+    if (this._golgeSprite) return this._golgeSprite;
+    var t;
+    try { t = document.createElement('canvas'); } catch (e) { t = null; }
+    if (!t || !t.getContext) return null;
+    var N = 64;
+    t.width = N; t.height = N;
+    var tc = t.getContext('2d');
+    if (!tc) return null;
+    var g = tc.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N / 2);
+    g.addColorStop(0, 'rgba(0,0,0,1)');
+    g.addColorStop(0.55, 'rgba(0,0,0,.42)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    tc.fillStyle = g;
+    tc.fillRect(0, 0, N, N);
+    this._golgeSprite = t;
+    return t;
+  },
+
+  /* sprite ile ucuz gölge */
+  golgeCiz: function (ekranX, ekranY, rx, ry, alfa) {
+    var sp = this.golgeSprite();
+    var c = this.cz;
+    if (!sp) {
+      c.fillStyle = 'rgba(0,0,0,' + (alfa * 0.5).toFixed(2) + ')';
+      c.beginPath(); c.ellipse(ekranX, ekranY, rx, ry, 0, 0, Math.PI * 2); c.fill();
+      return;
+    }
+    c.globalAlpha = alfa;
+    c.drawImage(sp, ekranX - rx, ekranY - ry, rx * 2, ry * 2);
+    c.globalAlpha = 1;
+  },
+
   golge: function (gx, gy, w, d, koyu) {
     var c = this.cz;
     var p = this.ekran(gx + w / 2, gy + d / 2, 0);
@@ -237,6 +335,25 @@ const IZO = {
   /* =========================================================
      ANA DÖNGÜ
      ========================================================= */
+  /* kare süresine göre çözünürlüğü ayarlar: kasmayı keser */
+  kaliteAyarla: function (kareMs) {
+    this._ortMs = this._ortMs === undefined ? kareMs : this._ortMs * 0.9 + kareMs * 0.1;
+    if (this._kaliteSayac === undefined) this._kaliteSayac = 0;
+    this._kaliteSayac++;
+    if (this._kaliteSayac < 90) return;            /* ~1,5 sn'de bir karar */
+    this._kaliteSayac = 0;
+    var simdi = this.kaliteG || 1.6;
+    var yeni = simdi;
+    if (this._ortMs > 26 && simdi > 1.0) yeni = Math.max(1.0, simdi - 0.3);
+    else if (this._ortMs < 13 && simdi < 1.6) yeni = Math.min(1.6, simdi + 0.2);
+    this.dusukKalite = this._ortMs > 24;
+    if (yeni !== simdi) {
+      this.kaliteG = yeni;
+      this.boyutla();
+      this._zAnahtar = '';
+    }
+  },
+
   dongu: function () {
     var self = this;
     function kare(t) {
@@ -354,7 +471,7 @@ const IZO = {
       /* sokağın iki yakası */
       [-1, 1].forEach(function (taraf) {
         var gyBina = taraf < 0 ? yolY - 1.9 : yolY + 1.1;
-        for (var bx = -9; bx < sb.w + 9; bx += 2.1 + rnd(0.5)) {
+        for (var bx = -8; bx < sb.w + 8; bx += 2.7 + rnd(0.6)) {
           if (rnd(1) < 0.18) continue;                       /* arada boşluk */
           var tip = binaTipleri[Math.floor(rnd(binaTipleri.length))];
           var bw = tip === 'apartman' ? 1.15 + rnd(0.25) : (tip === 'ofis' ? 1.2 + rnd(0.2) : 0.9 + rnd(0.25));
@@ -403,7 +520,7 @@ const IZO = {
     this.susler.push({ tip: 'durak', gx: sb.w + 1.9, gy: sb.h + 3.3, w: 1.2, h: 0.6 });
 
     /* --- ağaç, çalı, taş serpiştirme --- */
-    var dogaSayi = 34;
+    var dogaSayi = 24;
     for (var i = 0; i < dogaSayi; i++) {
       var zar = rnd(1);
       var dtip = zar < 0.52 ? 'agac' : (zar < 0.8 ? 'cali' : 'tas');
@@ -431,7 +548,8 @@ const IZO = {
 
     /* gece kapalıysa yaya olmasın */
     var kapali = SIM.geceKapali && SIM.geceKapali(sb);
-    var hedefSayi = kapali ? 0 : Math.min(4, 1 + Math.floor(sb.kuyruk.length / 2) + (hedefler.length > 2 ? 1 : 0));
+    var hedefSayi = kapali ? 0 : Math.min(this.dusukKalite ? 2 : 4,
+      1 + Math.floor(sb.kuyruk.length / 2) + (hedefler.length > 2 ? 1 : 0));
     var renkler = ['#c75f5f', '#4f7fc0', '#d1a23c', '#5aa06c', '#8e6fb0', '#c98a4b'];
 
     var serbest = 0;
@@ -536,6 +654,23 @@ const IZO = {
     return yerler;
   },
 
+  /* bekleme şeridindeki sıra yeri */
+  beklemeYeri: function (sb, sira) {
+    var kp = this.kapilar(sb);
+    var bas = kp.giris + 0.75;
+    var adim = 1.05;
+    var gx = bas + sira * adim;
+    var gy = kp.bekY;
+    /* şerit taşarsa ikinci sıraya geç */
+    if (gx > sb.w - 0.4) {
+      var tasma = Math.floor((gx - (sb.w - 0.4)) / adim) + 1;
+      gx = bas + ((sira - tasma * 2) * adim);
+      gy = kp.bekY + 0.42;
+      if (gx < 0.3) gx = 0.3;
+    }
+    return { gx: gx, gy: gy };
+  },
+
   /* giriş/çıkış kapılarının orta noktaları */
   kapilar: function (sb) {
     var sv = (SIM.girisSeviye ? SIM.girisSeviye(sb) : 1);
@@ -546,7 +681,8 @@ const IZO = {
       cikis: cikisX + kapiEn / 2,
       yolY: sb.h + 1.3,           /* istasyon tarafı şerit */
       agizY: sb.h + 0.95,         /* kapı ağzı */
-      seritY: sb.h + 0.35         /* apron manevra şeridi */
+      seritY: sb.h + 0.35,        /* apron manevra şeridi */
+      bekY: sb.h + 0.68           /* bekleme şeridi (apronun kenarı) */
     };
   },
 
@@ -555,15 +691,31 @@ const IZO = {
     var mevcut = {};
     for (var i = 0; i < this.arabalar.length; i++) if (this.arabalar[i].mid) mevcut[this.arabalar[i].mid] = this.arabalar[i];
 
+    var bekSira = 0;
     for (var k = 0; k < sb.kuyruk.length; k++) {
       var m = sb.kuyruk[k];
       var a = mevcut[m.id];
       if (!a) {
-        a = this.arabaYap(sb, m, k);
+        a = this.arabaYap(sb, m, bekSira);
         this.arabalar.push(a);
         mevcut[m.id] = a;
       }
       a.gorunen = true;
+      /* pompası olmayanlar bekleme şeridinde sıra ilerletir */
+      if (m.pompa === null && a.durum !== 'gidiyor') {
+        var hedefBek = this.beklemeYeri(sb, bekSira);
+        if (!a.bekYeri || a.bekYeri.gx !== hedefBek.gx || a.bekYeri.gy !== hedefBek.gy) {
+          a.bekYeri = hedefBek;
+          var sonNokta = a.yol && a.yol.length ? a.yol[a.yol.length - 1] : null;
+          if (sonNokta && Math.abs(sonNokta.gy - this.kapilar(sb).yolY) < 0.3) {
+            /* henüz yoldaysa tüm rotayı koru, son durağı güncelle */
+            a.yol[a.yol.length - 1] = hedefBek;
+          } else if (a.gy < sb.h + 0.9) {
+            a.yol = [hedefBek];                 /* içerideyse doğruca sıraya ilerle */
+          }
+        }
+        bekSira++;
+      }
       /* pompaya atandıysa hedefi güncelle */
       if (m.pompa !== null && a.hedefPompa !== m.pompa) {
         a.hedefPompa = m.pompa;
@@ -641,10 +793,13 @@ const IZO = {
         { gx: px + 0.52, gy: py + 0.82 }
       ];
     } else {
-      /* sırada bekleyenler kapı önünde kuyruk olur */
+      /* sırada bekleyenler istasyon içindeki bekleme şeridine girer */
+      var bek = this.beklemeYeri(sb, sira);
       yol = [
         { gx: kp.giris, gy: kp.yolY },
-        { gx: kp.giris - 0.3 - sira * 1.25, gy: kp.yolY - 0.18 }
+        { gx: kp.giris, gy: kp.agizY },
+        { gx: kp.giris, gy: kp.bekY },
+        { gx: bek.gx, gy: bek.gy }
       ];
     }
     return {
@@ -830,8 +985,12 @@ const IZO = {
       var x = i % sb.w, y = Math.floor(i / sb.w);
       liste.push({ d: x + y, tur: 'yapi', i: i, gx: x, gy: y });
     }
+    /* görüş penceresi: dışarıdaki süsler hiç çizilmesin (kasmayı önler) */
+    var pay = 2.5;
     for (var s2 = 0; s2 < (this.susler || []).length; s2++) {
       var su = this.susler[s2];
+      if (su.gx + (su.w || 1) < minGX - pay || su.gx > maxGX + pay) continue;
+      if (su.gy + (su.h || 1) < minGY - pay || su.gy > maxGY + pay) continue;
       liste.push({ d: su.gx + su.gy, tur: 'sus', s: su, gx: su.gx, gy: su.gy });
     }
     for (var pr = 0; pr < (this.personeller || []).length; pr++) {
@@ -844,6 +1003,7 @@ const IZO = {
     }
     for (var a2 = 0; a2 < this.arabalar.length; a2++) {
       var ar = this.arabalar[a2];
+      if (ar.gx < minGX - pay || ar.gx > maxGX + pay || ar.gy < minGY - pay || ar.gy > maxGY + pay) continue;
       liste.push({ d: ar.gx + ar.gy, tur: 'araba', a: ar, gx: ar.gx, gy: ar.gy });
     }
     liste.sort(function (p, q) { return p.d - q.d; });
@@ -1026,40 +1186,56 @@ const IZO = {
     if (this._zOnbellek && this._zAnahtar === anahtar) return this._zOnbellek;
     if (this._zDestekYok) return null;
 
-    var pay = 22;                                   /* çevre payı (karo) */
-    var minGX = -pay, maxGX = sb.w + pay, minGY = -pay, maxGY = sb.h + pay;
-    /* dünya sınırları (ölçek 1) */
-    var k1 = this.izo(minGX, minGY), k2 = this.izo(maxGX + 1, minGY),
-        k3 = this.izo(minGX, maxGY + 1), k4 = this.izo(maxGX + 1, maxGY + 1);
-    var x0 = Math.min(k1.x, k2.x, k3.x, k4.x) - 4, x1 = Math.max(k1.x, k2.x, k3.x, k4.x) + 4;
-    var y0 = Math.min(k1.y, k2.y, k3.y, k4.y) - 4, y1 = Math.max(k1.y, k2.y, k3.y, k4.y) + 4;
-    var en = Math.ceil(x1 - x0), boy = Math.ceil(y1 - y0);
-    if (en <= 0 || boy <= 0 || en * boy > 9e6) { this._zDestekYok = true; return null; }
+    /* önbellek 0.75 ölçekte üretilir: bellek dörtte bir, görüntü farkı yok denecek kadar az */
+    var kalite = 0.75;
+    var paylar = [16, 12, 9, 6, 4];
+    var tv, tc, secilen = null;
+    for (var pi = 0; pi < paylar.length; pi++) {
+      var pay = paylar[pi];
+      var minGX = -pay, maxGX = sb.w + pay, minGY = -pay, maxGY = sb.h + pay;
+      var k1 = this.izo(minGX, minGY), k2 = this.izo(maxGX + 1, minGY),
+          k3 = this.izo(minGX, maxGY + 1), k4 = this.izo(maxGX + 1, maxGY + 1);
+      var x0 = (Math.min(k1.x, k2.x, k3.x, k4.x) - 4) * kalite;
+      var x1 = (Math.max(k1.x, k2.x, k3.x, k4.x) + 4) * kalite;
+      var y0 = (Math.min(k1.y, k2.y, k3.y, k4.y) - 4) * kalite;
+      var y1 = (Math.max(k1.y, k2.y, k3.y, k4.y) + 4) * kalite;
+      var en = Math.ceil(x1 - x0), boy = Math.ceil(y1 - y0);
+      if (en > 0 && boy > 0 && en * boy <= 7.5e6) {
+        secilen = { pay: pay, x0: x0, y0: y0, en: en, boy: boy,
+                    minGX: minGX, maxGX: maxGX, minGY: minGY, maxGY: maxGY };
+        break;
+      }
+    }
+    if (!secilen) { this._zDestekYok = true; return null; }
 
-    var tv;
     try { tv = document.createElement('canvas'); } catch (e) { tv = null; }
     if (!tv || !tv.getContext) { this._zDestekYok = true; return null; }
-    tv.width = en; tv.height = boy;
-    var tc = tv.getContext('2d');
+    tv.width = secilen.en; tv.height = secilen.boy;
+    tc = tv.getContext('2d');
     if (!tc) { this._zDestekYok = true; return null; }
 
-    /* kamerayı geçici olarak önbellek uzayına al */
     var eskiCz = this.cz, eskiKam = this.kam;
     this.cz = tc;
-    this.kam = { x: -x0, y: -y0, olcek: 1, hx: -x0, hy: -y0, holcek: 1, vx: 0, vy: 0, kuruldu: true };
+    this.kam = { x: -secilen.x0, y: -secilen.y0, olcek: kalite,
+                 hx: -secilen.x0, hy: -secilen.y0, holcek: kalite, vx: 0, vy: 0, kuruldu: true };
     try {
       var cimenPal = this.cimenPaleti();
       var cimenRenk = [];
       for (var cp = 0; cp < cimenPal.length; cp++) cimenRenk.push(this.ton(cimenPal[cp], I));
-      this.zeminCiz(sb, minGX, maxGX, minGY, maxGY, cimenRenk,
+      this.zeminCiz(sb, secilen.minGX, secilen.maxGX, secilen.minGY, secilen.maxGY, cimenRenk,
         this.ton('#3b4149', I), this.ton('#9aa3ad', I), this.ton('#8a7b5e', I), I);
       this.yolCizgileri(sb);
     } catch (e) {
-      this.cz = eskiCz; this.kam = eskiKam; this._zDestekYok = true; return null;
+      this.cz = eskiCz; this.kam = eskiKam; this._zDestekYok = true;
+      this._zHata = (e && e.message) ? e.message : String(e);
+      return null;
     }
     this.cz = eskiCz; this.kam = eskiKam;
 
-    this._zOnbellek = { tuval: tv, x0: x0, y0: y0, en: en, boy: boy };
+    this._zOnbellek = {
+      tuval: tv, x0: secilen.x0, y0: secilen.y0,
+      en: secilen.en, boy: secilen.boy, kalite: kalite
+    };
     this._zAnahtar = anahtar;
     return this._zOnbellek;
   },
@@ -1068,15 +1244,22 @@ const IZO = {
     var o = this.zeminHazirla(sb, I);
     if (!o) return false;
     var c = this.cz, k = this.kam;
-    c.drawImage(o.tuval,
-      o.x0 * k.olcek + k.x, o.y0 * k.olcek + k.y,
-      o.en * k.olcek, o.boy * k.olcek);
+    /* önbellek kendi ölçeğinde: ekran ölçeğine oranla yerleştir */
+    var oran = k.olcek / o.kalite;
+    var hx = o.x0 * oran + k.x, hy = o.y0 * oran + k.y;
+    var hw = o.en * oran, hh = o.boy * oran;
+    var kx1 = Math.max(0, -hx), ky1 = Math.max(0, -hy);
+    var kx2 = Math.min(hw, this.en - hx), ky2 = Math.min(hh, this.boy - hy);
+    if (kx2 <= kx1 || ky2 <= ky1) return true;
+    var sx = kx1 / oran, sy = ky1 / oran;
+    var sw = (kx2 - kx1) / oran, sh = (ky2 - ky1) / oran;
+    c.drawImage(o.tuval, sx, sy, sw, sh, hx + kx1, hy + ky1, kx2 - kx1, ky2 - ky1);
     return true;
   },
 
   /* çimende yaprak / çiçek / taşçık benekleri — sabit konumlu */
   cimenBenek: function (gx, gy, I) {
-    if (this.kam.olcek < 0.5) return;
+    if (this.kam.olcek < 0.5 || this.dusukKalite) return;
     var sezon = VERI.sezonSira[D.s.sezonIdx];
     var adet = this.karoRast(gx, gy, 11) < 0.52 ? 0 : (this.karoRast(gx, gy, 12) < 0.6 ? 1 : 2);
     if (!adet) return;
@@ -1726,15 +1909,8 @@ const IZO = {
 
   /* yumuşak temas gölgesi */
   yumusakGolge: function (gx, gy, r) {
-    var c = this.cz, p = this.ekran(gx, gy, 0);
-    var g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(2, r * 1.6));
-    g.addColorStop(0, 'rgba(20,32,18,.30)');
-    g.addColorStop(0.55, 'rgba(20,32,18,.14)');
-    g.addColorStop(1, 'rgba(20,32,18,0)');
-    c.fillStyle = g;
-    c.beginPath();
-    c.ellipse(p.x, p.y + 1, Math.max(2, r * 1.6), Math.max(1.2, r * 0.8), 0, 0, Math.PI * 2);
-    c.fill();
+    var p = this.ekran(gx, gy, 0);
+    this.golgeCiz(p.x, p.y + 1, Math.max(3, r * 1.5), Math.max(1.5, r * 0.75), 0.3);
   },
 
   agacCiz: function (s, I, sezon) {
@@ -1808,13 +1984,13 @@ const IZO = {
     } else {
       this.kutu(s.gx - 0.05, s.gy - 0.05, h, s.w + 0.1, s.h + 0.1, 3.5, '#6f7a86');
       /* teras korkuluğu */
-      this.kutu(s.gx - 0.05, s.gy - 0.05, h + 3.5, s.w + 0.1, 0.06, 2.5, '#8d98a5');
-      this.kutu(s.gx - 0.05, s.gy + s.h - 0.01, h + 3.5, s.w + 0.1, 0.06, 2.5, '#8d98a5');
+      if (!this.dusukKalite) this.kutu(s.gx - 0.05, s.gy + s.h - 0.01, h + 3.5, s.w + 0.1, 0.06, 2.5, '#8d98a5');
     }
     /* pencereler: cepheye düz boyanır (kutu değil) */
     var c = this.cz;
     var gece = this.gece();
     var kat = s.kat || 1;
+    if (this.kam.olcek < 0.62 || this.dusukKalite) return;   /* uzak/düşük kalite: ayrıntı yok */
     var pencereRenk = function (yanik) { return gece ? (yanik ? 'rgba(255,218,140,.95)' : 'rgba(38,48,64,.9)') : 'rgba(126,166,200,.85)'; };
     for (var kk = 0; kk < kat; kk++) {
       var z1 = kk * katH + 7.5, z2 = kk * katH + 3;
@@ -1828,7 +2004,7 @@ const IZO = {
         this.cokgen([a1, b1, a2, b2], pencereRenk(yanik));
         /* yan cephe */
         var gy1 = s.gy + s.h * (0.18 + w * 0.3), gy2 = gy1 + s.h * 0.16;
-        if (gy2 < s.gy + s.h) {
+        if (gy2 < s.gy + s.h && this.kam.olcek > 0.85) {
           var c1 = this.ekran(s.gx + s.w, gy1, z1), d1 = this.ekran(s.gx + s.w, gy2, z1);
           var c2 = this.ekran(s.gx + s.w, gy2, z2), d2 = this.ekran(s.gx + s.w, gy1, z2);
           this.cokgen([c1, d1, c2, d2], pencereRenk(((s.tohum + kk * 3 + w * 5) % 10) < 5));
@@ -1924,19 +2100,9 @@ const IZO = {
     /* gölge */
     var c = this.cz;
     var gp = this.ekran(a.gx, a.gy, 0);
-    var grx = boyX * this.TW / 2 * this.kam.olcek * 0.62;
-    var gry = boyY * this.TH / 2 * this.kam.olcek * 1.45;
-    var gg = c.createRadialGradient(gp.x, gp.y + 2, 0, gp.x, gp.y + 2, Math.max(3, grx));
-    gg.addColorStop(0, 'rgba(0,0,0,.26)');
-    gg.addColorStop(0.6, 'rgba(0,0,0,.13)');
-    gg.addColorStop(1, 'rgba(0,0,0,0)');
-    c.save();
-    c.translate(gp.x, gp.y + 2);
-    c.scale(1, gry / Math.max(grx, 1));
-    c.translate(-gp.x, -(gp.y + 2));
-    c.fillStyle = gg;
-    c.beginPath(); c.arc(gp.x, gp.y + 2, Math.max(3, grx), 0, Math.PI * 2); c.fill();
-    c.restore();
+    this.golgeCiz(gp.x, gp.y + 2,
+      Math.max(4, boyX * this.TW / 2 * this.kam.olcek * 0.7),
+      Math.max(2, boyY * this.TH / 2 * this.kam.olcek * 1.5), 0.28);
     /* tekerler */
     this.kutu(gx + 0.08, gy - 0.02, 0, 0.14, boyY + 0.04, 5, '#23282f');
     this.kutu(gx + boyX - 0.22, gy - 0.02, 0, 0.14, boyY + 0.04, 5, '#23282f');
