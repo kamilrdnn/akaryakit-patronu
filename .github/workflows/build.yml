@@ -102,11 +102,19 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           NOT=$(git log -1 --pretty=%s | tr -d '"' | cut -c1-200)
-          gh release create "v${{ steps.surum.outputs.ad }}" \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Akaryakıt Patronu v${{ steps.surum.outputs.ad }}" \
-            --notes "$NOT" \
-            "cikti/${{ steps.apk.outputs.ad }}"
+          # GitHub API ara sıra 503 veriyor: birkaç kez dene
+          for i in 1 2 3 4 5; do
+            if gh release create "v${{ steps.surum.outputs.ad }}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Akaryakıt Patronu v${{ steps.surum.outputs.ad }}" \
+              --notes "$NOT" \
+              "cikti/${{ steps.apk.outputs.ad }}"; then
+              break
+            fi
+            echo "release olusturulamadi, yeniden deneniyor ($i)"
+            sleep $((i * 10))
+            if [ "$i" = "5" ]; then exit 1; fi
+          done
           if [ -n "${{ steps.apk.outputs.aab }}" ]; then
             gh release upload "v${{ steps.surum.outputs.ad }}" "cikti/${{ steps.apk.outputs.aab }}" --repo "$GITHUB_REPOSITORY" --clobber || true
           fi
