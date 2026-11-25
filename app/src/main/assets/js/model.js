@@ -354,20 +354,32 @@
      SPRITE ÖNBELLEĞİ
      Durağan modeller bir kez ayrıntılı çizilir, sonra tek kopyayla basılır.
      ========================================================= */
-  Z.spriteAl = function (anahtar, sinir, gx0, gy0, cizFn) {
+  /* istegeBagli: bütçe bittiyse üretme, eldekini (ya da null) döndür.
+     Işık değişince hepsi birden silinmez: eskisi kullanılır, kare başına birkaç tanesi yenilenir. */
+  Z.spriteAl = function (anahtar, sinir, gx0, gy0, cizFn, istegeBagli) {
     var kova = this.isikKova();
-    if (this._sprKova !== kova) { this._spr = {}; this._sprKova = kova; this._sprSay = 0; }
+    if (!this._spr) { this._spr = {}; this._sprSay = 0; }
+    this._sprKova = kova;
     var sp = this._spr[anahtar];
-    if (sp) return sp;
-    if (this._sprYok) return null;
+    if (sp && (sp.kova === kova || sp.hata)) return sp;
+    if (this._sprYok) return sp || null;
+    if (this._sprButce === undefined) this._sprButce = 4;
+    if (this._sprButce <= 0 && (sp || istegeBagli)) return sp || null;
+    this._sprButce--;
     var S = sinir.S || 2;
     var en = Math.ceil((sinir.sol + sinir.sag) * S), boy = Math.ceil((sinir.ust + sinir.alt) * S);
     var tv, tc;
-    try { tv = document.createElement('canvas'); } catch (e) { tv = null; }
-    if (!tv || !tv.getContext) { this._sprYok = true; return null; }
-    tv.width = en; tv.height = boy;
-    tc = tv.getContext('2d');
+    if (sp && sp.tuval && sp.tuval.width === en && sp.tuval.height === boy) {
+      tv = sp.tuval; tc = tv.getContext('2d');
+      tc.setTransform(1, 0, 0, 1, 0, 0); tc.clearRect(0, 0, en, boy);
+    } else {
+      try { tv = document.createElement('canvas'); } catch (e) { tv = null; }
+      if (!tv || !tv.getContext) { this._sprYok = true; return null; }
+      tv.width = en; tv.height = boy;
+      tc = tv.getContext('2d');
+    }
     if (!tc) { this._sprYok = true; return null; }
+    var yeniAnahtar = !sp;
 
     var iz = this.izo(gx0, gy0);
     var eskiCz = this.cz, eskiKam = this.kam, eskiZ = this._zengin, eskiV = this._vurusKapali;
@@ -379,10 +391,13 @@
     try { cizFn.call(this); } catch (e) { hata = true; this._sprHata = (e && e.message) || String(e); }
     this.cz = eskiCz; this.kam = eskiKam; this._zengin = eskiZ; this._vurusKapali = eskiV;
 
-    sp = hata ? { hata: true } : { tuval: tv, sol: sinir.sol, ust: sinir.ust, en: en / S, boy: boy / S };
+    sp = hata ? { hata: true } : { tuval: tv, sol: sinir.sol, ust: sinir.ust, en: en / S, boy: boy / S, kova: kova };
     this._spr[anahtar] = sp;
-    this._sprSay = (this._sprSay || 0) + 1;
-    if (this._sprSay > 600) { this._spr = {}; this._sprSay = 0; }
+    if (yeniAnahtar && ++this._sprSay > 900) {
+      /* en eski 250 kaydı bırak (anahtarlar eklenme sırasıyla gezilir) */
+      var sil = 250;
+      for (var esk in this._spr) { if (sil-- <= 0) break; delete this._spr[esk]; this._sprSay--; }
+    }
     return sp;
   };
 
@@ -1387,26 +1402,26 @@
     var self = this, o = this.kam.olcek;
     var cesit = this.aracCesit(a);
     var uz = ARAC_UZ[cesit] || 0.76;
-    var N = 40;
+    var N = 24;
     var kova = Math.round(((a.aci || 0) / (Math.PI * 2)) * N);
     kova = ((kova % N) + N) % N;
-    var aci = kova / N * Math.PI * 2;
     var gp = this.ekran(a.gx, a.gy, 0);
     this.golgeCiz(gp.x, gp.y + 1.5 * o, Math.max(4, (uz * 0.62 + 0.18) * this.TW / 2 * o), Math.max(2, (uz * 0.62 + 0.18) * this.TH / 2 * o), 0.32);
-    var yari = uz / 2 + 0.3;
-    var sinir = { sol: yari * this.TW / 2 * 1.5 + 8, sag: yari * this.TW / 2 * 1.5 + 8, ust: yari * this.TH / 2 * 1.5 + 34, alt: yari * this.TH / 2 * 1.5 + 10, S: 1.9 };
-    var anh = 'arac|' + cesit + '|' + a.renk + '|' + kova;
-    if (this._spr && !this._spr[anh]) {
-      /* araç önbelleği sınırlı kalsın (bellek) */
-      if (this._aracKova !== this._sprKova) { this._aracKova = this._sprKova; this._aracSpr = 0; }
-      if (++this._aracSpr > 150) {
-        for (var k in this._spr) if (k.indexOf('arac|') === 0) delete this._spr[k];
-        this._aracSpr = 1;
-      }
+    var yari = uz / 2 + 0.12;
+    var sinir = { sol: yari * this.TW / 2 * 1.42 + 6, sag: yari * this.TW / 2 * 1.42 + 6, ust: yari * this.TH / 2 * 1.42 + 26, alt: yari * this.TH / 2 * 1.42 + 8, S: 1.7 };
+    var on = 'arac|' + cesit + '|' + a.renk + '|';
+    var uret = function (kv, serbest) {
+      var ac = kv / N * Math.PI * 2;
+      return self.spriteAl(on + kv, sinir, 0, 0, function () { self.aracModel(cesit, a.renk, 0, 0, ac); }, serbest);
+    };
+    var sp = uret(kova, true);
+    if (!sp) {
+      /* bu karede üretim hakkı bitti: en yakın hazır açıyı kullan */
+      for (var f = 1; f <= 3 && !sp; f++) sp = this._spr[on + ((kova + f) % N)] || this._spr[on + ((kova - f + N) % N)];
+      if (!sp) sp = uret(kova, false);
     }
-    var sp = this.spriteAl(anh, sinir, 0, 0, function () { self.aracModel(cesit, a.renk, 0, 0, aci); });
     if (sp && !sp.hata) this.sprBas(sp, a.gx, a.gy);
-    else { try { this.aracModel(cesit, a.renk, a.gx, a.gy, aci); } catch (e) { } }
+    else { try { this.aracModel(cesit, a.renk, a.gx, a.gy, kova / N * Math.PI * 2); } catch (e) { } }
   };
 
   /* =========================================================
@@ -2167,5 +2182,38 @@
       if (!icte && gx >= -1 && gx <= sb.w && gy >= -1 && gy <= sb.h) { UI.disHucreTik(gx, gy); return; }
     }
     eskiDokun.call(this, ex, ey);
+  };
+})();
+
+
+/* =========================================================
+   BÖLÜM 8 — akıcılık: kare başına üretim bütçesi, insanlar da hazır resimden
+   ========================================================= */
+(function () {
+  var Z = IZO;
+  var eskiD = Z.derinlikDuzelt;
+  Z.derinlikDuzelt = function (sb, liste) {
+    this._sprButce = this.dusukKalite ? 2 : 4;          /* her karede en çok bu kadar yeni resim */
+    if (eskiD) eskiD.call(this, sb, liste);
+  };
+
+  var hamInsan = Z.insanModel;
+  Z.insanModel = function (p, sapka) {
+    var self = this;
+    if (p.tohum === undefined) p.tohum = Math.floor(Math.random() * 1000);
+    var poz;
+    if (p.calisiyor) poz = 'c' + (Math.floor(Date.now() / 300) % 2);
+    else if (p.yuruyor) poz = 'y' + (Math.floor((((p.faz || 0) % 6.2832) + 6.2832) % 6.2832 / 6.2832 * 8) % 8);
+    else poz = 'd';
+    var yon = p.yon === undefined ? 1 : p.yon;
+    var anh = 'insan|' + p.renk + '|' + (p.pantolon || '') + '|' + (p.tip || '') + '|' + (sapka || '') + '|' + (p.tohum % 12) + '|' + yon + '|' + (p.arkasi ? 1 : 0) + '|' + poz + '|' + (p.poset || '') + '|' + (p.elYon || '');
+    var sp = this.spriteAl(anh, { sol: 20, sag: 20, ust: 36, alt: 8, S: 2 }, 0, 0, function () {
+      var k = { gx: 0, gy: 0, renk: p.renk, pantolon: p.pantolon, tip: p.tip, tohum: p.tohum % 12, yon: yon, arkasi: p.arkasi,
+        yuruyor: poz.charAt(0) === 'y', faz: poz.charAt(0) === 'y' ? (+poz.slice(1) + 0.5) / 8 * 6.2832 : 0,
+        calisiyor: p.calisiyor, poset: p.poset, elYon: p.elYon };
+      hamInsan.call(self, k, sapka);
+    }, true);
+    if (sp && !sp.hata) this.sprBas(sp, p.gx, p.gy);
+    else hamInsan.call(this, p, sapka);
   };
 })();
