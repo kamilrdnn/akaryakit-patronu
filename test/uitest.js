@@ -593,6 +593,21 @@ console.log('UI TEST 9b — mini oyunlar, filo, taşıma, jeneratör');
   kontrol(D.s.rehber.kapali === true, 'rehber kapatılabilmeli');
   D.s.rehber.kapali = false;
 
+  /* --- marka / tabela --- */
+  calistir('marka paneli', () => { UI.altSekmeGec('daha', 'marka'); UI.sekmeGec('daha'); });
+  kontrol(w.document.getElementById('govde').innerHTML.indexOf('Marka adı') > 0, 'marka paneli çizilmeli');
+  calistir('marka adı', () => UI.markaAdDegis('KAMİL PETROL'));
+  kontrol(D.s.tabela.ad === 'KAMİL PETROL', 'marka adı kaydedilmeli');
+  calistir('marka rengi', () => UI.markaAyar('renk', 'mavi'));
+  kontrol(D.s.tabela.renk === 'mavi', 'renk değişmeli');
+  calistir('marka şekli', () => UI.markaAyar('sekil', 'kule'));
+  calistir('logo', () => UI.markaAyar('logo', '🦅'));
+  calistir('kanopi', () => UI.markaAyar('kanopi', true));
+  kontrol(IZO.tabelaStili().ad === 'KAMİL PETROL', 'izo tabela stilini okumalı');
+  calistir('uzun ad kırpma', () => UI.markaAdDegis('ÇOKÇOKÇOKUZUNBIRMARKAADI'));
+  kontrol(D.s.tabela.ad.length === 14, 'ad 14 karaktere kırpılmalı');
+  calistir('ad geri', () => UI.markaAdDegis('KAMİL PETROL'));
+
   /* --- pazarlama programları --- */
   sbm = D.sube();
   D.s.seviye = 20; D.s.para = 90000000;

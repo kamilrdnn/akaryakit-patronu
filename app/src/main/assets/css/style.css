@@ -241,6 +241,53 @@ input[type=range]{width:100%}
   font-family:ui-monospace,Menlo,monospace;resize:none;word-break:break-all
 }
 
+/* ---------- marka / tabela tasarımı ---------- */
+.tabelaOnizle{
+  position:relative;display:flex;flex-direction:column;align-items:center;
+  padding:14px 0 0;min-height:150px;
+  background:linear-gradient(180deg,#223a5e 0%,#2e5a3a 62%,#2a5135 100%);
+  border-radius:14px;overflow:hidden;margin-top:8px
+}
+.tabelaOnizle .tbDirek{
+  position:absolute;bottom:0;width:9px;background:linear-gradient(90deg,#78838f,#aab4bf,#78838f);
+  border-radius:3px 3px 0 0
+}
+.tabelaOnizle.klasik .tbDirek{height:52px}
+.tabelaOnizle.genis .tbDirek{height:34px}
+.tabelaOnizle.kule .tbDirek{height:74px}
+.tabelaOnizle.tente .tbDirek{height:22px}
+.tbPano{
+  position:relative;z-index:2;border-radius:10px;padding:10px 14px;text-align:center;
+  box-shadow:0 8px 20px rgba(0,0,0,.4),inset 0 0 0 2px rgba(255,255,255,.22);
+  min-width:132px;max-width:86%
+}
+.tabelaOnizle.genis .tbPano{min-width:220px;padding:12px 18px}
+.tabelaOnizle.kule .tbPano{min-width:104px;padding:12px 10px}
+.tabelaOnizle.tente .tbPano{min-width:200px;padding:8px 16px;border-radius:7px}
+.tbAd{font-size:17px;font-weight:900;letter-spacing:.6px;line-height:1.15;word-break:break-word}
+.tabelaOnizle.genis .tbAd{font-size:21px}
+.tabelaOnizle.kule .tbAd{font-size:15px}
+.tbFiyat{display:flex;flex-direction:column;gap:2px;margin-top:7px;font-size:12px;font-variant-numeric:tabular-nums}
+.tabelaOnizle.genis .tbFiyat{flex-direction:row;justify-content:center;gap:12px}
+.tbFiyat b{font-weight:800;margin-right:3px}
+
+.metinGiris{
+  width:100%;margin-top:9px;background:#0d1522;border:1px solid var(--cizgi);border-radius:12px;
+  padding:12px;color:var(--yazi);font-size:16px;font-weight:800;letter-spacing:.5px;text-transform:uppercase
+}
+.logoIzgara{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:9px}
+.logoDugme{
+  background:var(--kart);border:1px solid var(--cizgi);border-radius:12px;padding:9px 0;font-size:21px
+}
+.logoDugme.aktif{border-color:var(--ana);background:rgba(226,104,58,.18)}
+.renkIzgara{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:9px}
+.renkDugme{
+  border:2px solid transparent;border-radius:12px;padding:9px 2px 6px;font-size:15px;font-weight:900;
+  display:flex;flex-direction:column;align-items:center;gap:2px
+}
+.renkDugme span{font-size:9px;font-weight:700;opacity:.8}
+.renkDugme.aktif{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+
 /* ---------- mini oyunlar ---------- */
 #mini{
   position:fixed;inset:0;z-index:66;display:none;align-items:center;justify-content:center;

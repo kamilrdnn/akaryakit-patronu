@@ -64,6 +64,7 @@ const D = {
       sozlesmeler: [],
       sozlesmeTeklif: [],
       rehber: { adim: 0, kapali: false },
+      tabela: { ad: 'PETROL', renk: 'turuncu', sekil: 'klasik', logo: '⛽', fiyat: true, kanopi: false },
       filolar: [],
       filoTeklif: [],
       gorevler: [],
@@ -329,6 +330,7 @@ const D = {
     if (!s.filolar) s.filolar = [];
     if (!s.filoTeklif) s.filoTeklif = [];
     if (!s.rehber) s.rehber = { adim: 99, kapali: true };
+    if (!s.tabela) s.tabela = { ad: 'PETROL', renk: 'turuncu', sekil: 'klasik', logo: '⛽', fiyat: true, kanopi: false };
     for (var pi = 0; pi < s.subeler.length; pi++) {
       var psb = s.subeler[pi];
       if (!psb.program) psb.program = { sadakat: false, premium: false, yikamaAbone: false };

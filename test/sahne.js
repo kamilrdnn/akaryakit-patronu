@@ -183,6 +183,17 @@ const hedef = IZO.ekran(0.5, 0.5, 0);
 const karo = IZO.karo(hedef.x, hedef.y);
 kontrol(Math.abs(karo.gx - 0.5) < 0.01 && Math.abs(karo.gy - 0.5) < 0.01, 'karo dönüşümü tutarlı');
 
+/* marka tabelası farklı biçimlerde çizilmeli */
+['klasik','genis','kule','tente'].forEach(sk => {
+  D.s.tabela = { ad: 'KAMİL PETROL', renk: 'mavi', sekil: sk, logo: '🦅', fiyat: true, kanopi: true };
+  let hataVar = false;
+  try { IZO.ciz(); } catch (e) { hataVar = true; console.log('  ✗ tabela ' + sk + ': ' + e.message); }
+  kontrol(!hataVar, 'tabela biçimi çizilmeli: ' + sk);
+});
+D.s.tabela = { ad: 'PETROL', renk: 'turuncu', sekil: 'klasik', logo: '⛽', fiyat: true, kanopi: false };
+IZO.ciz();
+fs.writeFileSync(path.join(__dirname, 'sahne-tabela.png'), tuval.toBuffer('image/png'));
+
 console.log('SAHNE TEST 5 — tek pompalı yeni şube ve boş arsa');
 D.yeni();
 IZO._sahneAnahtar = '';

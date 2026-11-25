@@ -936,7 +936,9 @@ const IZO = {
     var catiH = 52 + (p.sv - 1) * 2;
     this.kutu(gx + 0.08, gy + 0.08, 3, 0.06, 0.06, catiH, '#cfd6dd');
     this.kutu(gx + 0.86, gy + 0.08, 3, 0.06, 0.06, catiH, '#cfd6dd');
-    var catiRenk = p.yakit === 'ev' ? '#3f8ccc' : (p.yakit === 'lpg' ? '#3ec47a' : '#2f9e5e');
+    var st2 = this.tabelaStili();
+    var catiRenk = st2.kanopi ? st2.pano
+      : (p.yakit === 'ev' ? '#3f8ccc' : (p.yakit === 'lpg' ? '#3ec47a' : '#2f9e5e'));
     this.kutu(gx - 0.02, gy - 0.04, catiH + 3, 1.04, 0.62, 7, catiRenk, { tip: 'hucre', i: i });
     /* seviye şeridi */
     if (p.sv > 1) {
@@ -960,6 +962,92 @@ const IZO = {
     }
     /* gece aydınlatması */
     if (this.gece()) this.isikHuzmesi(gx + 0.5, gy + 0.3, catiH);
+  },
+
+  /* marka tabelası (totem) — oyuncunun tasarımına göre */
+  tabelaStili: function () {
+    var t = (D.s && D.s.tabela) || {};
+    var r = null;
+    for (var i = 0; i < VERI.tabelaRenkleri.length; i++) if (VERI.tabelaRenkleri[i].id === t.renk) r = VERI.tabelaRenkleri[i];
+    if (!r) r = VERI.tabelaRenkleri[0];
+    return {
+      ad: (t.ad || 'PETROL').toUpperCase(),
+      logo: t.logo || '⛽',
+      sekil: t.sekil || 'klasik',
+      pano: r.pano, yazi: r.yazi,
+      fiyat: t.fiyat !== false,
+      kanopi: !!t.kanopi
+    };
+  },
+
+  totemCiz: function (gx, gy, i, b) {
+    var st = this.tabelaStili();
+    var c = this.cz, o = this.kam.olcek, I = this.isik(), gece = this.gece();
+    var sb = D.sube();
+
+    /* şekle göre ölçüler */
+    var olcu = {
+      klasik: { direk: 56, panoH: 54, panoW: 1.02, yaziB: 9 },
+      genis:  { direk: 38, panoH: 46, panoW: 1.30, yaziB: 10.5 },
+      kule:   { direk: 84, panoH: 58, panoW: 0.78, yaziB: 8 },
+      tente:  { direk: 24, panoH: 40, panoW: 1.18, yaziB: 9.5 }
+    }[st.sekil] || { direk: 56, panoH: 54, panoW: 1.02, yaziB: 9 };
+
+    this.golge(gx + 0.34, gy + 0.34, 0.32, 0.32, 0.3);
+    /* direk */
+    this.kutu(gx + 0.44, gy + 0.42, 0, 0.1, 0.1, olcu.direk, '#8e98a4');
+    if (st.sekil === 'genis') this.kutu(gx + 0.1, gy + 0.42, 0, 0.1, 0.1, olcu.direk, '#8e98a4');
+
+    /* pano gövdesi */
+    var panoX = gx + (1 - olcu.panoW) / 2;
+    this.kutu(panoX, gy + 0.4, olcu.direk, olcu.panoW, 0.1, olcu.panoH, st.pano, { tip: 'hucre', i: i });
+    /* çerçeve üst şeridi */
+    this.kutu(panoX - 0.02, gy + 0.39, olcu.direk + olcu.panoH, olcu.panoW + 0.04, 0.12, 3, '#e9eef3');
+
+    /* gece ışıması */
+    if (gece) {
+      var gp = this.ekran(gx + 0.5, gy + 0.45, olcu.direk + olcu.panoH * 0.6);
+      var gr = c.createRadialGradient(gp.x, gp.y, 0, gp.x, gp.y, 54 * o);
+      gr.addColorStop(0, 'rgba(255,240,200,.28)');
+      gr.addColorStop(1, 'rgba(255,240,200,0)');
+      c.fillStyle = gr;
+      c.beginPath(); c.arc(gp.x, gp.y, 54 * o, 0, Math.PI * 2); c.fill();
+    }
+
+    if (o < 0.42) return;   /* çok uzakta yazı okunmaz */
+
+    /* marka adı */
+    var ust = this.ekran(gx + 0.5, gy + 0.45, olcu.direk + olcu.panoH - (st.fiyat ? 13 : olcu.panoH / 2 - 3));
+    c.textAlign = 'center';
+    c.font = 'bold ' + Math.round(olcu.yaziB * o) + 'px sans-serif';
+    c.fillStyle = gece ? st.yazi : this.ton(st.yazi.charAt(0) === '#' ? st.yazi : '#ffffff', Math.max(I, 0.78));
+    var yaziAd = st.logo + ' ' + st.ad;
+    /* panoya sığdır */
+    var maxW = (olcu.panoW + 0.1) * this.TW / 2 * o * 0.88;
+    var boy = olcu.yaziB;
+    while (c.measureText(yaziAd).width > maxW && boy > 5) {
+      boy -= 0.5;
+      c.font = 'bold ' + Math.round(boy * o) + 'px sans-serif';
+    }
+    c.fillText(yaziAd, ust.x, ust.y);
+
+    /* fiyat satırları */
+    if (st.fiyat) {
+      var sira = 0;
+      ['benzin', 'dizel', 'lpg'].forEach(function (yk) {
+        if (!sb.tank[yk]) return;
+        var tp = IZO.ekran(gx + 0.5, gy + 0.45, olcu.direk + olcu.panoH - 27 - sira * 11);
+        c.font = 'bold ' + Math.round(7 * o) + 'px sans-serif';
+        var metin = VERI.yakitlar[yk].kisa + '  ' + say(sb.fiyat[yk], 2);
+        var mw = c.measureText(metin).width + 8 * o;
+        c.fillStyle = 'rgba(10,16,26,.55)';
+        IZO.yuvarlakKutu(tp.x - mw / 2, tp.y - 7.5 * o, mw, 10 * o, 2.5 * o);
+        c.fill();
+        c.fillStyle = gece ? '#ffd166' : IZO.ton(VERI.yakitlar[yk].renk, 1.25);
+        c.fillText(metin, tp.x, tp.y);
+        sira++;
+      });
+    }
   },
 
   /* pompadan araca uzanan hortum */
@@ -1055,22 +1143,7 @@ const IZO = {
     }
 
     if (t === 'totem') {
-      this.golge(gx + 0.35, gy + 0.35, 0.3, 0.3, 0.3);
-      this.kutu(gx + 0.42, gy + 0.42, 0, 0.1, 0.1, 62, '#8e98a4');
-      /* tabela panosu */
-      var ty = 62, tw = 0.86;
-      this.kutu(gx + 0.07, gy + 0.4, ty, tw, 0.1, 42, '#16233a', { tip: 'hucre', i: i });
-      var c3 = this.cz, o3 = this.kam.olcek;
-      var sayac = 0;
-      var sbx = D.sube();
-      ['benzin', 'dizel', 'lpg'].forEach(function (yk) {
-        var tp = IZO.ekran(gx + 0.5, gy + 0.45, ty + 34 - sayac * 12);
-        c3.font = 'bold ' + Math.round(8 * o3) + 'px sans-serif';
-        c3.textAlign = 'center';
-        c3.fillStyle = VERI.yakitlar[yk].renk;
-        c3.fillText(VERI.yakitlar[yk].kisa + ' ' + say(sbx.fiyat[yk], 2), tp.x, tp.y);
-        sayac++;
-      });
+      this.totemCiz(gx, gy, i, b);
       return;
     }
     if (t === 'wc') {

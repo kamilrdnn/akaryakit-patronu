@@ -197,7 +197,8 @@ const UI = {
     h += '</div>';
 
     h += '<div class="ustsatir ikinci">';
-    h += '<div class="rozet">' + lok.emoji + ' <b>' + sb.ad + '</b></div>';
+    var mrk = (D.s.tabela && D.s.tabela.ad) ? D.s.tabela.ad.toUpperCase() : '';
+    h += '<div class="rozet">' + (D.s.tabela && D.s.tabela.logo ? D.s.tabela.logo : lok.emoji) + ' <b>' + (mrk ? mrk + ' · ' : '') + sb.ad + '</b></div>';
     h += '<div class="rozet">Sv <b>' + s.seviye + '</b></div>';
     h += '<div class="rozet"><span class="yildiz">' + '★'.repeat(yildiz) + '☆'.repeat(5 - yildiz) + '</span></div>';
     h += '<div class="rozet">' + sz.emoji + ' ' + sz.ad + '</div>';
@@ -1231,13 +1232,14 @@ const UI = {
     var h = this.cipSerit('daha', [
       ['ozet', '📊 Özet'], ['muhasebe', '🧾 Muhasebe'],
       ['gorevler', '🎯 Görevler', hazirGorev || ''], ['sozlesme', '✍️ Sözleşmeler'],
-      ['filo', '🤝 Toplu Anlaşma'], ['basarim', '🏆 Başarımlar'], ['ayarlar', '⚙️ Ayarlar']
+      ['filo', '🤝 Toplu Anlaşma'], ['marka', '🪧 Markam'], ['basarim', '🏆 Başarımlar'], ['ayarlar', '⚙️ Ayarlar']
     ]);
     var k = this.altSekme.daha || 'ozet';
     if (k === 'muhasebe') return h + this.muhasebeHtml();
     if (k === 'gorevler') return h + this.gorevlerHtml();
     if (k === 'sozlesme') return h + this.sozlesmeHtml();
     if (k === 'filo') return h + this.filoHtml();
+    if (k === 'marka') return h + this.markaHtml();
     if (k === 'basarim') return h + this.basarimHtml();
     if (k === 'ayarlar') return h + this.ayarlarHtml();
     return h + this.ozetHtml();
@@ -1495,6 +1497,98 @@ const UI = {
   },
 
   filoImzala: function (tid) { if (SIM.filoImzala(tid)) this.panelYenile(); },
+
+  /* =========================================================
+     MARKA / TABELA TASARIMI
+     ========================================================= */
+  markaRengi: function (id) {
+    for (var i = 0; i < VERI.tabelaRenkleri.length; i++) if (VERI.tabelaRenkleri[i].id === id) return VERI.tabelaRenkleri[i];
+    return VERI.tabelaRenkleri[0];
+  },
+
+  markaHtml: function () {
+    var t = D.s.tabela, r = this.markaRengi(t.renk);
+    var sb = D.sube();
+    var h = '';
+
+    /* --- canlı önizleme --- */
+    h += '<div class="kart"><div class="baslik">Önizleme</div>';
+    h += '<div class="tabelaOnizle ' + t.sekil + '">';
+    h += '<div class="tbDirek"></div>';
+    h += '<div class="tbPano" style="background:' + r.pano + ';color:' + r.yazi + '">';
+    h += '<div class="tbAd">' + (t.logo || '⛽') + ' ' + ((t.ad || 'PETROL').toUpperCase()) + '</div>';
+    if (t.fiyat !== false) {
+      h += '<div class="tbFiyat">';
+      ['benzin', 'dizel', 'lpg'].forEach(function (y) {
+        h += '<span><b style="color:' + VERI.yakitlar[y].renk + '">' + VERI.yakitlar[y].kisa + '</b> ' + say(sb.fiyat[y], 2) + '</span>';
+      });
+      h += '</div>';
+    }
+    h += '</div></div>';
+    h += '<div class="not ortala" style="margin-top:6px">Tabela istasyonda da böyle görünür.</div>';
+    h += '</div>';
+
+    /* --- ad --- */
+    h += '<div class="kart"><div class="baslik">Marka adı</div>';
+    h += '<input class="metinGiris" id="markaAd" maxlength="14" value="' + (t.ad || '') + '" placeholder="örn. KAMİL PETROL" ';
+    h += 'oninput="UI.markaAdDegis(this.value)">';
+    h += '<div class="not">En fazla 14 karakter. Tabelada ve istasyon adında görünür.</div>';
+    h += '</div>';
+
+    /* --- logo --- */
+    h += '<div class="kart"><div class="baslik">Logo</div><div class="logoIzgara">';
+    for (var l = 0; l < VERI.tabelaLogolari.length; l++) {
+      var lg = VERI.tabelaLogolari[l];
+      h += '<button class="logoDugme' + (t.logo === lg ? ' aktif' : '') + '" onclick="UI.markaAyar(\'logo\',\'' + lg + '\')">' + lg + '</button>';
+    }
+    h += '</div></div>';
+
+    /* --- renk --- */
+    h += '<div class="kart"><div class="baslik">Renk</div><div class="renkIzgara">';
+    for (var c = 0; c < VERI.tabelaRenkleri.length; c++) {
+      var rc = VERI.tabelaRenkleri[c];
+      h += '<button class="renkDugme' + (t.renk === rc.id ? ' aktif' : '') + '" onclick="UI.markaAyar(\'renk\',\'' + rc.id + '\')" ';
+      h += 'style="background:' + rc.pano + ';color:' + rc.yazi + '">Aa<span>' + rc.ad + '</span></button>';
+    }
+    h += '</div></div>';
+
+    /* --- şekil --- */
+    h += '<div class="kart"><div class="baslik">Tabela biçimi</div><div class="sek">';
+    for (var sk = 0; sk < VERI.tabelaSekilleri.length; sk++) {
+      var ss = VERI.tabelaSekilleri[sk];
+      h += '<button class="sec' + (t.sekil === ss.id ? ' secili' : '') + '" onclick="UI.markaAyar(\'sekil\',\'' + ss.id + '\')">';
+      h += '<div class="st">' + ss.ad + '</div><div class="ss">' + ss.aciklama + '</div></button>';
+    }
+    h += '</div></div>';
+
+    /* --- seçenekler --- */
+    h += '<div class="kart"><div class="baslik">Seçenekler</div>';
+    h += '<div class="anahtarSatir"><div><div class="ad">Fiyatları tabelada göster</div><div class="alt">Pompa fiyatların totemde yazar</div></div>';
+    h += '<button class="anahtar' + (t.fiyat !== false ? ' acik' : '') + '" onclick="UI.markaAyar(\'fiyat\',' + (t.fiyat === false) + ')"><i></i></button></div>';
+    h += '<div class="anahtarSatir"><div><div class="ad">Kanopiyi marka rengine boya</div><div class="alt">Pompa üstü çatılar tabela rengini alır</div></div>';
+    h += '<button class="anahtar' + (t.kanopi ? ' acik' : '') + '" onclick="UI.markaAyar(\'kanopi\',' + (!t.kanopi) + ')"><i></i></button></div>';
+    h += '</div>';
+
+    if (!D.binaSayisi(sb, 'totem')) {
+      h += '<div class="kart"><div class="not">Bu tasarımın istasyonda görünmesi için <b>Totem Tabela</b> kurmalısın.</div>';
+      h += '<button class="btn genis" style="margin-top:8px" onclick="UI.sekmeGec(\'insa\');UI.altSekmeGec(\'insa\',\'tesisler\')">🏗️ İnşaat panelini aç</button></div>';
+    }
+    return h;
+  },
+
+  markaAdDegis: function (v) {
+    D.s.tabela.ad = (v || '').slice(0, 14);
+    var el = document.querySelector('.tbAd');
+    if (el) el.textContent = (D.s.tabela.logo || '⛽') + ' ' + D.s.tabela.ad.toUpperCase();
+    D.kaydet();
+  },
+
+  markaAyar: function (alan, deger) {
+    D.s.tabela[alan] = deger;
+    D.kaydet();
+    if (window.SES) SES.cal('tik');
+    this.panelYenile();
+  },
 
   basarimHtml: function () {
     var s2 = D.s;

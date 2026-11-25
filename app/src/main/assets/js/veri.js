@@ -159,6 +159,27 @@ const VERI = {
     { ad: 'Kurye Ağı',         yakit: 'benzin', emoji: '🛵' }
   ],
 
+  /* ---------------- marka / tabela tasarımı ---------------- */
+  tabelaRenkleri: [
+    { id: 'turuncu', ad: 'Turuncu', pano: '#e2683a', yazi: '#ffffff' },
+    { id: 'kirmizi', ad: 'Kırmızı', pano: '#c62f2f', yazi: '#ffffff' },
+    { id: 'mavi',    ad: 'Mavi',    pano: '#1f5fa8', yazi: '#ffffff' },
+    { id: 'yesil',   ad: 'Yeşil',   pano: '#1f7a4d', yazi: '#ffffff' },
+    { id: 'lacivert',ad: 'Lacivert',pano: '#17243d', yazi: '#ffd166' },
+    { id: 'sari',    ad: 'Sarı',    pano: '#e8b21f', yazi: '#17243d' },
+    { id: 'mor',     ad: 'Mor',     pano: '#5b3fa8', yazi: '#ffffff' },
+    { id: 'siyah',   ad: 'Antrasit',pano: '#262b33', yazi: '#f2f5f8' },
+    { id: 'beyaz',   ad: 'Beyaz',   pano: '#f2f5f8', yazi: '#17243d' },
+    { id: 'bordo',   ad: 'Bordo',   pano: '#7a2342', yazi: '#ffd9e4' }
+  ],
+  tabelaSekilleri: [
+    { id: 'klasik', ad: 'Klasik dikey', aciklama: 'Yüksek direk, üstte marka, altta fiyatlar.' },
+    { id: 'genis',  ad: 'Geniş pano',   aciklama: 'Yola bakan geniş pano; marka büyük görünür.' },
+    { id: 'kule',   ad: 'Kule',         aciklama: 'İnce ve çok yüksek; uzaktan görünür.' },
+    { id: 'tente',  ad: 'Kanopi bandı', aciklama: 'Alçak pano, marka rengi kanopiye de vurur.' }
+  ],
+  tabelaLogolari: ['⛽', '🛢️', '🔥', '⭐', '🦅', '🐎', '🌊', '⚡', '🍀', '🏔️', '🦁', '💎'],
+
   /* ---------------- pazarlama programları ---------------- */
   programlar: {
     sadakat: {
