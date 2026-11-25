@@ -1,7 +1,7 @@
 {
-  "versionCode": 104,
-  "versionName": "1.2.0",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.0/AkaryakitPatronu-1.2.0.apk",
-  "size": 2826421,
-  "notes": "Sürüm numarası tabanı 1.2.0: elle kurulan 1.0/1.1 sürümlerinin altında kalmasın"
+  "versionCode": 106,
+  "versionName": "1.2.1",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.1/AkaryakitPatronu-1.2.1.apk",
+  "size": 2846573,
+  "notes": "Panel içi sekmeler, muhasebe/darboğaz görünümü, görevler, sözleşmeler ve mağazadan otomatik yerleşim"
 }
