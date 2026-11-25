@@ -60,3 +60,11 @@ simülasyon, benzin istasyonu, işletme, tycoon, çevrimdışı, idle, Türkçe
   4. İnşaat paneli
   5. Gece sahnesi
   6. Muhasebe/ciro grafiği
+
+## Üretilen görseller
+- `magaza/ikon-512.png` — Play Store simgesi (512×512)
+- `magaza/one-cikan-1024x500.png` — öne çıkan grafik (1024×500)
+- Uygulama simgeleri `app/src/main/res/mipmap-*` altında güncellendi
+- Üretmek için: `cd test && node gorsel.js`
+
+Ekran görüntüleri oyundan alınacak (cihazdan, 1080×2400).
