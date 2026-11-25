@@ -1,7 +1,7 @@
 {
-  "versionCode": 115,
-  "versionName": "1.2.10",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.10/AkaryakitPatronu-1.2.10.apk",
-  "size": 2968106,
-  "notes": "Dokunma hatası düzeltildi: yapı menüleri yeniden açılıyor"
+  "versionCode": 116,
+  "versionName": "1.2.11",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.11/AkaryakitPatronu-1.2.11.apk",
+  "size": 2971150,
+  "notes": "Kendi markanı tasarla: totem tabela yeniden yazıldı"
 }
