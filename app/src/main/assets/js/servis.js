@@ -35,7 +35,7 @@ const SERVIS = {
 
     this.m = m;
     this.pompaIdx = pompaIdx;
-    this.nozul = this.nozullar(p, sb).indexOf(m.yakit) >= 0 ? null : null;
+    this.nozul = null;   /* bilerek boş: doğru tabancayı oyuncu seçer */
     this.basili = false;
     this.mod = 'tam';
     this._uyardi = false;

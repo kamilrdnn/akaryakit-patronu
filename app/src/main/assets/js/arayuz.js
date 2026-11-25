@@ -58,12 +58,29 @@ const UI = {
     }
   },
 
-  /* sadece canlı ekranlar tick'te yenilenir (girdi odağı bozulmasın) */
+  /* sadece canlı ekranlar tik'te yenilenir (girdi odağı bozulmasın).
+     Yeniden çizimde gövde ve kuyruk şeridinin kaydırma konumu korunur. */
   tikCiz: function () {
     if (!D.s) return;
     this.ustCiz();
-    if (this.modalAcik) return;
-    if (this.sekme === 'istasyon' || this.sekme === 'siparis') this.ciz();
+    if (this.modalAcik || SERVIS.acik) return;
+    if (this.sekme !== 'istasyon' && this.sekme !== 'siparis') return;
+
+    var govde = document.getElementById('govde');
+    var kayGovde = govde ? govde.scrollTop : 0;
+    var kuyrukEl = document.getElementById('kuyruk');
+    var kayKuyruk = kuyrukEl ? kuyrukEl.scrollLeft : 0;
+    var izgaraEl = document.getElementById('izgaraSar');
+    var kayIzgaraY = izgaraEl ? izgaraEl.scrollTop : 0;
+    var kayIzgaraX = izgaraEl ? izgaraEl.scrollLeft : 0;
+
+    this.ciz();
+
+    if (govde) govde.scrollTop = kayGovde;
+    var yeniKuyruk = document.getElementById('kuyruk');
+    if (yeniKuyruk && kayKuyruk) yeniKuyruk.scrollLeft = kayKuyruk;
+    var yeniIzgara = document.getElementById('izgaraSar');
+    if (yeniIzgara) { yeniIzgara.scrollTop = kayIzgaraY; yeniIzgara.scrollLeft = kayIzgaraX; }
   },
 
   ustCiz: function () {
