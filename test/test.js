@@ -56,7 +56,7 @@ kontrol(D.s.subeler.length === 1, 'tek şube olmalı');
 kontrol(D.pompalar().length === 2, '2 pompa olmalı, var: ' + D.pompalar().length);
 kontrol(D.s.para > 0, 'başlangıç parası');
 kontrol(D.sube().tank.benzin.dolu === 2500, 'benzin tankı yarım dolu');
-kontrol(D.sube().w === 4 && D.sube().h === 3, 'şube 4x3 başlamalı: ' + D.sube().w + 'x' + D.sube().h);
+kontrol(D.sube().w === 5 && D.sube().h === 4, 'şube 5x4 başlamalı: ' + D.sube().w + 'x' + D.sube().h);
 kontrol(SIM.yakitVar(D.sube(), 'benzin'), 'benzin satılabilir olmalı');
 kontrol(SIM.yakitVar(D.sube(), 'dizel'), 'dizel satılabilir olmalı');
 kontrol(!SIM.yakitVar(D.sube(), 'lpg'), 'LPG tankı boşken satılamaz');

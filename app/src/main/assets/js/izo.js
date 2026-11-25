@@ -721,7 +721,7 @@ const IZO = {
         else { renk = cimenRenk[Math.floor(this.karoRast(gx, gy, 7) * cimenRenk.length) % cimenRenk.length]; cimMi = true; }
         this.zemin(gx, gy, renk, null);
         if (cimMi) this.cimenBenek(gx, gy, I);
-        if (ic && !sb.beton[gy * sb.w + gx]) this.satilikTabela(gx, gy);
+        if (ic && !sb.beton[gy * sb.w + gx] && (gx + gy) % 3 === 0) this.satilikTabela(gx, gy);
       }
     }
   },
@@ -872,9 +872,9 @@ const IZO = {
   satilikTabela: function (gx, gy) {
     var p = this.ekran(gx + 0.5, gy + 0.5, 0);
     var c = this.cz;
-    c.globalAlpha = 0.5;
+    c.globalAlpha = 0.42;
     c.fillStyle = '#ffffff';
-    c.font = Math.round(9 * this.kam.olcek) + 'px sans-serif';
+    c.font = Math.round(8.5 * this.kam.olcek) + 'px sans-serif';
     c.textAlign = 'center';
     c.fillText('satılık', p.x, p.y + 3);
     c.globalAlpha = 1;
@@ -934,12 +934,12 @@ const IZO = {
     }
     /* kanopi: direk + çatı */
     var catiH = 52 + (p.sv - 1) * 2;
-    this.kutu(gx + 0.08, gy + 0.08, 3, 0.06, 0.06, catiH, '#cfd6dd');
-    this.kutu(gx + 0.86, gy + 0.08, 3, 0.06, 0.06, catiH, '#cfd6dd');
+    this.kutu(gx + 0.12, gy + 0.12, 3, 0.06, 0.06, catiH, '#cfd6dd');
+    this.kutu(gx + 0.82, gy + 0.12, 3, 0.06, 0.06, catiH, '#cfd6dd');
     var st2 = this.tabelaStili();
     var catiRenk = st2.kanopi ? st2.pano
       : (p.yakit === 'ev' ? '#3f8ccc' : (p.yakit === 'lpg' ? '#3ec47a' : '#2f9e5e'));
-    this.kutu(gx - 0.02, gy - 0.04, catiH + 3, 1.04, 0.62, 7, catiRenk, { tip: 'hucre', i: i });
+    this.kutu(gx + 0.04, gy + 0.02, catiH + 3, 0.92, 0.56, 7, catiRenk, { tip: 'hucre', i: i });
     /* seviye şeridi */
     if (p.sv > 1) {
       var sp = this.ekran(gx + 0.5, gy + 0.3, catiH + 12);
@@ -1074,7 +1074,7 @@ const IZO = {
   binaCiz: function (sb, i, gx, gy, b) {
     var kayit = this.cz;
     var merkez = this.ekran(gx + 0.5, gy + 0.5, 0);
-    var kucult = 0.84;
+    var kucult = 0.72;
     var once = this.vurus.length;
     kayit.save();
     kayit.translate(merkez.x, merkez.y);

@@ -1217,6 +1217,22 @@ const SIM = {
     return false;
   },
 
+  /* komşu hücrelerde kaç yapı var (çapraz dahil) */
+  komsuDoluluk: function (sb, i) {
+    var x = i % sb.w, y = Math.floor(i / sb.w);
+    var dik = 0, capraz = 0;
+    for (var dx = -1; dx <= 1; dx++) {
+      for (var dy = -1; dy <= 1; dy++) {
+        if (!dx && !dy) continue;
+        var nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= sb.w || ny < 0 || ny >= sb.h) continue;
+        if (!sb.yapi[ny * sb.w + nx]) continue;
+        if (dx === 0 || dy === 0) dik++; else capraz++;
+      }
+    }
+    return { dik: dik, capraz: capraz };
+  },
+
   /* tur: 'pompa' | 'bina' — en uygun hücreyi döndürür (yoksa -1) */
   oneriYer: function (sb, tur) {
     var aday = [];
@@ -1225,19 +1241,23 @@ const SIM = {
       var x = i % sb.w, y = Math.floor(i / sb.w);
       var puan = 0;
 
+      var kom = this.komsuDoluluk(sb, i);
       if (tur === 'pompa') {
         /* pompalar yola yakın orta şeritte, aralarında boşlukla */
         var idealY = sb.h - 2;
         puan -= Math.abs(y - idealY) * 10;
         if (y === sb.h - 1) puan -= 28;          /* en ön şerit manevra alanı */
-        if (x % 2 === 0) puan += 7;              /* bir dolu bir boş: ada düzeni */
-        if (this.komsuTipi(sb, i, 'bina')) puan -= 9;
+        if (x % 2 === 0) puan += 8;              /* bir dolu bir boş: ada düzeni */
+        if (this.komsuTipi(sb, i, 'bina')) puan -= 12;
+        puan -= kom.dik * 9 + kom.capraz * 2;    /* yan yana yığılmasın */
         puan -= Math.abs(x - (sb.w - 1) / 2) * 1.5;
       } else {
-        /* binalar arka sıraya, pompa şeridinden uzağa */
-        puan -= y * 11;                           /* y küçükse (arka) daha iyi */
+        /* binalar arka sıraya, geniş aralıklarla */
+        puan -= y * 9;                            /* y küçükse (arka) daha iyi */
         if (y >= sb.h - 2) puan -= 24;
-        if (this.komsuTipi(sb, i, 'pompa')) puan -= 12;
+        if (this.komsuTipi(sb, i, 'pompa')) puan -= 14;
+        puan -= kom.dik * 16 + kom.capraz * 5;    /* komşusu boş parsel tercih edilir */
+        if ((x + y) % 2 === 0) puan += 6;         /* satranç düzeni: aralar açık kalsın */
         puan -= Math.abs(x - (sb.w - 1) / 2) * 0.6;
       }
       aday.push({ i: i, p: puan });

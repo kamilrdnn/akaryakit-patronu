@@ -87,7 +87,7 @@ const D = {
     var lok = null;
     for (var i = 0; i < VERI.lokasyonlar.length; i++) if (VERI.lokasyonlar[i].id === lokId) lok = VERI.lokasyonlar[i];
     /* şube küçük başlar, arsa satın alarak lokasyon sınırına kadar büyür */
-    var bw = Math.min(4, lok.w), bh = Math.min(3, lok.h);
+    var bw = Math.min(5, lok.w), bh = Math.min(4, lok.h);
     var n = bw * bh;
     var sb = {
       lok: lok.id,
