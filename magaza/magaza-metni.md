@@ -68,3 +68,21 @@ simülasyon, benzin istasyonu, işletme, tycoon, çevrimdışı, idle, Türkçe
 - Üretmek için: `cd test && node gorsel.js`
 
 Ekran görüntüleri oyundan alınacak (cihazdan, 1080×2400).
+
+## Görseller
+Hepsi `magaza/` altında, `test/` içindeki betiklerle oyunun kendisinden üretilir.
+
+| Dosya | Boyut | Ne gösteriyor | Üreten |
+|---|---|---|---|
+| `ikon-512.png` | 512×512 | Uygulama simgesi | `node gorsel.js` |
+| `one-cikan-1024x500.png` | 1024×500 | Öne çıkan grafik | `node gorsel.js` |
+| `ekran-1.png` | 1080×1920 | İstasyon — gündüz, dolu pompalar | `node ekran.js` |
+| `ekran-2.png` | 1080×1920 | Servis ekranı — elle dolum | `node ekran.js` |
+| `ekran-3.png` | 1080×1920 | İnşaat paneli | `node ekran.js` |
+| `ekran-4.png` | 1080×1920 | Muhasebe ve ciro grafiği | `node ekran.js` |
+| `ekran-5.png` | 1080×1920 | Mini oyun — oto yıkama | `node ekran.js` |
+| `ekran-6.png` | 1080×1920 | İstasyon — gece neonları | `node ekran.js` |
+
+`ekran.js` gerçek oyunu başsız Chromium'da (Playwright) açar, hazır bir kayıt
+yükler ve ekranları çeker; sayfada JS hatası çıkarsa hata koduyla durur.
+Play Console'a yüklerken telefon ekran görüntüsü olarak 6 dosyayı da verebilirsin.

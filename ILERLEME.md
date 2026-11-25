@@ -27,6 +27,10 @@ Bu dosya, oturum kesilirse yeni oturumun kaldığı yerden devam edebilmesi içi
 - Hava olayları: kar ve yağmur tanecikleri
 - Çevre trafiğinde otobüs/tır/taksi/minibüs çeşitliliği
 
+## Son turda eklenenler (3)
+- Mağaza ekran görüntüleri: `test/ekran.js` (Playwright) gerçek oyundan 6 adet 1080x1920 PNG üretiyor
+- `test/kayit.js`: ekran görüntüsü ve denge ölçümü için gelişmiş hazır kayıt üretici
+
 ## Son turda eklenenler (2)
 - Pazarlama programları: sadakat kartı, katkılı yakıt, yıkama aboneliği
 - Ödemeden kaçan müşteri + güvenlik kamerası tahsilatı
@@ -38,7 +42,6 @@ Bu dosya, oturum kesilirse yeni oturumun kaldığı yerden devam edebilmesi içi
 - CI artık AAB de üretiyor; magaza/ altında gizlilik ve mağaza metni
 
 ## Sıradaki işler
-1. **Mağaza görselleri**: 512x512 simge, 1024x500 öne çıkan grafik, 6 ekran görüntüsü
-2. **Sahne**: istasyon içi yaya hareketi, market vitrin detayı, araç gölgelerinde yumuşatma
-3. **Oynanış**: rakip istasyon olayları, fiyat savaşı, tanker filosu yönetimi
-4. **Denge**: 60 günlük bot simülasyonunu yeni programlarla yeniden ölç
+1. **Sahne**: istasyon içi yaya hareketi, market vitrin detayı, araç gölgelerinde yumuşatma
+2. **Oynanış**: rakip istasyon olayları, fiyat savaşı, tanker filosu yönetimi
+3. **Denge**: 60 günlük bot simülasyonunu yeni programlarla yeniden ölç
