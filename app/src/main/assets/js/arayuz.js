@@ -1794,6 +1794,10 @@ const UI = {
     var sbA = D.sube();
     h += '<div class="anahtarSatir"><div><div class="ad">🌙 Gece kapat (00:00–05:00)</div><div class="alt">Gece müşteri gelmez; elektrik gideri ve kaçak riski düşer</div></div>';
     h += '<button class="anahtar' + (sbA.gece ? ' acik' : '') + '" onclick="UI.geceDegis()"><i></i></button></div>';
+    var bildirimAcik = true;
+    try { if (window.AndroidKabuk && AndroidKabuk.bildirimAcikMi) bildirimAcik = !!AndroidKabuk.bildirimAcikMi(); } catch (e) {}
+    h += '<div class="anahtarSatir"><div><div class="ad">🔔 Güncelleme bildirimi</div><div class="alt">Yeni sürüm çıkınca oyun kapalıyken de telefonuna haber gelir</div></div>';
+    h += '<button class="anahtar' + (bildirimAcik ? ' acik' : '') + '" onclick="UI.bildirimDegis(' + (!bildirimAcik) + ')"><i></i></button></div>';
     h += '</div>';
 
     h += '<div class="kart"><div class="baslik">Oyun hızı</div>';
@@ -2061,6 +2065,21 @@ const UI = {
     D.kaydet();
     this.panelYenile();
   },
+  bildirimDegis: function (acik) {
+    try {
+      if (window.AndroidKabuk && AndroidKabuk.bildirimAyar) {
+        AndroidKabuk.bildirimAyar(!!acik);
+        this.bildir(acik ? '🔔 Bildirim açık' : '🔕 Bildirim kapalı',
+          acik ? 'Yeni sürüm çıkınca haber vereceğim.' : 'Güncelleme bildirimi kapatıldı.', 'iyi');
+      } else {
+        this.bildir('Desteklenmiyor', 'Bu özellik yalnızca uygulamada çalışır.', 'uyari');
+      }
+    } catch (e) {
+      this.bildir('Ayarlanamadı', '', 'kotu');
+    }
+    this.panelYenile();
+  },
+
   geceDegis: function () {
     var sb = D.sube();
     sb.gece = !sb.gece;

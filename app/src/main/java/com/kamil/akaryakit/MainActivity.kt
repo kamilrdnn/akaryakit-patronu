@@ -16,6 +16,9 @@ import android.os.VibratorManager
 import android.view.View
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -76,6 +79,13 @@ class MainActivity : AppCompatActivity() {
 
         web.loadUrl("https://appassets.androidplatform.net/assets/index.html")
 
+        /* bildirimden açıldıysa doğrudan güncelleme ekranını göster */
+        if (intent?.getBooleanExtra("guncelleme", false) == true) {
+            web.postDelayed({
+                web.evaluateJavascript("window.GUNCELLE && GUNCELLE.kontrol(true)", null)
+            }, 2500)
+        }
+
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 web.evaluateJavascript("window.oyunGeriTusu && window.oyunGeriTusu()") { sonuc ->
@@ -85,6 +95,31 @@ class MainActivity : AppCompatActivity() {
         })
 
         indirmeAlicisiKur()
+        bildirimKur()
+    }
+
+    /** Bildirim izni (Android 13+) ve arka plan güncelleme denetimi. */
+    private fun bildirimKur() {
+        GuncellemeIsi.kanalKur(this)
+        val ayar = getSharedPreferences(GuncellemeIsi.AYAR, MODE_PRIVATE)
+        if (ayar.getBoolean(GuncellemeIsi.ANAHTAR_ACIK, true)) {
+            if (Build.VERSION.SDK_INT >= 33) {
+                val izin = ContextCompat.checkSelfPermission(
+                    this, android.Manifest.permission.POST_NOTIFICATIONS
+                )
+                if (izin != PackageManager.PERMISSION_GRANTED && !ayar.getBoolean("izin_soruldu", false)) {
+                    ayar.edit().putBoolean("izin_soruldu", true).apply()
+                    izinIstegi.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+            GuncellemeIsi.planla(this)
+        }
+    }
+
+    private val izinIstegi = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { verildi ->
+        if (verildi) GuncellemeIsi.planla(this)
     }
 
     private fun tamEkran() {
@@ -180,6 +215,34 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun cik() { runOnUiThread { finish() } }
+
+        /** Oyun içindeki anahtar: güncelleme bildirimlerini aç/kapat. */
+        @JavascriptInterface
+        fun bildirimAyar(acik: Boolean) {
+            getSharedPreferences(GuncellemeIsi.AYAR, MODE_PRIVATE)
+                .edit().putBoolean(GuncellemeIsi.ANAHTAR_ACIK, acik).apply()
+            runOnUiThread {
+                if (acik) {
+                    if (Build.VERSION.SDK_INT >= 33) {
+                        val izin = ContextCompat.checkSelfPermission(
+                            this@MainActivity, android.Manifest.permission.POST_NOTIFICATIONS
+                        )
+                        if (izin != PackageManager.PERMISSION_GRANTED) {
+                            izinIstegi.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                            return@runOnUiThread
+                        }
+                    }
+                    GuncellemeIsi.planla(this@MainActivity)
+                } else {
+                    GuncellemeIsi.durdur(this@MainActivity)
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun bildirimAcikMi(): Boolean =
+            getSharedPreferences(GuncellemeIsi.AYAR, MODE_PRIVATE)
+                .getBoolean(GuncellemeIsi.ANAHTAR_ACIK, true)
 
         @JavascriptInterface
         fun surum(): String = try {
