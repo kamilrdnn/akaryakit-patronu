@@ -53,7 +53,12 @@ const { D, SIM, UI, SERVIS, VERI, GUNCELLE, OYUN, IZO, MINI, SES } = w;
 
 console.log('UI TEST 1 — açılış ekranı');
 calistir('acilisCiz', () => OYUN.acilisCiz());
-kontrol(w.document.getElementById('acilis').innerHTML.indexOf('BAŞLA') > 0, 'BAŞLA butonu çizilmeli');
+kontrol(w.document.getElementById('acilis').innerHTML.indexOf('Yeni oyun') > 0, 'Yeni oyun düğmesi çizilmeli');
+['yeniOnay', 'yedek', 'hakkinda'].forEach(e => calistir('açılış ' + e, () => OYUN.acilisCiz(e)));
+calistir('yeni oyun onayı', () => OYUN.yeniOyunOnay());
+kontrol(w.document.getElementById('acilis').innerHTML.indexOf('sıfırdan başla') > 0, 'sayfa içi onay ekranı gelmeli (confirm kullanılmamalı)');
+kontrol(fs.readFileSync(KOK + 'js/main.js', 'utf8').indexOf('confirm(') < 0, 'confirm() WebView\'da çalışmaz, kullanılmamalı');
+calistir('açılış ana', () => OYUN.acilisCiz());
 
 console.log('UI TEST 2 — oyunu başlat ve tüm sekmeleri çiz');
 calistir('basla', () => OYUN.basla(true));

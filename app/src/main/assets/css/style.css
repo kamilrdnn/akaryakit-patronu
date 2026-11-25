@@ -416,6 +416,32 @@ input[type=range]{width:100%}
 #acilis h1{font-size:30px;font-weight:900;letter-spacing:-1px;line-height:1.1}
 #acilis p{color:var(--sol);font-size:14px;margin:10px 0 22px;max-width:320px}
 #acilis .logo{font-size:62px;margin-bottom:8px}
+#acilis{padding-top:calc(26px + env(safe-area-inset-top,0px));overflow-y:auto}
+.acLogo{
+  width:104px;height:104px;border-radius:30px;margin-bottom:14px;display:grid;place-items:center;
+  background:linear-gradient(150deg,#f2733f,#c9431f);box-shadow:0 14px 34px rgba(226,104,58,.35),inset 0 2px 0 rgba(255,255,255,.25);
+  animation:acNabiz 3.2s ease-in-out infinite
+}
+.acLogo span{font-size:56px;line-height:1}
+@keyframes acNabiz{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.acMenu{display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;margin-top:4px}
+.acBtn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;border:0;border-radius:16px;
+  padding:14px 16px;color:#fff;background:linear-gradient(180deg,var(--ana2),var(--ana));
+  box-shadow:0 4px 0 #a9321a,0 10px 22px rgba(0,0,0,.35);transition:transform .12s ease
+}
+.acBtn:active{transform:translateY(3px)}
+.acBtn.ikincil{background:#1c2740;border:1px solid var(--cizgi);box-shadow:0 3px 0 #0c1220}
+.acBtn.tehlike{background:linear-gradient(180deg,#e25555,#b93030);box-shadow:0 4px 0 #7f1f1f}
+.acBas{font-size:16px;font-weight:800}
+.acAlt{font-size:11.5px;opacity:.85;font-weight:600}
+.acSurum{margin-top:14px;font-size:11px;color:var(--sol);opacity:.7}
+.acYedek{
+  width:100%;max-width:300px;height:110px;background:#0d1522;color:var(--yazi);border:1px solid var(--cizgi);
+  border-radius:12px;padding:10px;font-size:11px;font-family:ui-monospace,Menlo,monospace;resize:none;margin-bottom:8px
+}
+.acHata{color:#ff9d9d;font-size:12px;min-height:16px;margin-bottom:6px}
+.acBilgi{display:flex;flex-direction:column;gap:9px;text-align:left;max-width:300px;font-size:13.5px;line-height:1.4;margin:6px 0 16px;color:#d5deea}
 .ipucu{font-size:12px;color:var(--sol);margin-top:16px;max-width:300px;line-height:1.6}
 
 /* ---------- ufak yardımcılar ---------- */
