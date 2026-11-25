@@ -159,6 +159,18 @@ const VERI = {
     { ad: 'Kurye Ağı',         yakit: 'benzin', emoji: '🛵' }
   ],
 
+  /* ---------------- toplu (filo) anlaşmaları ---------------- */
+  filoAnlasmalar: [
+    { id:'belediye',  ad:'Belediye Otobüs Filosu', emoji:'🚌', arac:'Otobüs',      yakit:'dizel',  aracSayi:[3,5], aracL:[110,190], iskonto:[0.05,0.09], gun:[8,16], seviyeSart:2,  saatler:[6,14,22], aciklama:'Sabah, öğle ve gece vardiyasında otobüsler depoya uğrar.' },
+    { id:'okul',      ad:'Okul Servisleri',        emoji:'🚐', arac:'Minibüs',     yakit:'dizel',  aracSayi:[4,7], aracL:[40,70],   iskonto:[0.04,0.08], gun:[6,12], seviyeSart:1,  saatler:[6,16],    aciklama:'Servis minibüsleri sabah ve okul çıkışı toplu gelir.' },
+    { id:'kargo',     ad:'Kargo Dağıtım Merkezi',  emoji:'📦', arac:'Ticari Araç', yakit:'dizel',  aracSayi:[5,9], aracL:[45,80],   iskonto:[0.05,0.10], gun:[7,14], seviyeSart:2,  saatler:[5,13],    aciklama:'Dağıtım araçları günde iki sefer yakıt alır.' },
+    { id:'taksi',     ad:'Taksi Durağı',           emoji:'🚕', arac:'Taksi',       yakit:'lpg',    aracSayi:[4,8], aracL:[35,55],   iskonto:[0.04,0.07], gun:[8,15], seviyeSart:1,  saatler:[9,18,23], aciklama:'Durak tüm araçlarını senin LPG\'ne bağlar.' },
+    { id:'santiye',   ad:'Şantiye İş Makineleri',  emoji:'🚜', arac:'Tır',         yakit:'dizel',  aracSayi:[2,4], aracL:[200,320], iskonto:[0.06,0.11], gun:[5,10], seviyeSart:4,  saatler:[7,17],    aciklama:'İş makineleri için yüksek hacimli dizel çekişi.' },
+    { id:'nakliye',   ad:'Nakliye Kooperatifi',    emoji:'🚛', arac:'Tır',         yakit:'dizel',  aracSayi:[2,5], aracL:[180,300], iskonto:[0.07,0.12], gun:[6,12], seviyeSart:5,  saatler:[4,15,21], aciklama:'Uzun yol tırları gece gündüz uğrar; tır parkı varsa daha kârlı.' },
+    { id:'kiralama',  ad:'Araç Kiralama Şirketi',  emoji:'🔑', arac:'Otomobil',    yakit:'benzin', aracSayi:[5,9], aracL:[35,55],   iskonto:[0.04,0.08], gun:[7,14], seviyeSart:3,  saatler:[10,19],   aciklama:'Kiralık araçlar teslimden önce dolu teslim edilir.' },
+    { id:'sarj',      ad:'Elektrikli Filo',        emoji:'⚡', arac:'Elektrikli',  yakit:'ev',     aracSayi:[4,7], aracL:[30,55],   iskonto:[0.03,0.07], gun:[8,16], seviyeSart:6,  saatler:[11,20],   aciklama:'Şarj istasyonun varsa kurumsal elektrikli filo bağlanır.' }
+  ],
+
   /* ---------------- günlük görevler ---------------- */
   gorevTipleri: [
     { id: 'musteri',  ad: 'Müşteriye hizmet et',    birim: 'müşteri', taban: 12,   odul: 9000 },

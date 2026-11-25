@@ -35,7 +35,14 @@ const sandbox = {
   document: {
     getElementById: (id) => (id === 'tuval' ? tuval : null),
     querySelectorAll: () => [],
-    createElement: () => ({ classList: { add() {}, remove() {}, toggle() {} }, style: {} }),
+    createElement: (et) => {
+      if (et === 'canvas') {
+        const t = createCanvas(8, 8);
+        /* width/height atanınca @napi-rs yeniden boyutlanır */
+        return t;
+      }
+      return { classList: { add() {}, remove() {}, toggle() {} }, style: {} };
+    },
     body: { classList: { toggle() {}, add() {}, remove() {} }, appendChild() {} },
     addEventListener: () => {}
   }
@@ -61,24 +68,24 @@ const sb = D.sube();
 while (sb.w < 5 || sb.h < 5) SIM.arsaGenislet(sb);
 for (let i = 0; i < sb.beton.length; i++) sb.beton[i] = true;
 /* pompalar */
-SIM.pompaKur(sb, 2, 'lpg');
-SIM.pompaKur(sb, 3, 'ev');
-sb.yapi[0].sv = 3; sb.yapi[1].sv = 2;
+SIM.pompaKur(sb, SIM.yerAc(sb, 'pompa'), 'lpg');
+SIM.pompaKur(sb, SIM.yerAc(sb, 'pompa'), 'ev');
+var _pl = D.pompalar(sb); if (_pl[0]) _pl[0].p.sv = 3; if (_pl[1]) _pl[1].p.sv = 2;
 /* tesisler */
 const yerlesim = [[4, 'totem'], [5, 'market'], [6, 'kafe'], [7, 'depo'], [8, 'gunes'],
                   [9, 'wc'], [10, 'mescit'], [11, 'havasu'], [12, 'atm'], [13, 'yangin'],
                   [14, 'kamera'], [15, 'lastikci'], [16, 'adblue'], [17, 'yikama'],
                   [18, 'jenerator'], [19, 'restoran'], [20, 'tirpark'], [21, 'yag'],
                   [22, 'ofis'], [23, 'smr'], [24, 'market']];
-yerlesim.forEach(([i, t]) => { if (i < sb.yapi.length && !sb.yapi[i]) SIM.binaKur(sb, i, t); });
+yerlesim.forEach(([i, t]) => { const yer = SIM.yerAc(sb, 'bina'); if (yer >= 0) SIM.binaKur(sb, yer, t); });
 sb.tank.benzin.dolu = 4000; sb.tank.dizel.dolu = 3500; sb.tank.lpg.dolu = 1800;
 /* arızalı bir yapı */
-if (sb.yapi[8]) { sb.yapi[8].arizali = true; sb.yapi[8].bakim = 20; }
+const _bl = D.binalar(sb); if (_bl[2]) { _bl[2].b.arizali = true; _bl[2].b.bakim = 20; }
 
 /* personel: pompacı, temizlikçi, teknisyen, müdür */
 ['pompaci', 'temizlik', 'teknisyen', 'mudur'].forEach(tip => {
   const a = SIM.adayUret(tip);
-  if (SIM.iseAl(sb, a) && tip === 'pompaci') SIM.pompaAta(sb, a.id, 0);
+  if (SIM.iseAl(sb, a) && tip === 'pompaci') SIM.pompaAta(sb, a.id, D.pompalar(sb)[0].i);
 });
 kontrol(sb.personel.length === 4, '4 personel işe alınmalı');
 

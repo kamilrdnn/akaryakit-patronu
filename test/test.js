@@ -100,8 +100,10 @@ function senaryo(ad, kur) {
     id:'t1', arac:'Otomobil', emoji:'🚗', yakit:'benzin', hedef:40, tip:'litre',
     etiket:'40 L', bahsis:1, sabir:70, sabirKalan:70, pompa:0, verilen:0, durum:'servis'
   };
+  var pi0 = D.pompalar(sb)[0].i;
+  m.pompa = pi0;
   sb.kuyruk.push(m);
-  sb.yapi[0].mesgul = m.id;
+  sb.yapi[pi0].mesgul = m.id;
   kur(m, sb);
   const r = SIM.satisTamamla(sb, m, true, !!m.__yanlis);
   return { r, paraFark: D.s.para - paraOnce, sb };
@@ -132,12 +134,12 @@ kontrol(t.r.tip === 'yanlis', 'yanlış yakıt bekleniyor');
 kontrol(t.paraFark < 0, 'yanlış yakıtta kasa azalmalı: ' + t.paraFark);
 
 /* pompa serbest kaldı mı */
-kontrol(t.sb.yapi[0].mesgul === null, 'satış sonrası pompa boşalmalı');
+kontrol(D.pompalar(t.sb)[0].p.mesgul === null, 'satış sonrası pompa boşalmalı');
 kontrol(t.sb.kuyruk.length === 0, 'satış sonrası müşteri kuyruktan çıkmalı');
 
 console.log('TEST 4b — akış hızları');
 D.yeni();
-const p0 = D.sube().yapi[0];
+const p0 = D.pompalar(D.sube())[0].p;
 kontrol(D.akis(p0) > 3, 'tam akış hızlı olmalı: ' + D.akis(p0));
 kontrol(D.yavasAkis(p0) < D.akis(p0) / 5, 'yavaş akış belirgin kısık olmalı');
 kontrol(D.yavasAkis(p0) > 0.1, 'yavaş akış sıfır olmamalı');
@@ -159,24 +161,29 @@ kontrol(SIM.pompaKur(sb, 2, 'lpg'), 'LPG pompası kurulmalı');
 kontrol(SIM.yakitVar(sb, 'lpg') === false, 'LPG tankı boşken satılamaz');
 sb.tank.lpg.dolu = 1000;
 kontrol(SIM.yakitVar(sb, 'lpg') === true, 'LPG tankı dolunca satılabilir');
-kontrol(hazir(sb, 5) && SIM.binaKur(sb, 5, 'market'), 'market kurulmalı');
-kontrol(hazir(sb, 6) && SIM.binaKur(sb, 6, 'depo'), 'depo kurulmalı');
+function bosHucre(sb) { for (let i = 0; i < sb.yapi.length; i++) if (!sb.yapi[i]) return i; return -1; }
+const cMarket = bosHucre(sb);
+kontrol(hazir(sb, cMarket) && SIM.binaKur(sb, cMarket, 'market'), 'market kurulmalı');
+const cDepo = bosHucre(sb);
+kontrol(hazir(sb, cDepo) && SIM.binaKur(sb, cDepo, 'depo'), 'depo kurulmalı');
 const kapOnce = D.tankKap(sb, 'benzin');
-SIM.yukselt(sb, 6);
+SIM.yukselt(sb, cDepo);
 kontrol(D.tankKap(sb, 'benzin') > kapOnce, 'depo yükseltmesi tank kapasitesini artırmalı');
-kontrol(hazir(sb, 7) && SIM.binaKur(sb, 7, 'gunes'), 'güneş paneli kurulmalı');
+const cGunes = bosHucre(sb);
+kontrol(hazir(sb, cGunes) && SIM.binaKur(sb, cGunes, 'gunes'), 'güneş paneli kurulmalı');
 D.s.saat = 12;
 kontrol(D.gucUretim(sb) > 0, 'öğlen güneş üretmeli');
 D.s.saat = 2;
 kontrol(D.gucUretim(sb) === 0, 'gece güneş üretmemeli');
-const akisOnce = D.akis(sb.yapi[0]);
-SIM.yukselt(sb, 0);
-kontrol(D.akis(sb.yapi[0]) > akisOnce, 'pompa yükseltmesi akışı artırmalı');
-sb.yapi[0].bakim = 20; sb.yapi[0].arizali = true;
-kontrol(SIM.bakimYap(sb, 0), 'bakım yapılmalı');
-kontrol(sb.yapi[0].bakim === 100 && !sb.yapi[0].arizali, 'bakım sonrası arıza gitmeli');
+const pIdx = D.pompalar(sb)[0].i;
+const akisOnce = D.akis(sb.yapi[pIdx]);
+SIM.yukselt(sb, pIdx);
+kontrol(D.akis(sb.yapi[pIdx]) > akisOnce, 'pompa yükseltmesi akışı artırmalı');
+sb.yapi[pIdx].bakim = 20; sb.yapi[pIdx].arizali = true;
+kontrol(SIM.bakimYap(sb, pIdx), 'bakım yapılmalı');
+kontrol(sb.yapi[pIdx].bakim === 100 && !sb.yapi[pIdx].arizali, 'bakım sonrası arıza gitmeli');
 const pompaSayiOnce = D.pompalar(sb).length;
-kontrol(SIM.yik(sb, 2), 'yıkım çalışmalı');
+kontrol(SIM.yik(sb, D.pompalar(sb)[0].i), 'yıkım çalışmalı');
 kontrol(D.pompalar(sb).length === pompaSayiOnce - 1, 'pompa sayısı azalmalı');
 
 /* pompa sınırı */
@@ -184,23 +191,23 @@ D.yeni(); D.s.para = 50000000; sb = D.sube();
 const lok = D.lok(sb);
 for (let i = 0; i < sb.beton.length; i++) sb.beton[i] = true;
 let kurulan = D.pompalar(sb).length;
-for (let i = 2; i < sb.yapi.length; i++) { if (SIM.pompaKur(sb, i, 'benzin')) kurulan++; }
+for (let i = 0; i < sb.yapi.length; i++) { if (!sb.yapi[i] && SIM.pompaKur(sb, i, 'benzin')) kurulan++; }
 kontrol(kurulan === lok.maxPompa, 'pompa sınırı ' + lok.maxPompa + ' olmalı, kurulan: ' + kurulan);
 
 /* arsa genişletme indeks korumalı mı */
 console.log('TEST 6 — arsa genişletme indeks kayması');
 D.yeni(); D.s.para = 50000000; sb = D.sube();
-hazir(sb, 1);
+const pompaIdx6 = D.pompalar(sb)[0].i;
 const aday = SIM.adayUret('pompaci');
 SIM.iseAl(sb, aday);
-SIM.pompaAta(sb, aday.id, 1);
+SIM.pompaAta(sb, aday.id, pompaIdx6);
 const genisOnce = sb.w;
 kontrol(SIM.arsaGenislet(sb), 'arsa genişlemeli');
 kontrol(sb.w > genisOnce || sb.h > 3, 'boyut artmalı');
 const atanan = sb.personel[0];
 kontrol(sb.yapi[atanan.pompa] && sb.yapi[atanan.pompa].t === 'pompa',
   'genişleme sonrası pompacının pompası hâlâ pompa olmalı (idx ' + atanan.pompa + ')');
-kontrol(sb.yapi[0] && sb.yapi[0].t === 'pompa', 'eski pompa 0 korunmalı');
+kontrol(D.pompalar(sb).length >= 1, 'eski pompalar korunmalı');
 
 /* ======================= TEST 7: sipariş akışı ======================= */
 console.log('TEST 7 — sipariş ve teslim');
@@ -402,12 +409,18 @@ D.yeni(); D.s.para = 90000000; D.s.seviye = 20; sb = D.sube();
 sb.beton.fill(true);
 SIM.binaKur(sb, 5, 'jenerator');
 D.s.saat = 3;
+kontrol(D.binalar(sb, 'jenerator')[0].b.depo > 0, 'jeneratör kurulunca deposu dolmalı');
 kontrol(D.gucUretim(sb) > 0, 'jeneratör gece de üretmeli');
 sb.kesinti = true;
 kontrol(D.gucYeterli(sb) === (D.gucUretim(sb) >= D.gucTuketim(sb) * 0.9), 'kesintide güç yeterliliği hesaplanmalı');
 sb.tank.dizel.dolu = 0;
+D.binalar(sb, 'jenerator')[0].b.depo = 0;
 SIM.saatBasi();
-kontrol(D.binalar(sb, 'jenerator')[0].b.arizali, 'dizel bitince jeneratör durmalı');
+kontrol(D.binalar(sb, 'jenerator')[0].b.calismiyor, 'deposu bitince jeneratör durmalı');
+kontrol(D.gucUretim(sb) === 0, 'durmuş jeneratör üretmemeli');
+sb.tank.dizel.dolu = 400;
+kontrol(SIM.jeneratorDoldur(sb, 5), 'jeneratör deposu doldurulmalı');
+kontrol(!D.binalar(sb, 'jenerator')[0].b.calismiyor, 'dolunca tekrar çalışmalı');
 
 /* ======================= SONUÇ ======================= */
 console.log('');

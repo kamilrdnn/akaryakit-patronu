@@ -24,8 +24,8 @@ const UI = {
 
   /* yelpaze menüdeki yerleşim: [sekme, yarıçap, açı] */
   fabDuzen: [
-    ['insa', 112, 90], ['market', 112, 62], ['siparis', 112, 34], ['personel', 112, 6],
-    ['fiyat', 198, 90], ['subeler', 198, 62], ['banka', 198, 34], ['daha', 198, 6]
+    ['insa', 118, 88], ['market', 118, 61], ['siparis', 118, 34], ['personel', 118, 7],
+    ['fiyat', 196, 88], ['subeler', 196, 64], ['banka', 196, 40], ['daha', 196, 16]
   ],
   fabAcik: false,
 
@@ -49,10 +49,12 @@ const UI = {
       if (!sk) continue;
       var r = d[1], aci = d[2] * Math.PI / 180;
       var x = Math.cos(aci) * r, y = Math.sin(aci) * r;
-      h += '<button class="fabOge" id="fo_' + sk.id + '" style="transition-delay:' + (i * 22) + 'ms" ' +
+      h += '<button class="fabOge" id="fo_' + sk.id + '" style="transition-delay:' + (i * 26) + 'ms" ' +
            'data-x="' + x.toFixed(1) + '" data-y="' + y.toFixed(1) + '" ' +
            'onclick="UI.fabSec(\'' + sk.id + '\')">' +
-           '<span class="yuvar">' + sk.ik + '</span><span class="yzi">' + sk.ad + '</span></button>';
+           '<span class="yuvar">' + sk.ik + '</span>' +
+           (sk.id === 'daha' && this.okunmamis ? '<span class="rozetS">' + this.okunmamis + '</span>' : '') +
+           '</button>';
     }
     h += '<button class="fabAna" onclick="UI.fabAc()"><span class="kareler"><i></i><i></i><i></i><i></i></span></button>';
     kap.innerHTML = h;
@@ -68,7 +70,7 @@ const UI = {
       if (this.fabAcik) {
         e.style.transform = 'translate(' + e.getAttribute('data-x') + 'px,' + (-e.getAttribute('data-y')) + 'px) scale(1)';
       } else {
-        e.style.transform = 'translate(0,0) scale(.5)';
+        e.style.transform = 'translate(0,0) scale(.35)';
       }
     }
   },
@@ -256,19 +258,14 @@ const UI = {
     h += '<button class="kamBtn tik" onclick="IZO.ortala()">⊙</button>';
     h += '</div>';
 
-    /* ---- alt: bekleyen müşteri ---- */
+    /* ---- alt: yalnızca kritik durum bilgisi (büyük doldur butonu kaldırıldı) ---- */
     h += '<div class="hudAlt"' + (this.fabAcik ? ' style="display:none"' : '') + '>';
-    var bekleyen = null, bekSayi = 0;
-    for (var k = 0; k < sb.kuyruk.length; k++) {
-      if (sb.kuyruk[k].durum === 'pompada') { bekSayi++; if (!bekleyen) bekleyen = sb.kuyruk[k]; }
+    if (this.tasinan !== null && this.tasinan !== undefined) {
+      h += '<div class="tasimaSerit tik"><span>📦 Yeni yerini seç — boş betona dokun</span>';
+      h += '<button onclick="UI.tasimaIptal()">İptal</button></div>';
     }
     if (sb.devredildi) {
       h += '<div class="yakitKart tik" style="justify-content:center">Bu şube devredildi — Şubeler\'den başka şubeye geç.</div>';
-    } else if (bekleyen) {
-      h += '<button class="doldurBtn tik" onclick="SERVIS.ac(' + bekleyen.pompa + ')">';
-      h += bekleyen.emoji + ' POMPA ' + (bekleyen.pompa + 1) + ' · ' + bekleyen.etiket;
-      h += (bekSayi > 1 ? ' <span class="etiket uyari">+' + (bekSayi - 1) + '</span>' : '');
-      h += '</button>';
     } else if (!D.pompalar(sb).length) {
       h += '<button class="doldurBtn tik" onclick="UI.sekmeGec(\'insa\')">🏗️ POMPA KUR</button>';
     }
@@ -356,14 +353,31 @@ const UI = {
   hucreTik: function (k) {
     var sb = D.sube();
     if (k < 0 || k >= sb.yapi.length) return;
+    /* taşıma modu: hedef hücre seçiliyor */
+    if (this.tasinan !== null && this.tasinan !== undefined) {
+      var kaynak = this.tasinan;
+      if (SIM.yapiTasi(sb, kaynak, k)) { this.tasinan = null; this.ciz(); }
+      return;
+    }
     var y = sb.yapi[k];
     if (y && y.t === 'pompa' && y.mesgul) {
       var m = SIM.musteriBul(sb, y.mesgul);
-      if (m && m.durum === 'pompada') { SERVIS.ac(k); return; }
+      if (m && m.durum === 'pompada') { this.pompaSecim(k, m); return; }
     }
     if (!sb.beton[k]) this.betonModal(k);
     else if (!y) this.insaModal(k);
     else this.yapiModal(k);
+  },
+
+  /* pompada müşteri varken: doldur mu, pompa kartı mı? */
+  pompaSecim: function (k, m) {
+    var sb = D.sube();
+    var atanan = null;
+    for (var i = 0; i < sb.personel.length; i++) if (sb.personel[i].pompa === k) atanan = sb.personel[i];
+    var h = '<div class="not">' + m.emoji + ' ' + m.arac + ' pompada bekliyor · ' + m.etiket + '</div>';
+    h += '<button class="btn genis" style="margin-top:10px" onclick="UI.modalKapat();SERVIS.ac(' + k + ')">⛽ KENDİM DOLDUR</button>';
+    h += '<button class="btn genis ikincil" style="margin-top:8px" onclick="UI.yapiModal(' + k + ')">🧑‍🔧 Pompa kartı · pompacı ' + (atanan ? 'atandı' : 'ata') + '</button>';
+    this.modal('Pompa ' + (k + 1), h);
   },
 
   temizlikOnay: function () {
@@ -459,7 +473,21 @@ const UI = {
     else h += '<span class="etiket iyi">Maksimum seviye</span>';
     h += '<button class="btn kucuk ikincil" onclick="UI.bakim(' + k + ')">🛠 ' + (y.arizali ? 'Tamir' : 'Bakım') + ' ' + tl(SIM.bakimBedeli(y)) + '</button>';
     h += '<button class="btn kucuk ikincil" onclick="UI.yik(' + k + ')">🧨 Yık</button>';
+    h += '<button class="btn kucuk ikincil" onclick="UI.tasimayaBasla(' + k + ')">📦 Taşı ' + tl(SIM.tasimaBedeli(y)) + '</button>';
     h += '</div>';
+
+    /* jeneratör yakıt deposu */
+    if (y.t === 'jenerator') {
+      var kap = SIM.jeneratorKap(y), dolu = y.depo || 0;
+      var oran = Math.round((dolu / kap) * 100);
+      h += '<div class="baslik" style="margin-top:14px">Jeneratör yakıt deposu</div>';
+      h += '<div class="hedefCubuk" style="margin:6px 0"><i style="width:' + oran + '%;background:' + (oran < 20 ? 'linear-gradient(90deg,#8a2b2b,#f05252)' : 'linear-gradient(90deg,#2a7f4f,#3ec47a)') + '"></i></div>';
+      h += '<div class="kv"><span>Depoda</span><b class="' + (oran < 20 ? 'kirmiziY' : '') + '">' + say(dolu, 0) + ' / ' + say(kap, 0) + ' L</b></div>';
+      h += '<div class="kv"><span>Saatlik tüketim</span><b>' + say(9 * y.sv, 0) + ' L</b></div>';
+      if (y.calismiyor) h += '<div class="kv"><span>Durum</span><b class="kirmiziY">Yakıtsız — durdu</b></div>';
+      h += '<button class="btn genis" style="margin-top:8px" onclick="UI.jeneratorDoldur(' + k + ')">⛽ Dizel tankından doldur</button>';
+      h += '<div class="not">Jeneratör istasyon dizelini doğrudan kullanmaz; deposunu sen doldurursun.</div>';
+    }
 
     if (y.t === 'pompa') {
       var atanan = null;
@@ -472,7 +500,11 @@ const UI = {
       } else {
         var bos = [];
         for (var j = 0; j < sb.personel.length; j++) if (sb.personel[j].tip === 'pompaci' && sb.personel[j].pompa === null) bos.push(sb.personel[j]);
-        if (!bos.length) h += '<div class="not">Boşta pompacı yok. Personel sekmesinden işe alabilirsin.</div>';
+        if (!bos.length) {
+          var ucret = Math.round((VERI.personel.pompaci.maas[0] + VERI.personel.pompaci.maas[1]) / 2);
+          h += '<div class="not">Boşta pompacı yok. Buradan hemen işe alıp bu pompaya atayabilirsin.</div>';
+          h += '<button class="btn genis" style="margin-top:8px" onclick="UI.pompaciAlVeAta(' + k + ')">🧑‍🔧 Pompacı işe al ve ata · ~' + tl(ucret) + '/ay</button>';
+        }
         else {
           for (var b = 0; b < bos.length; b++) {
             h += '<div class="satir"><div class="sol"><div class="ikon">🧑‍🔧</div><div><div class="ad">' + bos[b].ad + '</div><div class="alt">Beceri ' + bos[b].beceri + '</div></div></div>';
@@ -488,7 +520,25 @@ const UI = {
   yukselt: function (k) { if (SIM.yukselt(D.sube(), k)) { this.bildir('Yükseltildi', '', 'iyi'); this.yapiModal(k); } },
   bakim: function (k) { if (SIM.bakimYap(D.sube(), k)) { this.bildir('Bakım tamam', 'Ekipman yeni gibi.', 'iyi'); this.yapiModal(k); } },
   yik: function (k) { if (SIM.yik(D.sube(), k)) this.modalKapat(); },
+  tasinan: null,
+  tasimayaBasla: function (k) {
+    this.tasinan = k;
+    this.modalKapat();
+    this.bildir('Taşıma modu', 'Yapıyı koymak istediğin boş betona dokun.', 'uyari');
+    this.ciz();
+  },
+  tasimaIptal: function () { this.tasinan = null; this.bildir('Taşıma iptal', '', 'uyari'); this.ciz(); },
+  jeneratorDoldur: function (k) { if (SIM.jeneratorDoldur(D.sube(), k)) this.yapiModal(k); },
+
   pompaAta: function (pid, pompa, k) { SIM.pompaAta(D.sube(), pid, pompa); this.yapiModal(k); },
+  pompaciAlVeAta: function (k) {
+    var sb = D.sube();
+    var p = SIM.personelAl(sb, 'pompaci');
+    if (!p) return;
+    SIM.pompaAta(sb, p.id, k);
+    this.bildir('Pompacı işe alındı', p.ad + ' · Pompa ' + (k + 1), 'iyi');
+    this.yapiModal(k);
+  },
 
   /* =========================================================
      İNŞA PANELİ
@@ -615,13 +665,13 @@ const UI = {
 
   otoKur: function (t) {
     var sb = D.sube();
-    var i = this.bosZeminBul(sb, true);
+    var i = SIM.yerAc(sb, 'bina');
     if (i < 0) { this.bildir('Yer yok', 'Önce arsa satın alıp beton dök.', 'kotu'); this.altSekmeGec('insa', 'arsa'); return; }
     if (SIM.binaKur(sb, i, t)) this.ciz();
   },
   otoPompa: function (y) {
     var sb = D.sube();
-    var i = this.bosZeminBul(sb, true);
+    var i = SIM.yerAc(sb, 'pompa');
     if (i < 0) { this.bildir('Yer yok', 'Önce arsa satın alıp beton dök.', 'kotu'); this.altSekmeGec('insa', 'arsa'); return; }
     if (SIM.pompaKur(sb, i, y)) this.ciz();
   },
@@ -1139,12 +1189,13 @@ const UI = {
     var h = this.cipSerit('daha', [
       ['ozet', '📊 Özet'], ['muhasebe', '🧾 Muhasebe'],
       ['gorevler', '🎯 Görevler', hazirGorev || ''], ['sozlesme', '✍️ Sözleşmeler'],
-      ['basarim', '🏆 Başarımlar'], ['ayarlar', '⚙️ Ayarlar']
+      ['filo', '🤝 Toplu Anlaşma'], ['basarim', '🏆 Başarımlar'], ['ayarlar', '⚙️ Ayarlar']
     ]);
     var k = this.altSekme.daha || 'ozet';
     if (k === 'muhasebe') return h + this.muhasebeHtml();
     if (k === 'gorevler') return h + this.gorevlerHtml();
     if (k === 'sozlesme') return h + this.sozlesmeHtml();
+    if (k === 'filo') return h + this.filoHtml();
     if (k === 'basarim') return h + this.basarimHtml();
     if (k === 'ayarlar') return h + this.ayarlarHtml();
     return h + this.ozetHtml();
@@ -1294,6 +1345,51 @@ const UI = {
 
   sozlesmeImzala: function (tid) { if (SIM.sozlesmeImzala(tid)) this.panelYenile(); },
 
+  filoHtml: function () {
+    var s2 = D.s;
+    if (!s2.filoTeklif.length) SIM.filoTeklifleriUret();
+    var h = '';
+    if (s2.filolar.length) {
+      h += '<div class="kart"><div class="baslik">Yürüyen toplu anlaşmalar</div>';
+      for (var i = 0; i < s2.filolar.length; i++) {
+        var f = s2.filolar[i];
+        var oran = kisitla(f.bugunTeslim / f.gunlukL * 100, 0, 100);
+        var sonraki = null;
+        for (var sa = 0; sa < f.saatler.length; sa++) if (f.saatler[sa] > s2.saat && sonraki === null) sonraki = f.saatler[sa];
+        if (sonraki === null) sonraki = f.saatler[0];
+        h += '<div class="gorev"><div class="ust"><div><div class="ad">' + f.emoji + ' ' + f.ad + '</div>';
+        h += '<div class="say">' + f.aracSayi + ' araç × ' + say(f.aracL, 0) + ' L · ' + VERI.yakitlar[f.yakit].ad + ' · %' + say(f.iskonto * 100, 0) + ' iskonto</div></div>';
+        h += '<span class="etiket ' + (f.kacirilan ? 'kotu' : 'iyi') + '">' + f.kalanGun + ' gün</span></div>';
+        h += '<div class="cubuk"><i style="width:' + oran + '%;background:' + (oran >= 80 ? 'var(--yesil)' : 'var(--sari)') + '"></i></div>';
+        h += '<div class="mini" style="margin-top:4px">Bugün ' + say(f.bugunTeslim, 0) + ' / ' + say(f.gunlukL, 0) + ' L · sıradaki konvoy ' + ikiHane(sonraki) + ':00 · prim ' + tl(f.prim) + '</div></div>';
+      }
+      h += '</div>';
+    }
+    h += '<div class="kart"><div class="baslik">Filo teklifleri</div>';
+    h += '<div class="not">Toplu anlaşmada araçlar belirlenen saatlerde konvoy halinde gelir. İskontolu satarsın ama hacim garantilidir; peşinat anında ödenir. Günlük hedefin %80\'ini tutturamazsan kesinti var.</div>';
+    for (var t = 0; t < s2.filoTeklif.length; t++) {
+      var tk = s2.filoTeklif[t];
+      var saatMetin = [];
+      for (var q = 0; q < tk.saatler.length; q++) saatMetin.push(ikiHane(tk.saatler[q]) + ':00');
+      h += '<div class="filoKart"><div class="fkUst"><span class="fkIk">' + tk.emoji + '</span>';
+      h += '<div><div class="ad">' + tk.ad + '</div><div class="alt">' + tk.aciklama + '</div></div></div>';
+      h += '<div class="fkSatir"><span>Yakıt</span><b>' + VERI.yakitlar[tk.yakit].ad + '</b></div>';
+      h += '<div class="fkSatir"><span>Konvoy</span><b>' + tk.aracSayi + ' araç × ' + say(tk.aracL, 0) + ' L</b></div>';
+      h += '<div class="fkSatir"><span>Saatler</span><b>' + saatMetin.join(' · ') + '</b></div>';
+      h += '<div class="fkSatir"><span>Günlük hacim</span><b>' + say(tk.gunlukL, 0) + ' L</b></div>';
+      h += '<div class="fkSatir"><span>İskonto</span><b class="sariY">%' + say(tk.iskonto * 100, 1) + '</b></div>';
+      h += '<div class="fkSatir"><span>Süre</span><b>' + tk.gun + ' gün</b></div>';
+      h += '<div class="fkSatir"><span>Peşinat</span><b class="yesilY">' + tl(tk.pesin) + '</b></div>';
+      h += '<div class="fkSatir"><span>Bitiş primi</span><b class="yesilY">' + tl(tk.prim) + '</b></div>';
+      h += '<button class="btn genis" style="margin-top:8px" onclick="UI.filoImzala(\'' + tk.id + '\')">🤝 Anlaşmayı imzala</button></div>';
+    }
+    if (!s2.filoTeklif.length) h += '<div class="bos">Şu an filo teklifi yok. Seviyen yükseldikçe ve yakıt çeşidin arttıkça gelir.</div>';
+    h += '</div>';
+    return h;
+  },
+
+  filoImzala: function (tid) { if (SIM.filoImzala(tid)) this.panelYenile(); },
+
   basarimHtml: function () {
     var s2 = D.s;
     var kazanilan = s2.basarimlar || [];
@@ -1428,12 +1524,23 @@ const UI = {
     }
     var k = document.getElementById('bildirimler');
     if (!k) return;
+    /* aynı bildirim üst üste gelmesin */
+    var imza = baslik + '|' + (metin || '');
+    if (this._sonBildirim === imza && Date.now() - (this._sonBildirimZ || 0) < 2500) return;
+    this._sonBildirim = imza;
+    this._sonBildirimZ = Date.now();
+
     var d = document.createElement('div');
     d.className = 'bld ' + (tip || '');
     d.innerHTML = '<b>' + baslik + '</b>' + (metin || '');
     k.appendChild(d);
-    if (k.children.length > 4) k.removeChild(k.firstChild);
-    setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 4200);
+    while (k.children.length > 2) k.removeChild(k.firstChild);
+    var sil = function () {
+      if (!d.parentNode) return;
+      d.classList.add('kapan');
+      setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 280);
+    };
+    setTimeout(sil, tip === 'kotu' ? 3200 : 2300);
   },
 
   basarimToast: function (ba) {

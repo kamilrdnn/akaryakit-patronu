@@ -42,8 +42,11 @@ const SERVIS = {
     this.onAyar = 0;
     this.onAyarliSatis = false;
     this._uyardi = false;
+    this._lpgOnayli = false;
+    this._ekTeklif = null;
     this.bitti = false;
     this.acik = true;
+    if (window.SES) SES.uyandir();
     m.durum = 'servis';
 
     document.getElementById('servis').classList.add('ac');
@@ -155,6 +158,16 @@ const SERVIS = {
     if (this.bitti) return;
     if (this.m.verilen > 0.05 && this.nozul && this.nozul !== y) {
       UI.bildir('Nozul değiştirilemez', 'Dolum başladıktan sonra tabancayı değiştiremezsin.', 'kotu');
+      return;
+    }
+    /* LPG: güvenlik adımları */
+    if (y === 'lpg' && window.MINI && D.s.ayar && D.s.ayar.lpgGuvenlik !== false && !this._lpgOnayli) {
+      var self = this;
+      MINI.lpgOnay(function (tamam) {
+        if (tamam === null) return;             /* vazgeçti */
+        self._lpgOnayli = true;
+        self.nozulSec('lpg');
+      });
       return;
     }
     this.nozul = y;
@@ -360,6 +373,14 @@ const SERVIS = {
     var h = '<div class="svUst"><div style="font-weight:800">Sonuç</div><button class="kapat" onclick="SERVIS.kapat()">✕</button></div>';
     h += '<div class="svSonuc"><div class="bas" style="color:' + renk + '">' + bas + '</div><div class="det">' + alt + '</div></div>';
     h += '<div style="flex:1"></div>';
+    /* ek hizmet teklifi (yıkama / yağ) */
+    var ek = (window.MINI && r.tip !== 'yanlis') ? MINI.teklif(sb, m) : null;
+    if (ek) {
+      this._ekTeklif = { tur: ek, m: m };
+      h += '<button class="btn genis" style="background:linear-gradient(180deg,#3b8fd0,#2f6fa8)" onclick="SERVIS.ekHizmet()">' +
+           (ek === 'yikama' ? '🧼 Müşteri yıkama istiyor — başlat' : '🔧 Müşteri yağ değişimi istiyor — başlat') + '</button>';
+      h += '<div style="height:8px"></div>';
+    }
     if (sonraki) {
       h += '<button class="btn genis" onclick="SERVIS.sonrakine(' + sonraki.pompa + ')">SIRADAKİ MÜŞTERİ ' + sonraki.emoji + '</button>';
       h += '<div style="height:8px"></div>';
@@ -371,8 +392,18 @@ const SERVIS = {
     try { if (window.AndroidKabuk) AndroidKabuk.titret(r.isabet === 'tam' ? 90 : 25); } catch (e) {}
   },
 
+  ekHizmet: function () {
+    var t = this._ekTeklif;
+    if (!t || !window.MINI) return;
+    this._ekTeklif = null;
+    if (t.tur === 'yikama') MINI.yikamaBaslat(t.m, null);
+    else MINI.yagBaslat(t.m, null);
+  },
+
   sonrakine: function (pompaIdx) {
     this.bitti = false;
+    this._lpgOnayli = false;
+    this._ekTeklif = null;
     this.mod = 'tam';
     this.onAyar = 0;
     this.onAyarliSatis = false;

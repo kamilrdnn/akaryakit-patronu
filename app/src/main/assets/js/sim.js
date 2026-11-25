@@ -30,6 +30,7 @@ const SIM = {
   /* saatlik: elektrik, bakım aşınması, toptan fiyat, olaylar */
   saatBasi: function () {
     var s = D.s, sb = D.sube();
+    this.filoKonvoy(sb);
 
     /* --- elektrik --- */
     var tuk = D.gucTuketim(sb), ure = D.gucUretim(sb);
@@ -41,14 +42,20 @@ const SIM = {
     /* --- jeneratör dizel tüketimi --- */
     var jen = D.binalar(sb, 'jenerator');
     for (var j = 0; j < jen.length; j++) {
-      if (jen[j].b.arizali) continue;
-      var harcanan = 9 * jen[j].b.sv;
-      if (sb.tank.dizel.dolu >= harcanan) {
-        sb.tank.dizel.dolu -= harcanan;
-        s.ist.bugunGider += harcanan * D.toptanFiyat('dizel');
+      var jb = jen[j].b;
+      if (jb.arizali) continue;
+      if (typeof jb.depo !== 'number') jb.depo = 0;
+      var harcanan = 9 * jb.sv;
+      if (jb.depo >= harcanan) {
+        jb.depo -= harcanan;
+        if (jb.depo < this.jeneratorKap(jb) * 0.18 && !jb.uyarildi) {
+          jb.uyarildi = true;
+          UI.bildir('⛽ Jeneratör yakıtı azaldı', 'Jeneratör deposunda ' + say(jb.depo, 0) + ' L kaldı — doldur.', 'uyari');
+        }
       } else {
-        jen[j].b.arizali = true;
-        UI.bildir('Jeneratör durdu', 'Dizel tankı boşaldı, jeneratör yakıt bulamadı.', 'kotu');
+        jb.depo = 0;
+        jb.calismiyor = true;
+        UI.bildir('🔋 Jeneratör durdu', 'Deposu boşaldı. Yapı kartından dizel doldur.', 'kotu');
       }
     }
 
@@ -122,6 +129,7 @@ const SIM = {
 
     this.kredileriIsle();
     this.sozlesmeleriIsle();
+    this.filolariIsle();
     /* günlük sayaçları sıfırla ve yeni görev ver */
     s.subeler.forEach(function (sbx) {
       sbx.gunlukYakit = { benzin: 0, dizel: 0, lpg: 0, ev: 0 };
@@ -441,6 +449,7 @@ const SIM = {
     var s = D.s;
     var yk = m.yakit;
     var fiyat = sb.fiyat[yk];
+    if (m.filo) fiyat = +(fiyat * (1 - (m.iskonto || 0))).toFixed(3);
     var maliyet = yk === 'ev' ? this.elektrikMaliyet(sb) : D.toptanFiyat(yk);
     var sonuc = { tip: 'ok' };
 
@@ -532,6 +541,10 @@ const SIM = {
     sb.bugun.ciro += ciro + bahsis + ekGelir;
     if (isabet === 'tam') sb.bugun.isabet++;
     sb.gunlukYakit[yk] = (sb.gunlukYakit[yk] || 0) + satilan;
+    if (m.filo) {
+      var fl = this.filoBul(m.filo);
+      if (fl) { fl.bugunTeslim += satilan; fl.toplamTeslim += satilan; }
+    }
     this.basarimKontrol();
 
     /* izometrik sahnede uçan kazanç */
@@ -1005,6 +1018,255 @@ const SIM = {
     return false;
   },
 
+  /* =========================================================
+     TOPLU (FİLO) ANLAŞMALARI
+     ========================================================= */
+  filoTeklifleriUret: function () {
+    var s = D.s;
+    s.filoTeklif = [];
+    var sb = D.sube();
+    var adet = kisitla(1 + Math.floor(s.seviye / 4), 1, 3);
+    var havuz = [];
+    for (var i = 0; i < VERI.filoAnlasmalar.length; i++) {
+      var f = VERI.filoAnlasmalar[i];
+      if (s.seviye < f.seviyeSart) continue;
+      if (!this.yakitVar(sb, f.yakit)) continue;
+      var zatenVar = false;
+      for (var j = 0; j < s.filolar.length; j++) if (s.filolar[j].tanim === f.id) zatenVar = true;
+      if (!zatenVar) havuz.push(f);
+    }
+    for (var k = 0; k < adet && havuz.length; k++) {
+      var idx = Math.floor(Math.random() * havuz.length);
+      var t = havuz.splice(idx, 1)[0];
+      var aracSayi = rastgeleTam(t.aracSayi[0], t.aracSayi[1]);
+      var aracL = Math.round(rastgele(t.aracL[0], t.aracL[1]));
+      var iskonto = +rastgele(t.iskonto[0], t.iskonto[1]).toFixed(3);
+      var gun = rastgeleTam(t.gun[0], t.gun[1]);
+      var gunlukL = aracSayi * aracL * t.saatler.length;
+      var taban = t.yakit === 'ev' ? this.elektrikMaliyet(sb) : D.toptanFiyat(t.yakit);
+      s.filoTeklif.push({
+        id: id(), tanim: t.id, ad: t.ad, emoji: t.emoji, arac: t.arac, yakit: t.yakit,
+        aracSayi: aracSayi, aracL: aracL, saatler: t.saatler.slice(), iskonto: iskonto,
+        gun: gun, gunlukL: gunlukL, aciklama: t.aciklama,
+        pesin: Math.round(gunlukL * taban * rastgele(0.25, 0.5)),
+        prim: Math.round(gunlukL * gun * taban * rastgele(0.03, 0.07)),
+        ceza: Math.round(gunlukL * taban * rastgele(0.5, 0.9))
+      });
+    }
+  },
+
+  filoImzala: function (teklifId) {
+    var s = D.s;
+    for (var i = 0; i < s.filoTeklif.length; i++) {
+      var t = s.filoTeklif[i];
+      if (t.id !== teklifId) continue;
+      if (s.filolar.length >= 3) { UI.bildir('Filo sınırı', 'Aynı anda en fazla 3 toplu anlaşma yürütebilirsin.', 'kotu'); return false; }
+      s.filolar.push({
+        id: t.id, tanim: t.tanim, ad: t.ad, emoji: t.emoji, arac: t.arac, yakit: t.yakit,
+        aracSayi: t.aracSayi, aracL: t.aracL, saatler: t.saatler, iskonto: t.iskonto,
+        gun: t.gun, kalanGun: t.gun, gunlukL: t.gunlukL,
+        prim: t.prim, ceza: t.ceza, sube: s.aktif,
+        bugunTeslim: 0, toplamTeslim: 0, kacirilan: 0, sonSaat: -1
+      });
+      s.para += t.pesin;
+      s.ist.bugunCiro += t.pesin;
+      s.marka = kisitla(s.marka + 1.5, 0, 100);
+      s.filoTeklif.splice(i, 1);
+      UI.bildir('🤝 Toplu anlaşma imzalandı', t.ad + ' · peşinat ' + tl(t.pesin) + ' · günde ' + say(t.gunlukL, 0) + ' L', 'iyi');
+      return true;
+    }
+    return false;
+  },
+
+  /* saat başı: filo konvoyu gelir */
+  filoKonvoy: function (sb) {
+    var s = D.s;
+    for (var i = 0; i < s.filolar.length; i++) {
+      var f = s.filolar[i];
+      if (f.sube !== s.aktif) continue;
+      if (f.saatler.indexOf(s.saat) < 0 || f.sonSaat === s.saat) continue;
+      f.sonSaat = s.saat;
+      var geldi = 0;
+      for (var a = 0; a < f.aracSayi; a++) {
+        if (sb.kuyruk.length >= 10) break;
+        var m = this.filoMusterisi(sb, f);
+        if (!m) break;
+        sb.kuyruk.push(m);
+        geldi++;
+      }
+      if (geldi) UI.bildir(f.emoji + ' ' + f.ad, geldi + ' araçlık konvoy geldi · ' + say(f.aracL, 0) + ' L/araç', 'uyari');
+    }
+  },
+
+  filoMusterisi: function (sb, f) {
+    var aracTanim = null;
+    for (var i = 0; i < VERI.araclar.length; i++) if (VERI.araclar[i].ad === f.arac) aracTanim = VERI.araclar[i];
+    if (!aracTanim) aracTanim = VERI.araclar[0];
+    var hedef = f.aracL * rastgele(0.9, 1.1);
+    if (f.yakit !== 'ev') {
+      var mevcut = sb.tank[f.yakit].dolu;
+      if (hedef > mevcut) hedef = mevcut * 0.9;
+      if (hedef < 5) return null;
+    }
+    hedef = Math.round(hedef);
+    return {
+      id: id(), arac: aracTanim.ad, emoji: aracTanim.emoji, yakit: f.yakit,
+      hedef: hedef, tip: 'litre', etiket: say(hedef, 0) + ' ' + VERI.yakitlar[f.yakit].birim + ' · ' + f.ad,
+      bahsis: 0.2, sabir: aracTanim.sabir * 1.6, sabirKalan: aracTanim.sabir * 1.6,
+      pompa: null, verilen: 0, durum: 'bekliyor',
+      filo: f.id, iskonto: f.iskonto
+    };
+  },
+
+  filolariIsle: function () {
+    var s = D.s;
+    for (var i = s.filolar.length - 1; i >= 0; i--) {
+      var f = s.filolar[i];
+      var oran = f.gunlukL > 0 ? f.bugunTeslim / f.gunlukL : 1;
+      if (oran >= 0.8) {
+        f.basarili = (f.basarili || 0) + 1;
+      } else {
+        f.kacirilan++;
+        var kesinti = Math.round((f.ceza / f.gun) * (1 - oran));
+        s.para -= kesinti;
+        s.ist.bugunGider += kesinti;
+        UI.bildir('⚠️ Filo açığı', f.ad + ' · ' + say(f.bugunTeslim, 0) + '/' + say(f.gunlukL, 0) + ' L · kesinti ' + tl(kesinti), 'kotu');
+      }
+      f.bugunTeslim = 0;
+      f.sonSaat = -1;
+      f.kalanGun--;
+      if (f.kalanGun <= 0) {
+        if (f.kacirilan === 0) {
+          s.para += f.prim;
+          s.ist.bugunCiro += f.prim;
+          s.marka = kisitla(s.marka + 5, 0, 100);
+          D.xpEkle(1200);
+          UI.bildir('🏅 Toplu anlaşma tamamlandı', f.ad + ' · prim ' + tl(f.prim), 'iyi');
+        } else {
+          s.marka = kisitla(s.marka - 3, 0, 100);
+          UI.bildir('Anlaşma bitti', f.ad + ' · ' + f.kacirilan + ' gün hedefin altında kaldın.', 'uyari');
+        }
+        s.filolar.splice(i, 1);
+      }
+    }
+    if (Math.random() < 0.6 || !s.filoTeklif.length) this.filoTeklifleriUret();
+  },
+
+  /* =========================================================
+     YERLEŞİM PLANI — yapılar üst üste binmesin, düzenli otursun
+     ========================================================= */
+  hucreBos: function (sb, i) { return i >= 0 && i < sb.yapi.length && sb.beton[i] && !sb.yapi[i]; },
+
+  komsuTipi: function (sb, i, tip) {
+    var x = i % sb.w, y = Math.floor(i / sb.w);
+    var kom = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (var k = 0; k < kom.length; k++) {
+      var nx = x + kom[k][0], ny = y + kom[k][1];
+      if (nx < 0 || nx >= sb.w || ny < 0 || ny >= sb.h) continue;
+      var yp = sb.yapi[ny * sb.w + nx];
+      if (yp && (tip === 'pompa' ? yp.t === 'pompa' : yp.t !== 'pompa')) return true;
+    }
+    return false;
+  },
+
+  /* tur: 'pompa' | 'bina' — en uygun hücreyi döndürür (yoksa -1) */
+  oneriYer: function (sb, tur) {
+    var aday = [];
+    for (var i = 0; i < sb.yapi.length; i++) {
+      if (!this.hucreBos(sb, i)) continue;
+      var x = i % sb.w, y = Math.floor(i / sb.w);
+      var puan = 0;
+
+      if (tur === 'pompa') {
+        /* pompalar yola yakın orta şeritte, aralarında boşlukla */
+        var idealY = sb.h - 2;
+        puan -= Math.abs(y - idealY) * 10;
+        if (y === sb.h - 1) puan -= 28;          /* en ön şerit manevra alanı */
+        if (x % 2 === 0) puan += 7;              /* bir dolu bir boş: ada düzeni */
+        if (this.komsuTipi(sb, i, 'bina')) puan -= 9;
+        puan -= Math.abs(x - (sb.w - 1) / 2) * 1.5;
+      } else {
+        /* binalar arka sıraya, pompa şeridinden uzağa */
+        puan -= y * 11;                           /* y küçükse (arka) daha iyi */
+        if (y >= sb.h - 2) puan -= 24;
+        if (this.komsuTipi(sb, i, 'pompa')) puan -= 12;
+        puan -= Math.abs(x - (sb.w - 1) / 2) * 0.6;
+      }
+      aday.push({ i: i, p: puan });
+    }
+    if (!aday.length) return -1;
+    aday.sort(function (a, b) { return b.p - a.p; });
+    return aday[0].i;
+  },
+
+  /* plana uygun yer yoksa beton dökerek yer açar */
+  yerAc: function (sb, tur) {
+    var i = this.oneriYer(sb, tur);
+    if (i >= 0) return i;
+    /* betonu plana göre dök */
+    var en = -1, enPuan = -1e9;
+    for (var k = 0; k < sb.beton.length; k++) {
+      if (sb.beton[k] || sb.yapi[k]) continue;
+      var x = k % sb.w, y = Math.floor(k / sb.w);
+      var puan = tur === 'pompa' ? -Math.abs(y - (sb.h - 2)) * 10 - Math.abs(x - (sb.w - 1) / 2) : -y * 11;
+      if (puan > enPuan) { enPuan = puan; en = k; }
+    }
+    if (en < 0) return -1;
+    return this.betonDok(sb, en) ? en : -1;
+  },
+
+  /* yapıyı arsa içinde başka bir betonlu hücreye taşı */
+  tasimaBedeli: function (y) {
+    if (!y) return 0;
+    var taban = y.t === 'pompa' ? VERI.pompa.fiyat[y.yakit] : VERI.binalar[y.t].fiyat;
+    return Math.round(taban * 0.06);
+  },
+
+  yapiTasi: function (sb, kaynak, hedef) {
+    var y = sb.yapi[kaynak];
+    if (!y) return false;
+    if (kaynak === hedef) return false;
+    if (hedef < 0 || hedef >= sb.yapi.length) return false;
+    if (!sb.beton[hedef]) { UI.bildir('Zemin yok', 'Önce oraya beton dök.', 'kotu'); return false; }
+    if (sb.yapi[hedef]) { UI.bildir('Dolu', 'O hücrede başka bir yapı var.', 'kotu'); return false; }
+    if (y.mesgul) { UI.bildir('Pompa meşgul', 'Müşteri varken pompa taşınamaz.', 'kotu'); return false; }
+    var bedel = this.tasimaBedeli(y);
+    if (!D.harca(bedel)) return false;
+    sb.yapi[hedef] = y;
+    sb.yapi[kaynak] = null;
+    /* pompacı ataması taşınsın */
+    for (var i = 0; i < sb.personel.length; i++) if (sb.personel[i].pompa === kaynak) sb.personel[i].pompa = hedef;
+    /* kuyruktaki müşteriler */
+    for (var j = 0; j < sb.kuyruk.length; j++) if (sb.kuyruk[j].pompa === kaynak) sb.kuyruk[j].pompa = hedef;
+    if (window.IZO) { IZO.susle(sb); IZO._zAnahtar = ''; }
+    UI.bildir('Taşındı', (y.t === 'pompa' ? 'Pompa' : VERI.binalar[y.t].ad) + ' yeni yerine kuruldu · ' + tl(bedel), 'iyi');
+    return true;
+  },
+
+  jeneratorKap: function (y) { return 90 * (y.sv || 1); },
+
+  jeneratorDoldur: function (sb, k) {
+    var y = sb.yapi[k];
+    if (!y || y.t !== 'jenerator') return false;
+    if (typeof y.depo !== 'number') y.depo = 0;
+    var kap = this.jeneratorKap(y);
+    var gerek = kap - y.depo;
+    if (gerek <= 0.5) { UI.bildir('Depo dolu', 'Jeneratör deposu zaten dolu.', 'uyari'); return false; }
+    var alinan = Math.min(gerek, sb.tank.dizel.dolu);
+    if (alinan < 1) { UI.bildir('Dizel yok', 'Önce dizel tankını doldur.', 'kotu'); return false; }
+    sb.tank.dizel.dolu -= alinan;
+    y.depo += alinan;
+    y.uyarildi = false;
+    if (y.depo > 1) y.calismiyor = false;
+    UI.bildir('Jeneratör dolduruldu', say(alinan, 0) + ' L dizel aktarıldı.', 'iyi');
+    return true;
+  },
+
+  filoBul: function (fid) {
+    for (var i = 0; i < D.s.filolar.length; i++) if (D.s.filolar[i].id === fid) return D.s.filolar[i];
+    return null;
+  },
+
   sozlesmeleriIsle: function () {
     var s = D.s;
     for (var i = s.sozlesmeler.length - 1; i >= 0; i--) {
@@ -1295,6 +1557,11 @@ const SIM = {
     }
     if (!D.harca(tan.fiyat)) return false;
     sb.yapi[i] = { t: tip, sv: 1, bakim: 100, arizali: false };
+    if (tip === 'jenerator') {
+      /* kurulurken deposu istasyon dizelinden doldurulur */
+      sb.yapi[i].depo = 0;
+      this.jeneratorDoldur(sb, i);
+    }
     if (tip === 'depo') VERI.yakitSira.forEach(function (y) { if (y !== 'ev') sb.tank[y].kap = D.tankKap(sb, y); });
     D.xpEkle(200);
     UI.bildir(tan.ad + ' açıldı', tan.aciklama, 'iyi');
@@ -1521,6 +1788,12 @@ const SIM = {
     sb.personel.push(aday);
     UI.bildir(aday.ad + ' işe alındı', VERI.personel[aday.tip].ad + ' · maaş ' + tl(aday.maas) + '/ay', 'iyi');
     return true;
+  },
+
+  /* hızlı yol: aday üret + işe al (pompa kartından) */
+  personelAl: function (sb, tip) {
+    var aday = this.adayUret(tip);
+    return this.iseAl(sb, aday) ? aday : null;
   },
 
   cikar: function (sb, pid) {

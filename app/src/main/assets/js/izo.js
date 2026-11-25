@@ -41,7 +41,7 @@ const IZO = {
     var k = this.tuval.parentNode;
     var en = (k ? k.clientWidth : window.innerWidth) || 360;
     var boy = (k ? k.clientHeight : window.innerHeight) || 560;
-    this.G = Math.min(window.devicePixelRatio || 1, 3);
+    this.G = Math.min(window.devicePixelRatio || 1, 2);
     this.en = en; this.boy = boy;
     this.tuval.width = Math.round(en * this.G);
     this.tuval.height = Math.round(boy * this.G);
@@ -120,15 +120,26 @@ const IZO = {
     c.fill();
   },
 
-  /* karo zemini (eşkenar dörtgen) */
+  /* karo zemini (eşkenar dörtgen) — kenarı kendi rengiyle taranır, dikiş izi kalmaz */
   zemin: function (gx, gy, renk, cizgi) {
     var a = this.ekran(gx, gy, 0), b = this.ekran(gx + 1, gy, 0),
         c = this.ekran(gx + 1, gy + 1, 0), d = this.ekran(gx, gy + 1, 0);
-    this.cokgen([a, b, c, d], renk);
-    if (cizgi) {
-      var z = this.cz;
-      z.strokeStyle = cizgi; z.lineWidth = 1; z.stroke();
-    }
+    var z = this.cz;
+    z.beginPath();
+    z.moveTo(a.x, a.y); z.lineTo(b.x, b.y); z.lineTo(c.x, c.y); z.lineTo(d.x, d.y);
+    z.closePath();
+    z.fillStyle = renk; z.fill();
+    z.strokeStyle = cizgi || renk;
+    z.lineWidth = cizgi ? 1 : 1.05;
+    z.stroke();
+  },
+
+  /* karo başına sabit rastgele sayı (0..1) */
+  karoRast: function (gx, gy, tohum) {
+    var n = (gx * 73856093) ^ (gy * 19349663) ^ ((tohum || 0) * 83492791);
+    n = (n ^ (n >> 13)) >>> 0;
+    n = (n * 1274126177) >>> 0;
+    return ((n ^ (n >> 16)) >>> 0) / 4294967295;
   },
 
   /** kutu: (gx,gy) köşesinden w×d karo, z yüksekliğinden h piksel yukarı */
@@ -262,36 +273,94 @@ const IZO = {
     }
   },
 
-  /* süs nesneleri (ağaç, çalı, taş) — şube başına sabit */
+  /* çevre: ağaç, çalı, tarla, kasaba binaları, direk, durak — şube başına sabit */
   susle: function (sb) {
     this.susler = [];
-    var tohum = sb.w * 31 + sb.h * 17 + sb.lok.length;
-    function rnd(n) { tohum = (tohum * 1103515245 + 12345) & 0x7fffffff; return (tohum / 0x7fffffff) * n; }
-    var adet = 16;
-    var yasak = function (gx, gy) {
-      /* istasyon alanı, önündeki beton ve yol serbest kalsın */
-      if (gx > -1.6 && gx < sb.w + 1.2 && gy > -1.8 && gy < sb.h + 2.6) return true;
+    var tohum = sb.w * 31 + sb.h * 17 + sb.lok.length * 7 + 3;
+    function rnd(n) { tohum = (tohum * 1103515245 + 12345) & 0x7fffffff; return (tohum / 0x7fffffff) * (n === undefined ? 1 : n); }
+    var self = this;
+
+    var yolY = sb.h + 1;                 /* asfalt karosu */
+    var yasak = function (gx, gy, w, h) {
+      w = w || 1; h = h || 1;
+      /* istasyon arsası + önündeki beton + yol şeridi boş kalsın */
+      if (gx + w > -1.6 && gx < sb.w + 1.4 && gy + h > -1.8 && gy < sb.h + 3.2) return true;
       return false;
     };
-    for (var i = 0; i < adet; i++) {
-      var gx = 0, gy = 0, uygun = false, dene = 0;
-      while (!uygun && dene < 40) {
-        dene++;
-        gx = -4.5 + rnd(sb.w + 9);
-        gy = -4.5 + rnd(sb.h + 9);
-        if (yasak(gx, gy)) continue;
-        uygun = true;
-        for (var k = 0; k < this.susler.length; k++) {
-          var d = Math.abs(this.susler[k].gx - gx) + Math.abs(this.susler[k].gy - gy);
-          if (d < 1.1) { uygun = false; break; }
-        }
+    var cakisma = function (gx, gy, w, h) {
+      for (var k = 0; k < self.susler.length; k++) {
+        var o = self.susler[k];
+        var ow = o.w || 0.9, oh = o.h || 0.9;
+        if (gx < o.gx + ow + 0.35 && gx + w + 0.35 > o.gx && gy < o.gy + oh + 0.35 && gy + h + 0.35 > o.gy) return true;
       }
-      if (!uygun) continue;
-      var zar = rnd(1);
+      return false;
+    };
+    var yerBul = function (w, h, alan, dene) {
+      for (var d = 0; d < (dene || 36); d++) {
+        var gx = alan.x0 + rnd(alan.x1 - alan.x0 - w);
+        var gy = alan.y0 + rnd(alan.y1 - alan.y0 - h);
+        if (yasak(gx, gy, w, h) || cakisma(gx, gy, w, h)) continue;
+        return { gx: gx, gy: gy };
+      }
+      return null;
+    };
+
+    var genis = { x0: -11, x1: sb.w + 11, y0: -10, y1: sb.h + 12 };
+    var kasaba = { x0: -11, x1: sb.w + 11, y0: sb.h + 4.2, y1: sb.h + 13 };   /* yolun karşısı */
+    var arka = { x0: -11, x1: sb.w + 11, y0: -9, y1: -2.2 };                  /* istasyonun arkası */
+
+    /* --- kasaba: yolun karşısında sıra sıra binalar (merkez hissi) --- */
+    var binaTipleri = ['apartman', 'apartman', 'dukkan', 'ev', 'ev', 'depo', 'ofis'];
+    var binaSayi = 12 + Math.floor(rnd(5));
+    for (var b = 0; b < binaSayi; b++) {
+      var tip = binaTipleri[Math.floor(rnd(binaTipleri.length))];
+      var bw = tip === 'depo' ? 1.5 + rnd(0.5) : (tip === 'ev' ? 0.85 + rnd(0.3) : 1.0 + rnd(0.4));
+      var bh = tip === 'depo' ? 1.0 + rnd(0.35) : (tip === 'ev' ? 0.8 + rnd(0.25) : 0.95 + rnd(0.35));
+      var yer = yerBul(bw, bh, kasaba);
+      if (!yer) continue;
       this.susler.push({
-        gx: gx, gy: gy,
-        tip: zar < 0.5 ? 'agac' : (zar < 0.8 ? 'cali' : 'tas'),
-        boy: 0.75 + rnd(0.6)
+        tip: 'kasabaBina', alt: tip, gx: yer.gx, gy: yer.gy, w: bw, h: bh,
+        kat: tip === 'apartman' ? 3 + Math.floor(rnd(3)) : (tip === 'ofis' ? 2 + Math.floor(rnd(2)) : 1),
+        renk: ['#d8c6a8', '#e0cdb2', '#c4b39b', '#cdd5dd', '#dfd8c9', '#c3cedb', '#d9b9a4', '#bfd0c4'][Math.floor(rnd(8))],
+        cati: ['#8c4b3a', '#7a4435', '#5c6672', '#9a5a44'][Math.floor(rnd(4))],
+        tohum: Math.floor(rnd(1000))
+      });
+    }
+    /* cami: kasabanın simgesi */
+    var camiYer = yerBul(1.25, 1.25, kasaba, 60);
+    if (camiYer) this.susler.push({ tip: 'cami', gx: camiYer.gx, gy: camiYer.gy, w: 1.25, h: 1.25 });
+
+    /* --- tarlalar: arka ve yanlar --- */
+    var tarlaSayi = 3 + Math.floor(rnd(2));
+    for (var t = 0; t < tarlaSayi; t++) {
+      var tw = 1.9 + rnd(1.3), th = 1.5 + rnd(1.0);
+      var alan = t % 2 === 0 ? arka : { x0: -12, x1: -3.5, y0: -7, y1: sb.h + 10 };
+      var ty = yerBul(tw, th, alan, 40);
+      if (!ty) ty = yerBul(tw, th, { x0: sb.w + 2.4, x1: sb.w + 11, y0: -6, y1: sb.h + 9 }, 40);
+      if (!ty) continue;
+      this.susler.push({
+        tip: 'tarla', gx: ty.gx, gy: ty.gy, w: tw, h: th,
+        urun: ['bugday', 'ayciceg', 'misir'][Math.floor(rnd(3))]
+      });
+    }
+
+    /* --- yol boyu aydınlatma direkleri --- */
+    for (var d2 = -6; d2 <= sb.w + 7; d2 += 4) {
+      this.susler.push({ tip: 'direk', gx: d2, gy: sb.h + 2.45, w: 0.3, h: 0.3, yon: 1 });
+    }
+    /* otobüs durağı */
+    this.susler.push({ tip: 'durak', gx: sb.w + 1.9, gy: sb.h + 2.3, w: 1.2, h: 0.6 });
+
+    /* --- ağaç, çalı, taş serpiştirme --- */
+    var dogaSayi = 34;
+    for (var i = 0; i < dogaSayi; i++) {
+      var zar = rnd(1);
+      var dtip = zar < 0.52 ? 'agac' : (zar < 0.8 ? 'cali' : 'tas');
+      var yer2 = yerBul(0.8, 0.8, genis, 26);
+      if (!yer2) continue;
+      this.susler.push({
+        tip: dtip, gx: yer2.gx, gy: yer2.gy, w: 0.8, h: 0.8,
+        boy: 0.85 + rnd(0.7), tohum: Math.floor(rnd(1000))
       });
     }
   },
@@ -482,8 +551,9 @@ const IZO = {
     this.isaretler = [];
     this._balonSayisi = 0;
 
-    var cimen = this.ton('#6aa84f', I);
-    var cimen2 = this.ton('#5f9a46', I);
+    var cimenPal = ['#6ca950', '#69a54d', '#70ad54', '#67a24b', '#6eab52'];
+    var cimenRenk = [];
+    for (var cp = 0; cp < cimenPal.length; cp++) cimenRenk.push(this.ton(cimenPal[cp], I));
     var asfalt = this.ton('#3b4149', I);
     var beton = this.ton('#9aa3ad', I);
     var toprak = this.ton('#8a7b5e', I);
@@ -504,26 +574,11 @@ const IZO = {
     }
     var bas = minGX, son = maxGX;
 
-    /* ---- zemin: arkadan öne ---- */
-    for (var t = minGX + minGY; t <= maxGX + maxGY; t++) {
-      var gxBas = Math.max(minGX, t - maxGY), gxSon = Math.min(maxGX, t - minGY);
-      for (var gx = gxBas; gx <= gxSon; gx++) {
-        var gy = t - gx;
-        var ic = (gx >= 0 && gx < sb.w && gy >= 0 && gy < sb.h);
-        var yolMu = (gy === sb.h + 1);
-        var onluk = (gy === sb.h && gx >= -1 && gx <= sb.w);
-        var renk;
-        if (yolMu) renk = asfalt;
-        else if (onluk) renk = beton;
-        else if (ic) renk = sb.beton[gy * sb.w + gx] ? beton : toprak;
-        else renk = ((gx + gy) % 2 === 0) ? cimen : cimen2;
-        this.zemin(gx, gy, renk, null);
-        if (ic && !sb.beton[gy * sb.w + gx]) this.satilikTabela(gx, gy);
-      }
+    /* ---- zemin: önbellekten tek seferde ---- */
+    if (!this.zeminBlit(sb, I)) {
+      this.zeminCiz(sb, minGX, maxGX, minGY, maxGY, cimenRenk, asfalt, beton, toprak, I);
+      this.yolCizgileri(sb);
     }
-
-    /* yol çizgileri */
-    this.yolCizgileri(sb);
 
     /* ---- nesneler: derinlik sırasına göre ---- */
     var liste = [];
@@ -563,6 +618,111 @@ const IZO = {
 
     /* uçan yazılar */
     this.ucanCiz();
+  },
+
+  /* zemin karolarını doğrudan çiz */
+  zeminCiz: function (sb, minGX, maxGX, minGY, maxGY, cimenRenk, asfalt, beton, toprak, I) {
+    for (var t = minGX + minGY; t <= maxGX + maxGY; t++) {
+      var gxBas = Math.max(minGX, t - maxGY), gxSon = Math.min(maxGX, t - minGY);
+      for (var gx = gxBas; gx <= gxSon; gx++) {
+        var gy = t - gx;
+        var ic = (gx >= 0 && gx < sb.w && gy >= 0 && gy < sb.h);
+        var yolMu = (gy === sb.h + 1);
+        var onluk = (gy === sb.h && gx >= -1 && gx <= sb.w);
+        var renk, cimMi = false;
+        if (yolMu) renk = asfalt;
+        else if (onluk) renk = beton;
+        else if (ic) renk = sb.beton[gy * sb.w + gx] ? beton : toprak;
+        else { renk = cimenRenk[Math.floor(this.karoRast(gx, gy, 7) * cimenRenk.length) % cimenRenk.length]; cimMi = true; }
+        this.zemin(gx, gy, renk, null);
+        if (cimMi) this.cimenBenek(gx, gy, I);
+        if (ic && !sb.beton[gy * sb.w + gx]) this.satilikTabela(gx, gy);
+      }
+    }
+  },
+
+  /* ---- zemin önbelleği: karolar her karede yeniden çizilmez ---- */
+  zeminAnahtar: function (sb, I) {
+    var b = 0;
+    for (var i = 0; i < sb.beton.length; i++) if (sb.beton[i]) b += (i + 1) * 7;
+    return [sb.lok, sb.w, sb.h, b, D.s.sezonIdx, Math.round(I * 12)].join('|');
+  },
+
+  zeminHazirla: function (sb, I) {
+    var anahtar = this.zeminAnahtar(sb, I);
+    if (this._zOnbellek && this._zAnahtar === anahtar) return this._zOnbellek;
+    if (this._zDestekYok) return null;
+
+    var pay = 14;                                   /* çevre payı (karo) */
+    var minGX = -pay, maxGX = sb.w + pay, minGY = -pay, maxGY = sb.h + pay;
+    /* dünya sınırları (ölçek 1) */
+    var k1 = this.izo(minGX, minGY), k2 = this.izo(maxGX + 1, minGY),
+        k3 = this.izo(minGX, maxGY + 1), k4 = this.izo(maxGX + 1, maxGY + 1);
+    var x0 = Math.min(k1.x, k2.x, k3.x, k4.x) - 4, x1 = Math.max(k1.x, k2.x, k3.x, k4.x) + 4;
+    var y0 = Math.min(k1.y, k2.y, k3.y, k4.y) - 4, y1 = Math.max(k1.y, k2.y, k3.y, k4.y) + 4;
+    var en = Math.ceil(x1 - x0), boy = Math.ceil(y1 - y0);
+    if (en <= 0 || boy <= 0 || en * boy > 9e6) { this._zDestekYok = true; return null; }
+
+    var tv;
+    try { tv = document.createElement('canvas'); } catch (e) { tv = null; }
+    if (!tv || !tv.getContext) { this._zDestekYok = true; return null; }
+    tv.width = en; tv.height = boy;
+    var tc = tv.getContext('2d');
+    if (!tc) { this._zDestekYok = true; return null; }
+
+    /* kamerayı geçici olarak önbellek uzayına al */
+    var eskiCz = this.cz, eskiKam = this.kam;
+    this.cz = tc;
+    this.kam = { x: -x0, y: -y0, olcek: 1, hx: -x0, hy: -y0, holcek: 1, vx: 0, vy: 0, kuruldu: true };
+    try {
+      var cimenPal = ['#6ca950', '#69a54d', '#70ad54', '#67a24b', '#6eab52'];
+      var cimenRenk = [];
+      for (var cp = 0; cp < cimenPal.length; cp++) cimenRenk.push(this.ton(cimenPal[cp], I));
+      this.zeminCiz(sb, minGX, maxGX, minGY, maxGY, cimenRenk,
+        this.ton('#3b4149', I), this.ton('#9aa3ad', I), this.ton('#8a7b5e', I), I);
+      this.yolCizgileri(sb);
+    } catch (e) {
+      this.cz = eskiCz; this.kam = eskiKam; this._zDestekYok = true; return null;
+    }
+    this.cz = eskiCz; this.kam = eskiKam;
+
+    this._zOnbellek = { tuval: tv, x0: x0, y0: y0, en: en, boy: boy };
+    this._zAnahtar = anahtar;
+    return this._zOnbellek;
+  },
+
+  zeminBlit: function (sb, I) {
+    var o = this.zeminHazirla(sb, I);
+    if (!o) return false;
+    var c = this.cz, k = this.kam;
+    c.drawImage(o.tuval,
+      o.x0 * k.olcek + k.x, o.y0 * k.olcek + k.y,
+      o.en * k.olcek, o.boy * k.olcek);
+    return true;
+  },
+
+  /* çimende yaprak / çiçek / taşçık benekleri — sabit konumlu */
+  cimenBenek: function (gx, gy, I) {
+    if (this.kam.olcek < 0.5) return;
+    var sezon = VERI.sezonSira[D.s.sezonIdx];
+    var adet = this.karoRast(gx, gy, 11) < 0.52 ? 0 : (this.karoRast(gx, gy, 12) < 0.6 ? 1 : 2);
+    if (!adet) return;
+    var c = this.cz;
+    for (var i = 0; i < adet; i++) {
+      var rx = this.karoRast(gx, gy, 21 + i), ry = this.karoRast(gx, gy, 31 + i);
+      var tur = this.karoRast(gx, gy, 41 + i);
+      var p = this.ekran(gx + 0.15 + rx * 0.7, gy + 0.15 + ry * 0.7, 0);
+      var renk;
+      if (sezon === 'kis') renk = '#e8eef2';
+      else if (sezon === 'sonbahar') renk = tur < 0.5 ? '#c2622c' : '#d89a3a';
+      else if (sezon === 'ilkbahar') renk = tur < 0.35 ? '#e8e0f5' : (tur < 0.7 ? '#f2d26b' : '#4f8f42');
+      else renk = tur < 0.3 ? '#58934a' : '#8cc46a';
+      c.fillStyle = this.ton(renk, I);
+      var r = (tur < 0.25 ? 1.6 : 1.1) * this.kam.olcek;
+      c.beginPath();
+      c.ellipse(p.x, p.y, r * 1.5, r, 0, 0, Math.PI * 2);
+      c.fill();
+    }
   },
 
   satilikTabela: function (gx, gy) {
@@ -656,6 +816,18 @@ const IZO = {
   },
 
   binaCiz: function (sb, i, gx, gy, b) {
+    var kayit = this.cz;
+    var merkez = this.ekran(gx + 0.5, gy + 0.5, 0);
+    var kucult = 0.84;
+    kayit.save();
+    kayit.translate(merkez.x, merkez.y);
+    kayit.scale(kucult, kucult);
+    kayit.translate(-merkez.x, -merkez.y);
+    try { this.binaCizIc(sb, i, gx, gy, b); } catch (e) { }
+    kayit.restore();
+  },
+
+  binaCizIc: function (sb, i, gx, gy, b) {
     var t = b.t;
     var tan = VERI.binalar[t];
     var I = this.isik();
@@ -838,24 +1010,182 @@ const IZO = {
   susCiz: function (s) {
     var I = this.isik();
     var sezon = VERI.sezonSira[D.s.sezonIdx];
-    var yaprak = sezon === 'sonbahar' ? '#c2622c' : (sezon === 'kis' ? '#cfd8df' : (sezon === 'ilkbahar' ? '#67b24a' : '#3f8f3f'));
-    if (s.tip === 'agac') {
-      this.kutu(s.gx + 0.42, s.gy + 0.42, 0, 0.12, 0.12, 14 * s.boy, '#6b4a2e');
-      var c = this.cz;
-      var p = this.ekran(s.gx + 0.48, s.gy + 0.48, 14 * s.boy + 9 * s.boy);
-      var r = 11 * s.boy * this.kam.olcek;
-      c.fillStyle = this.ton(yaprak, I);
-      c.beginPath(); c.arc(p.x, p.y, r, 0, Math.PI * 2); c.fill();
-      c.fillStyle = this.ton(yaprak, I * 1.12);
-      c.beginPath(); c.arc(p.x - r * 0.3, p.y - r * 0.35, r * 0.65, 0, Math.PI * 2); c.fill();
-    } else if (s.tip === 'cali') {
+    if (s.tip === 'agac') this.agacCiz(s, I, sezon);
+    else if (s.tip === 'cali') {
       var c2 = this.cz;
-      var p2 = this.ekran(s.gx + 0.5, s.gy + 0.5, 4);
-      c2.fillStyle = this.ton(sezon === 'kis' ? '#b9c6cc' : '#4e8f45', I);
-      c2.beginPath(); c2.arc(p2.x, p2.y, 7 * s.boy * this.kam.olcek, 0, Math.PI * 2); c2.fill();
-    } else {
+      var p2 = this.ekran(s.gx + 0.5, s.gy + 0.5, 3);
+      var rr = 7 * s.boy * this.kam.olcek;
+      this.yumusakGolge(s.gx + 0.5, s.gy + 0.5, rr * 0.9);
+      var tonC = sezon === 'kis' ? '#b9c6cc' : '#4e8f45';
+      c2.fillStyle = this.ton(tonC, I * 0.92);
+      c2.beginPath(); c2.arc(p2.x, p2.y, rr, 0, Math.PI * 2); c2.fill();
+      c2.fillStyle = this.ton(tonC, I * 1.14);
+      c2.beginPath(); c2.arc(p2.x - rr * 0.28, p2.y - rr * 0.3, rr * 0.62, 0, Math.PI * 2); c2.fill();
+    } else if (s.tip === 'tas') {
+      this.yumusakGolge(s.gx + 0.49, s.gy + 0.48, 7 * this.kam.olcek);
       this.kutu(s.gx + 0.4, s.gy + 0.4, 0, 0.18, 0.16, 5 * s.boy, '#98a0a8');
+    } else if (s.tip === 'tarla') this.tarlaCiz(s, I, sezon);
+    else if (s.tip === 'kasabaBina') this.kasabaBinaCiz(s, I);
+    else if (s.tip === 'cami') this.camiCiz(s, I);
+    else if (s.tip === 'direk') this.direkCiz(s, I);
+    else if (s.tip === 'durak') this.durakCiz(s, I);
+  },
+
+  /* yumuşak temas gölgesi */
+  yumusakGolge: function (gx, gy, r) {
+    var c = this.cz, p = this.ekran(gx, gy, 0);
+    var g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(2, r * 1.6));
+    g.addColorStop(0, 'rgba(20,32,18,.30)');
+    g.addColorStop(0.55, 'rgba(20,32,18,.14)');
+    g.addColorStop(1, 'rgba(20,32,18,0)');
+    c.fillStyle = g;
+    c.beginPath();
+    c.ellipse(p.x, p.y + 1, Math.max(2, r * 1.6), Math.max(1.2, r * 0.8), 0, 0, Math.PI * 2);
+    c.fill();
+  },
+
+  agacCiz: function (s, I, sezon) {
+    var yaprak = sezon === 'sonbahar' ? '#c2622c' : (sezon === 'kis' ? '#cfd8df' : (sezon === 'ilkbahar' ? '#67b24a' : '#3f8f3f'));
+    var c = this.cz;
+    var govdeH = 15 * s.boy;
+    this.yumusakGolge(s.gx + 0.48, s.gy + 0.5, 10 * s.boy * this.kam.olcek);
+    this.kutu(s.gx + 0.43, s.gy + 0.43, 0, 0.11, 0.11, govdeH, '#6b4a2e');
+    var r = 10.5 * s.boy * this.kam.olcek;
+    var p = this.ekran(s.gx + 0.485, s.gy + 0.485, govdeH + 8 * s.boy);
+    /* üç küre: hacim hissi */
+    var kure = [
+      { x: 0, y: 0, r: r, k: 0.92 },
+      { x: -r * 0.52, y: r * 0.18, r: r * 0.72, k: 0.82 },
+      { x: r * 0.5, y: r * 0.12, r: r * 0.68, k: 1.0 }
+    ];
+    for (var i = 0; i < kure.length; i++) {
+      c.fillStyle = this.ton(yaprak, I * kure[i].k);
+      c.beginPath(); c.arc(p.x + kure[i].x, p.y + kure[i].y, kure[i].r, 0, Math.PI * 2); c.fill();
     }
+    /* ışık vurgusu */
+    c.fillStyle = this.ton(yaprak, I * 1.22);
+    c.beginPath(); c.arc(p.x - r * 0.3, p.y - r * 0.42, r * 0.46, 0, Math.PI * 2); c.fill();
+  },
+
+  tarlaCiz: function (s, I, sezon) {
+    var c = this.cz;
+    var kis = sezon === 'kis';
+    /* toprak zemin */
+    var a = this.ekran(s.gx, s.gy, 0), b = this.ekran(s.gx + s.w, s.gy, 0),
+        d = this.ekran(s.gx + s.w, s.gy + s.h, 0), e = this.ekran(s.gx, s.gy + s.h, 0);
+    this.cokgen([a, b, d, e], this.ton(kis ? '#8d8470' : '#6e5436', I));
+    /* ekin sıraları */
+    var urunRenk = kis ? '#9fb0a6' : (s.urun === 'ayciceg' ? '#d9b741' : (s.urun === 'misir' ? '#96b14b' : '#c9b25e'));
+    var adim = 0.26;
+    c.lineWidth = Math.max(1, 1.5 * this.kam.olcek);
+    for (var gy = s.gy + 0.18; gy < s.gy + s.h - 0.05; gy += adim) {
+      var p1 = this.ekran(s.gx + 0.1, gy, 3), p2 = this.ekran(s.gx + s.w - 0.1, gy, 3);
+      c.strokeStyle = this.ton(urunRenk, I * 0.95);
+      c.beginPath(); c.moveTo(p1.x, p1.y); c.lineTo(p2.x, p2.y); c.stroke();
+      c.strokeStyle = this.ton(urunRenk, I * 1.18);
+      c.beginPath(); c.moveTo(p1.x, p1.y - 1.2 * this.kam.olcek); c.lineTo(p2.x, p2.y - 1.2 * this.kam.olcek); c.stroke();
+    }
+    /* çit */
+    var kose = [[s.gx, s.gy], [s.gx + s.w, s.gy], [s.gx + s.w, s.gy + s.h], [s.gx, s.gy + s.h]];
+    for (var k = 0; k < 4; k++) {
+      var p = kose[k], q = kose[(k + 1) % 4];
+      var adet = Math.max(2, Math.round(Math.abs(p[0] - q[0] + p[1] - q[1]) * 2.2));
+      for (var i = 0; i <= adet; i++) {
+        var fx = p[0] + (q[0] - p[0]) * (i / adet), fy = p[1] + (q[1] - p[1]) * (i / adet);
+        this.kutu(fx - 0.03, fy - 0.03, 0, 0.06, 0.06, 9, '#8a6a42');
+      }
+      var r1 = this.ekran(p[0], p[1], 6), r2 = this.ekran(q[0], q[1], 6);
+      c.strokeStyle = this.ton('#9d7b4d', I);
+      c.lineWidth = Math.max(1, 1.4 * this.kam.olcek);
+      c.beginPath(); c.moveTo(r1.x, r1.y); c.lineTo(r2.x, r2.y); c.stroke();
+    }
+  },
+
+  kasabaBinaCiz: function (s, I) {
+    var katH = 11;
+    var h = katH * (s.kat || 1);
+    this.yumusakGolge(s.gx + s.w / 2, s.gy + s.h / 2, s.w * 16 * this.kam.olcek);
+    this.kutu(s.gx, s.gy, 0, s.w, s.h, h, s.renk);
+    /* çatı */
+    if (s.alt === 'ev' || s.alt === 'dukkan') {
+      this.kutu(s.gx - 0.06, s.gy - 0.06, h, s.w + 0.12, s.h + 0.12, 5, s.cati);
+      this.kutu(s.gx + s.w * 0.2, s.gy + s.h * 0.2, h + 5, s.w * 0.6, s.h * 0.6, 7, s.cati);
+    } else if (s.alt === 'depo') {
+      this.kutu(s.gx - 0.04, s.gy - 0.04, h, s.w + 0.08, s.h + 0.08, 4, '#7d8793');
+    } else {
+      this.kutu(s.gx - 0.05, s.gy - 0.05, h, s.w + 0.1, s.h + 0.1, 3.5, '#6f7a86');
+      /* teras su deposu */
+      this.kutu(s.gx + s.w * 0.6, s.gy + s.h * 0.25, h + 3.5, 0.3, 0.3, 7, '#aeb6bf');
+    }
+    /* pencereler */
+    var c = this.cz;
+    var gece = this.gece();
+    var kat = s.kat || 1;
+    for (var kk = 0; kk < kat; kk++) {
+      for (var w = 0; w < 3; w++) {
+        var fx = s.gx + s.w * (0.18 + w * 0.28);
+        var py = kk * katH + 4;
+        var yanik = ((s.tohum + kk * 7 + w * 13) % 10) < 6;
+        var renk = gece ? (yanik ? '#ffd98a' : '#2a3340') : '#8fb8d8';
+        this.kutu(fx, s.gy - 0.02, py, s.w * 0.17, 0.04, 4.5, renk);
+      }
+    }
+    /* dükkân tentesi */
+    if (s.alt === 'dukkan') {
+      this.kutu(s.gx + 0.05, s.gy - 0.16, 9, s.w - 0.1, 0.2, 2.5, '#d9534f');
+    }
+  },
+
+  camiCiz: function (s, I) {
+    var c = this.cz;
+    this.yumusakGolge(s.gx + s.w / 2, s.gy + s.h / 2, s.w * 17 * this.kam.olcek);
+    this.kutu(s.gx, s.gy, 0, s.w, s.h, 15, '#e4ded2');
+    /* kubbe */
+    var p = this.ekran(s.gx + s.w / 2, s.gy + s.h / 2, 15);
+    var r = s.w * 11 * this.kam.olcek;
+    var g = c.createLinearGradient(p.x - r, p.y - r, p.x + r, p.y + r);
+    g.addColorStop(0, this.ton('#7fa9c9', I * 1.15));
+    g.addColorStop(1, this.ton('#4d7ba3', I * 0.85));
+    c.fillStyle = g;
+    c.beginPath(); c.ellipse(p.x, p.y, r, r * 0.86, 0, Math.PI, Math.PI * 2); c.fill();
+    /* alem */
+    c.strokeStyle = this.ton('#d9c06a', I);
+    c.lineWidth = Math.max(1, 1.6 * this.kam.olcek);
+    c.beginPath(); c.moveTo(p.x, p.y - r * 0.86); c.lineTo(p.x, p.y - r * 1.3); c.stroke();
+    /* minare */
+    this.kutu(s.gx + s.w - 0.2, s.gy + 0.05, 0, 0.16, 0.16, 38, '#efe9de');
+    this.kutu(s.gx + s.w - 0.23, s.gy + 0.02, 38, 0.21, 0.21, 3.5, '#d6cdbe');
+    var mp = this.ekran(s.gx + s.w - 0.12, s.gy + 0.13, 42);
+    c.fillStyle = this.ton('#efe9de', I);
+    c.beginPath();
+    c.moveTo(mp.x, mp.y - 13 * this.kam.olcek);
+    c.lineTo(mp.x - 5 * this.kam.olcek, mp.y);
+    c.lineTo(mp.x + 5 * this.kam.olcek, mp.y);
+    c.closePath(); c.fill();
+  },
+
+  direkCiz: function (s, I) {
+    var c = this.cz;
+    this.kutu(s.gx + 0.45, s.gy + 0.45, 0, 0.1, 0.1, 46, '#808a96');
+    this.kutu(s.gx + 0.3, s.gy + 0.42, 44, 0.3, 0.14, 4, '#808a96');
+    var p = this.ekran(s.gx + 0.3, s.gy + 0.48, 44);
+    if (this.gece()) {
+      var g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, 34 * this.kam.olcek);
+      g.addColorStop(0, 'rgba(255,226,150,.55)');
+      g.addColorStop(1, 'rgba(255,226,150,0)');
+      c.fillStyle = g;
+      c.beginPath(); c.arc(p.x, p.y, 34 * this.kam.olcek, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = this.gece() ? '#ffe9ac' : this.ton('#cfd6dd', I);
+    c.beginPath(); c.ellipse(p.x, p.y, 3.4 * this.kam.olcek, 2 * this.kam.olcek, 0, 0, Math.PI * 2); c.fill();
+  },
+
+  durakCiz: function (s, I) {
+    this.yumusakGolge(s.gx + s.w / 2, s.gy + s.h / 2, 14 * this.kam.olcek);
+    this.kutu(s.gx, s.gy, 0, s.w, s.h, 2, '#b7bec6');
+    this.kutu(s.gx + 0.05, s.gy + s.h - 0.08, 2, s.w - 0.1, 0.06, 17, '#8fb8d8');
+    this.kutu(s.gx, s.gy - 0.04, 19, s.w, s.h + 0.08, 3, '#2f6fa8');
+    this.kutu(s.gx + 0.1, s.gy + 0.08, 2, 0.5, 0.12, 6, '#5c6672');
   },
 
   /* =========================================================
@@ -921,13 +1251,13 @@ const IZO = {
     c.strokeStyle = 'rgba(62,196,122,.5)';
     c.lineWidth = Math.max(1.2, 2 * o);
     c.beginPath();
-    c.ellipse(zemin.x, zemin.y, 22 * o, 11 * o, 0, 0, Math.PI * 2);
+    c.ellipse(zemin.x, zemin.y, 19 * o, 9.5 * o, 0, 0, Math.PI * 2);
     c.stroke();
 
     /* havada duran işaret (bina arkasında kalsa da görünür) */
-    var z = 78 + Math.sin(Date.now() / 420) * 4;
+    var z = 66 + Math.sin(Date.now() / 420) * 4;
     var p = this.ekran(gx, gy, z);
-    var r = 13 * o * nabiz;
+    var r = 10 * o * nabiz;
 
     /* sapı */
     c.strokeStyle = 'rgba(255,255,255,.28)';
@@ -940,17 +1270,18 @@ const IZO = {
     c.lineWidth = Math.max(1, 1.8 * o);
     c.stroke();
     c.fillStyle = '#fff';
-    c.font = 'bold ' + Math.round(9.5 * o) + 'px sans-serif';
+    c.font = 'bold ' + Math.round(7.6 * o) + 'px sans-serif';
     c.textAlign = 'center';
     c.fillText(yk.kisa, p.x, p.y + 3.4 * o);
 
     /* istek balonu */
     if (!balonGoster) return;
-    var bp = this.ekran(gx, gy, z + 22);
+    var bp = this.ekran(gx, gy, z + 18);
     var yazi = m.etiket;
-    c.font = 'bold ' + Math.round(11 * o) + 'px sans-serif';
-    var w = c.measureText(yazi).width + 14 * o;
-    var hh = 18 * o;
+    if (yazi.length > 16) yazi = yazi.slice(0, 15) + '…';
+    c.font = 'bold ' + Math.round(8.5 * o) + 'px sans-serif';
+    var w = c.measureText(yazi).width + 10 * o;
+    var hh = 14 * o;
     c.fillStyle = 'rgba(16,24,38,.92)';
     this.yuvarlakKutu(bp.x - w / 2, bp.y - hh, w, hh, 6 * o);
     c.fill();

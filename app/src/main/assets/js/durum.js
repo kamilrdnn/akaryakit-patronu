@@ -63,6 +63,8 @@ const D = {
       krediNotu: 55,
       sozlesmeler: [],
       sozlesmeTeklif: [],
+      filolar: [],
+      filoTeklif: [],
       gorevler: [],
       gorevGun: 0,
       devredilen: [],
@@ -125,11 +127,15 @@ const D = {
       sebekeBorc: 0
     };
     if (ilkMi) {
-      // başlangıç: 2x2 beton, 1 benzin + 1 dizel pompası, yarım dolu tanklar
-      var mer = [0, 1, bw, bw + 1];
-      for (var k = 0; k < mer.length; k++) sb.beton[mer[k]] = true;
-      sb.yapi[0] = { t: 'pompa', yakit: 'benzin', sv: 1, bakim: 100, mesgul: null, arizali: false };
-      sb.yapi[1] = { t: 'pompa', yakit: 'dizel', sv: 1, bakim: 100, mesgul: null, arizali: false };
+      /* başlangıç düzeni: pompalar yola bakan şeritte, aralarında boşlukla */
+      var pompaSatir = bh - 2;                      /* ön şerit manevra için boş */
+      if (pompaSatir < 0) pompaSatir = 0;
+      var p1 = pompaSatir * bw + 0;
+      var p2 = pompaSatir * bw + 2 < (pompaSatir + 1) * bw ? pompaSatir * bw + 2 : pompaSatir * bw + 1;
+      var betonlar = [p1, p1 + 1, p2, p2 + 1 < (pompaSatir + 1) * bw ? p2 + 1 : p2];
+      for (var k = 0; k < betonlar.length; k++) if (betonlar[k] < n) sb.beton[betonlar[k]] = true;
+      sb.yapi[p1] = { t: 'pompa', yakit: 'benzin', sv: 1, bakim: 100, mesgul: null, arizali: false };
+      sb.yapi[p2] = { t: 'pompa', yakit: 'dizel', sv: 1, bakim: 100, mesgul: null, arizali: false };
       sb.tank.benzin.dolu = 2500;
       sb.tank.dizel.dolu = 2500;
     }
@@ -211,6 +217,7 @@ const D = {
       var tan = VERI.binalar[bi[i].b.t];
       if (!tan || !tan.uretim) continue;
       if (bi[i].b.arizali) continue;
+      if (bi[i].b.t === 'jenerator' && (bi[i].b.calismiyor || (bi[i].b.depo || 0) <= 0)) continue;
       var kat = (0.7 + 0.3 * (bi[i].b.bakim / 100)) * bi[i].b.sv;
       if (bi[i].b.t === 'gunes') {
         var v = VERI.gunesVerim[st] || 0;
@@ -315,6 +322,8 @@ const D = {
     if (!s.krediler) s.krediler = [];
     if (!s.sozlesmeler) s.sozlesmeler = [];
     if (!s.sozlesmeTeklif) s.sozlesmeTeklif = [];
+    if (!s.filolar) s.filolar = [];
+    if (!s.filoTeklif) s.filoTeklif = [];
     if (!s.gorevler) s.gorevler = [];
     if (typeof s.gorevGun !== 'number') s.gorevGun = 0;
     if (typeof s.krediNotu !== 'number') s.krediNotu = 55;
