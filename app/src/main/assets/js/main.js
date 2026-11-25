@@ -33,6 +33,8 @@ var OYUN = {
     }
     /* sessiz güncelleme denetimi */
     setTimeout(function () { try { GUNCELLE.kontrol(false); } catch (e) {} }, 2500);
+    /* oyun açıkken de 15 dakikada bir yeni sürüme bak */
+    setInterval(function () { try { if (!UI.modalAcik) GUNCELLE.kontrol(false); } catch (e) {} }, 15 * 60 * 1000);
   },
 
   dongu: function () {

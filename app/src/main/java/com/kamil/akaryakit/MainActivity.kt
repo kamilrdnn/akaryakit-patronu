@@ -13,6 +13,8 @@ import android.os.Environment
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
 import android.view.View
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
@@ -114,6 +116,18 @@ class MainActivity : AppCompatActivity() {
             }
             GuncellemeIsi.planla(this)
         }
+    }
+
+    private fun bildirimAyarlariniAc() {
+        try {
+            val niyet = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            } else {
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+            }
+            startActivity(niyet.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: Exception) { }
     }
 
     private val izinIstegi = registerForActivityResult(
@@ -236,6 +250,52 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     GuncellemeIsi.durdur(this@MainActivity)
                 }
+            }
+        }
+
+        /** "acik" | "izinYok" | "kapali" */
+        @JavascriptInterface
+        fun bildirimDurum(): String {
+            val acik = getSharedPreferences(GuncellemeIsi.AYAR, MODE_PRIVATE)
+                .getBoolean(GuncellemeIsi.ANAHTAR_ACIK, true)
+            if (!acik) return "kapali"
+            return if (NotificationManagerCompat.from(this@MainActivity).areNotificationsEnabled()) "acik" else "izinYok"
+        }
+
+        /** Deneme bildirimi yollar; izin yoksa önce izni ister. true: gönderildi. */
+        @JavascriptInterface
+        fun bildirimDene(): Boolean {
+            if (NotificationManagerCompat.from(this@MainActivity).areNotificationsEnabled()) {
+                GuncellemeIsi.denemeGonder(this@MainActivity)
+                GuncellemeIsi.planla(this@MainActivity)
+                return true
+            }
+            runOnUiThread {
+                if (Build.VERSION.SDK_INT >= 33 &&
+                    shouldShowRequestPermissionRationale(android.Manifest.permission.POST_NOTIFICATIONS)
+                ) {
+                    izinIstegi.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    bildirimAyarlariniAc()
+                }
+            }
+            return false
+        }
+
+        /** Telefonun bu uygulamaya ait bildirim ayarları. */
+        @JavascriptInterface
+        fun bildirimAyarAc() { runOnUiThread { bildirimAyarlariniAc() } }
+
+        /** Uygulama bilgisi ekranı: otomatik başlatma ve pil kısıtlaması buradan ayarlanır. */
+        @JavascriptInterface
+        fun uygulamaAyarAc() {
+            runOnUiThread {
+                try {
+                    startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                } catch (_: Exception) { }
             }
         }
 

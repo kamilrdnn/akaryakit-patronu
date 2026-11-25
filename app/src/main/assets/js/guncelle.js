@@ -27,7 +27,12 @@ const GUNCELLE = {
         clearTimeout(zamanAsimi);
         var mevcut = self.kodu();
         if (!v || !v.versionCode || !v.apkUrl) throw new Error('bozuk');
-        if (v.versionCode > mevcut) self.sor(v);
+        if (v.versionCode > mevcut) {
+          /* sessiz denetim aynı sürümü oturumda bir kez sorar */
+          if (!elle && self._sorulan === v.versionCode) return;
+          self._sorulan = v.versionCode;
+          self.sor(v);
+        }
         else if (elle) UI.bildir('Güncel', 'En son sürümü kullanıyorsun (' + (v.versionName || mevcut) + ').', 'iyi');
       })
       .catch(function () {

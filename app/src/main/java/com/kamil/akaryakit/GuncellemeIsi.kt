@@ -32,15 +32,17 @@ class GuncellemeIsi(ctx: Context, params: WorkerParameters) : Worker(ctx, params
         if (!ayar.getBoolean(ANAHTAR_ACIK, true)) return Result.success()
 
         return try {
-            val metin = indir(ADRES) ?: return Result.retry()
+            val metin = indir(ADRES + "?t=" + System.currentTimeMillis()) ?: return Result.retry()
             val o = JSONObject(metin)
             val kod = o.optInt("versionCode", 0)
             val ad = o.optString("versionName", "")
             val not = o.optString("notes", "")
 
             val suKod = try {
-                applicationContext.packageManager
-                    .getPackageInfo(applicationContext.packageName, 0).longVersionCode.toInt()
+                val bilgi = applicationContext.packageManager
+                    .getPackageInfo(applicationContext.packageName, 0)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) bilgi.longVersionCode.toInt()
+                else @Suppress("DEPRECATION") bilgi.versionCode
             } catch (e: Exception) { 0 }
 
             val bildirilen = ayar.getInt(ANAHTAR_SON, 0)
@@ -85,12 +87,13 @@ class GuncellemeIsi(ctx: Context, params: WorkerParameters) : Worker(ctx, params
             val kosul = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
-            val is0 = PeriodicWorkRequestBuilder<GuncellemeIsi>(6, TimeUnit.HOURS)
+            /* yarım saatte bir bakar; eski (6 saatlik) plan varsa yenisiyle değişir */
+            val is0 = PeriodicWorkRequestBuilder<GuncellemeIsi>(30, TimeUnit.MINUTES)
                 .setConstraints(kosul)
-                .setInitialDelay(30, TimeUnit.MINUTES)
+                .setInitialDelay(3, TimeUnit.MINUTES)
                 .build()
             WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
-                IS_ADI, ExistingPeriodicWorkPolicy.KEEP, is0
+                IS_ADI, ExistingPeriodicWorkPolicy.UPDATE, is0
             )
         }
 
@@ -109,6 +112,30 @@ class GuncellemeIsi(ctx: Context, params: WorkerParameters) : Worker(ctx, params
                 enableVibration(true)
             }
             yonetici.createNotificationChannel(kanal)
+        }
+
+        /** Ayarlardaki "Deneme bildirimi" düğmesi: izin ve kanal çalışıyor mu görmek için. */
+        fun denemeGonder(ctx: Context) {
+            kanalKur(ctx)
+            val niyet = Intent(ctx, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val dokun = PendingIntent.getActivity(
+                ctx, 1002, niyet, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val bildirim = NotificationCompat.Builder(ctx, KANAL)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("⛽ Bildirimler çalışıyor")
+                .setContentText("Yeni sürüm çıkınca buradan haber vereceğim.")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .setContentIntent(dokun)
+                .build()
+            try {
+                NotificationManagerCompat.from(ctx).notify(2002, bildirim)
+            } catch (e: SecurityException) {
+                /* izin yok */
+            }
         }
 
         fun bildirimGonder(ctx: Context, surum: String, not: String) {

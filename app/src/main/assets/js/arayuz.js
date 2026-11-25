@@ -1985,6 +1985,19 @@ const UI = {
     try { if (window.AndroidKabuk && AndroidKabuk.bildirimAcikMi) bildirimAcik = !!AndroidKabuk.bildirimAcikMi(); } catch (e) {}
     h += '<div class="anahtarSatir"><div><div class="ad">🔔 Güncelleme bildirimi</div><div class="alt">Yeni sürüm çıkınca oyun kapalıyken de telefonuna haber gelir</div></div>';
     h += '<button class="anahtar' + (bildirimAcik ? ' acik' : '') + '" onclick="UI.bildirimDegis(' + (!bildirimAcik) + ')"><i></i></button></div>';
+    if (bildirimAcik) {
+      var bDurum = '';
+      try { if (window.AndroidKabuk && AndroidKabuk.bildirimDurum) bDurum = AndroidKabuk.bildirimDurum(); } catch (e) {}
+      if (bDurum === 'izinYok') {
+        h += '<div class="not" style="color:#f0b429">⚠️ Telefonda bu uygulamanın bildirim izni kapalı; bu yüzden bildirim gelmiyor.</div>';
+        h += '<button class="btn kucuk" style="margin-top:6px" onclick="UI.bildirimIzinAc()">Bildirim iznini aç</button>';
+      }
+      h += '<div class="btngrup" style="margin-top:8px">';
+      h += '<button class="btn kucuk ikincil" onclick="UI.bildirimDene()">🔔 Deneme bildirimi gönder</button>';
+      h += '<button class="btn kucuk ikincil" onclick="UI.uygulamaAyarAc()">⚙️ Arka plan izni</button>';
+      h += '</div>';
+      h += '<div class="not">Oyun kapalıyken yarım saatte bir yeni sürüme bakılır. Xiaomi / Poco telefonlarda bildirimin gelmesi için "Arka plan izni"nden <b>Otomatik başlatma</b>yı aç, pil tasarrufunu <b>Kısıtlama yok</b> yap.</div>';
+    }
     h += '</div>';
 
     h += '<div class="kart"><div class="baslik">Oyun hızı</div>';
@@ -2251,6 +2264,21 @@ const UI = {
     if (window.SES) { SES.uyandir(); SES.ayar(D.s.ayar.ses !== false); SES.cal('buton'); }
     D.kaydet();
     this.panelYenile();
+  },
+  bildirimDene: function () {
+    try {
+      if (window.AndroidKabuk && AndroidKabuk.bildirimDene) {
+        if (AndroidKabuk.bildirimDene()) this.bildir('🔔 Gönderildi', 'Bildirim çubuğuna bak; görünüyorsa her şey yolunda.', 'iyi');
+        else this.bildir('İzin gerekli', 'Açılan ekrandan bildirimlere izin ver, sonra tekrar dene.', 'uyari');
+      } else this.bildir('Güncelleme gerekli', 'Bu düğme uygulamanın yeni sürümünde çalışır.', 'uyari');
+    } catch (e) { this.bildir('Gönderilemedi', '', 'kotu'); }
+  },
+  bildirimIzinAc: function () { try { AndroidKabuk.bildirimAyarAc(); } catch (e) {} },
+  uygulamaAyarAc: function () {
+    try {
+      if (window.AndroidKabuk && AndroidKabuk.uygulamaAyarAc) AndroidKabuk.uygulamaAyarAc();
+      else this.bildir('Güncelleme gerekli', 'Bu düğme uygulamanın yeni sürümünde çalışır.', 'uyari');
+    } catch (e) {}
   },
   bildirimDegis: function (acik) {
     try {
