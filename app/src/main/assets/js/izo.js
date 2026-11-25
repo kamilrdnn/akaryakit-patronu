@@ -995,6 +995,7 @@ const IZO = {
       else if (o.tur === 'sus') this.susCiz(o.s);
       else if (o.tur === 'insan') this.insanModel(o.p, o.p.sapka);
       else if (o.tur === 'yaya') this.insanModel(o.p, null);
+      else if (o.tur === 'ozel') o.ciz.call(this);
       else this.arabaCiz(o.a);
     }
 

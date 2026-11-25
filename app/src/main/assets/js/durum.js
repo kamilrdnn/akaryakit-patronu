@@ -184,6 +184,8 @@ const D = {
       var y = sb.yapi[i];
       if (y && y.t !== 'pompa' && (!tip || y.t === tip)) r.push({ i: i, b: y });
     }
+    /* arsanın dışına konmuş tabela (yalnızca adıyla sorulunca sayılır) */
+    if (tip === 'totem' && sb.disTotem) r.push({ i: -2, b: sb.disTotem });
     return r;
   },
   binaSayisi: function (sb, tip) { return this.binalar(sb, tip).length; },

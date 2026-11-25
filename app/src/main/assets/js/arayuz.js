@@ -279,7 +279,7 @@ const UI = {
     /* ---- alt: yalnızca kritik durum bilgisi (büyük doldur butonu kaldırıldı) ---- */
     h += '<div class="hudAlt"' + (this.fabAcik ? ' style="display:none"' : '') + '>';
     if (this.tasinan !== null && this.tasinan !== undefined) {
-      h += '<div class="tasimaSerit tik"><span>📦 Yeni yerini seç — boş betona dokun</span>';
+      h += '<div class="tasimaSerit tik"><span>📦 ' + (this.tabelaTasiniyor() ? 'Boş betona ya da dışarıdaki yeşil kareye dokun' : 'Yeni yerini seç — boş betona dokun') + '</span>';
       h += '<button onclick="UI.tasimaIptal()">İptal</button></div>';
     } else {
       h += this.rehberHtml();
@@ -372,11 +372,15 @@ const UI = {
      ========================================================= */
   hucreTik: function (k) {
     var sb = D.sube();
+    if (k === -2) {                      /* arsa dışındaki tabela */
+      if (this.tasinan === null || this.tasinan === undefined) this.disTotemModal();
+      return;
+    }
     if (k < 0 || k >= sb.yapi.length) return;
     /* taşıma modu: hedef hücre seçiliyor */
     if (this.tasinan !== null && this.tasinan !== undefined) {
       var kaynak = this.tasinan;
-      if (SIM.yapiTasi(sb, kaynak, k)) { this.tasinan = null; this.ciz(); }
+      if (kaynak === -2 ? SIM.totemIceri(sb, k) : SIM.yapiTasi(sb, kaynak, k)) { this.tasinan = null; this.ciz(); }
       return;
     }
     var y = sb.yapi[k];
@@ -505,6 +509,7 @@ const UI = {
     h += '<button class="btn kucuk ikincil" onclick="UI.yik(' + k + ')">🧨 Yık</button>';
     h += '<button class="btn kucuk ikincil" onclick="UI.tasimayaBasla(' + k + ')">📦 Taşı ' + tl(SIM.tasimaBedeli(y)) + '</button>';
     h += '</div>';
+    if (y.t === 'totem') h += '<div class="not" style="margin-top:8px">Tabelayı arsanın 1 kare dışına, yol kenarına da koyabilirsin: Taşı\'ya bas, yeşil karelerden birine dokun.</div>';
 
     /* jeneratör yakıt deposu */
     if (y.t === 'jenerator') {
@@ -554,8 +559,33 @@ const UI = {
   tasimayaBasla: function (k) {
     this.tasinan = k;
     this.modalKapat();
-    this.bildir('Taşıma modu', 'Yapıyı koymak istediğin boş betona dokun.', 'uyari');
+    if (this.tabelaTasiniyor()) this.bildir('Taşıma modu', 'Boş betona ya da arsanın dışındaki yeşil karelere dokun.', 'uyari');
+    else this.bildir('Taşıma modu', 'Yapıyı koymak istediğin boş betona dokun.', 'uyari');
     this.ciz();
+  },
+  tabelaTasiniyor: function () {
+    var t = this.tasinan;
+    if (t === null || t === undefined) return false;
+    if (t === -2) return true;
+    var y = D.sube().yapi[t];
+    return !!(y && y.t === 'totem');
+  },
+  /* taşıma modunda arsa dışındaki bir kareye dokunuldu */
+  disHucreTik: function (x, y) {
+    if (!this.tabelaTasiniyor()) return false;
+    if (SIM.totemDisari(D.sube(), this.tasinan, x, y)) { this.tasinan = null; this.ciz(); }
+    return true;
+  },
+  disTotemModal: function () {
+    var sb = D.sube(), y = sb.disTotem;
+    if (!y) return;
+    var h = '<div class="not">' + VERI.binalar.totem.aciklama + '</div>';
+    h += '<div class="kv" style="margin-top:8px"><span>Konum</span><b>' + (y.y === sb.h ? 'Yol kenarı' : 'Arsa dışı') + '</b></div>';
+    h += '<div class="btngrup" style="margin-top:12px">';
+    h += '<button class="btn kucuk" onclick="UI.tasimayaBasla(-2)">📦 Taşı ' + tl(SIM.tasimaBedeli(y)) + '</button>';
+    h += '<button class="btn kucuk ikincil" onclick="if(SIM.totemDisYik(D.sube())){UI.modalKapat();UI.ciz();}">🧨 Kaldır</button>';
+    h += '</div>';
+    this.modal(VERI.binalar.totem.ad, h);
   },
   tasimaIptal: function () { this.tasinan = null; this.bildir('Taşıma iptal', '', 'uyari'); this.ciz(); },
   jeneratorDoldur: function (k) { if (SIM.jeneratorDoldur(D.sube(), k)) this.yapiModal(k); },

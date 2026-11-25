@@ -1773,6 +1773,63 @@ const SIM = {
     return Math.round(taban * 0.06);
   },
 
+  /* ---- tabela arsanın bir kare dışına konabilir (yan kenarlar, arka kenar, yol kenarı köşeleri) ---- */
+  totemDisUygun: function (sb, x, y) {
+    if (x < -1 || x > sb.w || y < -1 || y > sb.h) return 'Tabela arsanın en fazla 1 kare dışına konabilir.';
+    if (x >= 0 && x < sb.w && y >= 0 && y < sb.h) return 'ic';
+    if (y === sb.h && x >= 0 && x < sb.w) return 'Burası araçların giriş-çıkış şeridi. Yol kenarı için giriş ya da çıkışın yanındaki köşeyi seç.';
+    return '';
+  },
+  totemDisari: function (sb, kaynak, x, y) {
+    var disaridan = kaynak === -2;
+    var rec = disaridan ? sb.disTotem : sb.yapi[kaynak];
+    if (!rec || rec.t !== 'totem') return false;
+    var neden = this.totemDisUygun(sb, x, y);
+    if (neden) { if (neden !== 'ic') UI.bildir('Buraya konamaz', neden, 'kotu'); return false; }
+    if (!disaridan && sb.disTotem) { UI.bildir('Dışarıda tabela var', 'Arsa dışında yalnızca bir tabela durabilir.', 'kotu'); return false; }
+    if (disaridan && rec.x === x && rec.y === y) return false;
+    var bedel = this.tasimaBedeli(rec);
+    if (!D.harca(bedel)) return false;
+    if (!disaridan) sb.yapi[kaynak] = null;
+    rec.x = x; rec.y = y; rec.yol = (y === sb.h);
+    sb.disTotem = rec;
+    if (window.IZO) { IZO.susle(sb); IZO._zAnahtar = ''; }
+    UI.bildir('Tabela taşındı', (y === sb.h ? 'Yol kenarına' : 'Arsa dışına') + ' kuruldu · ' + tl(bedel), 'iyi');
+    return true;
+  },
+  totemIceri: function (sb, hedef) {
+    var rec = sb.disTotem;
+    if (!rec) return false;
+    if (hedef < 0 || hedef >= sb.yapi.length) return false;
+    if (!sb.beton[hedef]) { UI.bildir('Zemin yok', 'Önce oraya beton dök.', 'kotu'); return false; }
+    if (sb.yapi[hedef]) { UI.bildir('Dolu', 'O hücrede başka bir yapı var.', 'kotu'); return false; }
+    var bedel = this.tasimaBedeli(rec);
+    if (!D.harca(bedel)) return false;
+    delete rec.x; delete rec.y; delete rec.yol;
+    sb.yapi[hedef] = rec;
+    sb.disTotem = null;
+    if (window.IZO) { IZO.susle(sb); IZO._zAnahtar = ''; }
+    UI.bildir('Tabela taşındı', 'Arsanın içine alındı · ' + tl(bedel), 'iyi');
+    return true;
+  },
+  /* arsa büyüyünce dışarıdaki tabela içeride kalmasın: yeni kenara kaydır */
+  totemDisDuzelt: function (sb) {
+    var t = sb.disTotem;
+    if (!t || this.totemDisUygun(sb, t.x, t.y) === '') return;
+    if (t.x >= 0) t.x = sb.w;
+    if (t.yol || t.y > sb.h) t.y = sb.h;
+    if (t.y < -1) t.y = -1;
+    if (t.x < -1) t.x = -1;
+    if (this.totemDisUygun(sb, t.x, t.y) !== '') { t.x = sb.w; t.y = t.yol ? sb.h : Math.min(t.y, sb.h - 1); }
+  },
+  totemDisYik: function (sb) {
+    if (!sb.disTotem) return false;
+    sb.disTotem = null;
+    if (window.IZO) { IZO.susle(sb); IZO._zAnahtar = ''; }
+    UI.bildir('Tabela kaldırıldı', '', 'uyari');
+    return true;
+  },
+
   yapiTasi: function (sb, kaynak, hedef) {
     var y = sb.yapi[kaynak];
     if (!y) return false;
