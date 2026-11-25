@@ -1,7 +1,7 @@
 {
-  "versionCode": 111,
-  "versionName": "1.2.6",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.6/AkaryakitPatronu-1.2.6.apk",
+  "versionCode": 112,
+  "versionName": "1.2.7",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.7/AkaryakitPatronu-1.2.7.apk",
   "size": 2872494,
-  "notes": "Play Store paketi: AAB derleme ve mağaza metinleri"
+  "notes": "CI: update.json gönderimi çakışmada yeniden denesin"
 }
