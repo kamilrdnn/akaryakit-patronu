@@ -1,7 +1,7 @@
 {
-  "versionCode": 137,
-  "versionName": "1.2.31",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.31/AkaryakitPatronu-1.2.31.apk",
-  "size": 3335357,
-  "notes": "Güncelleme denetimi düzeltildi: const nesneler window'a bağlandı"
+  "versionCode": 138,
+  "versionName": "1.2.32",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.32/AkaryakitPatronu-1.2.32.apk",
+  "size": 3337345,
+  "notes": "Derinlik sırası düzeltildi, uzun araçlar kısaltıldı, müşteri yorumları çeşitlendi"
 }
