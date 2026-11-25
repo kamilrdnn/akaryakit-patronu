@@ -1,7 +1,7 @@
 {
-  "versionCode": 123,
-  "versionName": "1.2.17",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.17/AkaryakitPatronu-1.2.17.apk",
-  "size": 2984526,
-  "notes": "Çift yönlü bulvar ve yerleşim hataları"
+  "versionCode": 124,
+  "versionName": "1.2.18",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.18/AkaryakitPatronu-1.2.18.apk",
+  "size": 3293325,
+  "notes": "Oyun kapalıyken güncelleme bildirimi"
 }
