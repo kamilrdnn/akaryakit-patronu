@@ -1,7 +1,7 @@
 {
-  "versionCode": 136,
-  "versionName": "1.2.30",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.30/AkaryakitPatronu-1.2.30.apk",
-  "size": 3334621,
-  "notes": "Kendi tanker filon"
+  "versionCode": 137,
+  "versionName": "1.2.31",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.31/AkaryakitPatronu-1.2.31.apk",
+  "size": 3335357,
+  "notes": "Güncelleme denetimi düzeltildi: const nesneler window'a bağlandı"
 }
