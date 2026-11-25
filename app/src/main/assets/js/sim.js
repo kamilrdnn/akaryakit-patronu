@@ -1780,25 +1780,35 @@ const SIM = {
     if (y === sb.h && x >= 0 && x < sb.w) return 'Burası araçların giriş-çıkış şeridi. Yol kenarı için giriş ya da çıkışın yanındaki köşeyi seç.';
     return '';
   },
+  /* arsa dışındaki tabelalar (en fazla 2). Dizin: -2 → ilki, -3 → ikincisi */
+  DIS_TOTEM_SINIR: 2,
+  disTotemler: function (sb) {
+    if (!sb.disTotemler) sb.disTotemler = [];
+    if (sb.disTotem) { sb.disTotemler.push(sb.disTotem); delete sb.disTotem; }     /* eski kayıt */
+    return sb.disTotemler;
+  },
   totemDisari: function (sb, kaynak, x, y) {
-    var disaridan = kaynak === -2;
-    var rec = disaridan ? sb.disTotem : sb.yapi[kaynak];
+    var L = this.disTotemler(sb);
+    var disaridan = kaynak <= -2;
+    var rec = disaridan ? L[-2 - kaynak] : sb.yapi[kaynak];
     if (!rec || rec.t !== 'totem') return false;
     var neden = this.totemDisUygun(sb, x, y);
     if (neden) { if (neden !== 'ic') UI.bildir('Buraya konamaz', neden, 'kotu'); return false; }
-    if (!disaridan && sb.disTotem) { UI.bildir('Dışarıda tabela var', 'Arsa dışında yalnızca bir tabela durabilir.', 'kotu'); return false; }
+    for (var i = 0; i < L.length; i++) {
+      if (L[i] !== rec && L[i].x === x && L[i].y === y) { UI.bildir('Dolu', 'O karede başka bir tabela var.', 'kotu'); return false; }
+    }
+    if (!disaridan && L.length >= this.DIS_TOTEM_SINIR) { UI.bildir('Sınır doldu', 'Arsa dışında en fazla ' + this.DIS_TOTEM_SINIR + ' tabela durabilir.', 'kotu'); return false; }
     if (disaridan && rec.x === x && rec.y === y) return false;
     var bedel = this.tasimaBedeli(rec);
     if (!D.harca(bedel)) return false;
-    if (!disaridan) sb.yapi[kaynak] = null;
+    if (!disaridan) { sb.yapi[kaynak] = null; L.push(rec); }
     rec.x = x; rec.y = y; rec.yol = (y === sb.h);
-    sb.disTotem = rec;
     if (window.IZO) { IZO.susle(sb); IZO._zAnahtar = ''; }
     UI.bildir('Tabela taşındı', (y === sb.h ? 'Yol kenarına' : 'Arsa dışına') + ' kuruldu · ' + tl(bedel), 'iyi');
     return true;
   },
-  totemIceri: function (sb, hedef) {
-    var rec = sb.disTotem;
+  totemIceri: function (sb, kaynak, hedef) {
+    var L = this.disTotemler(sb), idx = -2 - kaynak, rec = L[idx];
     if (!rec) return false;
     if (hedef < 0 || hedef >= sb.yapi.length) return false;
     if (!sb.beton[hedef]) { UI.bildir('Zemin yok', 'Önce oraya beton dök.', 'kotu'); return false; }
@@ -1807,24 +1817,31 @@ const SIM = {
     if (!D.harca(bedel)) return false;
     delete rec.x; delete rec.y; delete rec.yol;
     sb.yapi[hedef] = rec;
-    sb.disTotem = null;
+    L.splice(idx, 1);
     if (window.IZO) { IZO.susle(sb); IZO._zAnahtar = ''; }
     UI.bildir('Tabela taşındı', 'Arsanın içine alındı · ' + tl(bedel), 'iyi');
     return true;
   },
   /* arsa büyüyünce dışarıdaki tabela içeride kalmasın: yeni kenara kaydır */
   totemDisDuzelt: function (sb) {
-    var t = sb.disTotem;
-    if (!t || this.totemDisUygun(sb, t.x, t.y) === '') return;
-    if (t.x >= 0) t.x = sb.w;
-    if (t.yol || t.y > sb.h) t.y = sb.h;
-    if (t.y < -1) t.y = -1;
-    if (t.x < -1) t.x = -1;
-    if (this.totemDisUygun(sb, t.x, t.y) !== '') { t.x = sb.w; t.y = t.yol ? sb.h : Math.min(t.y, sb.h - 1); }
+    var L = this.disTotemler(sb);
+    for (var i = 0; i < L.length; i++) {
+      var t = L[i];
+      if (t.yol && t.y !== sb.h) { t.y = sb.h; if (t.x >= 0) t.x = sb.w; }      /* yol kenarındaki yol kenarında kalır */
+      if (this.totemDisUygun(sb, t.x, t.y) === '') continue;
+      if (t.x >= 0) t.x = sb.w;
+      if (t.yol || t.y > sb.h) t.y = sb.h;
+      if (t.y < -1) t.y = -1;
+      if (t.x < -1) t.x = -1;
+      if (this.totemDisUygun(sb, t.x, t.y) !== '') { t.x = sb.w; t.y = t.yol ? sb.h : Math.min(t.y, sb.h - 1); }
+      /* diğeriyle aynı kareye düştüyse bir kare kaydır */
+      for (var k = 0; k < i; k++) if (L[k].x === t.x && L[k].y === t.y) t.y = t.y > 0 ? t.y - 1 : t.y + 1;
+    }
   },
-  totemDisYik: function (sb) {
-    if (!sb.disTotem) return false;
-    sb.disTotem = null;
+  totemDisYik: function (sb, kaynak) {
+    var L = this.disTotemler(sb), idx = -2 - kaynak;
+    if (!L[idx]) return false;
+    L.splice(idx, 1);
     if (window.IZO) { IZO.susle(sb); IZO._zAnahtar = ''; }
     UI.bildir('Tabela kaldırıldı', '', 'uyari');
     return true;

@@ -2131,26 +2131,29 @@
 
   var eskiDerinlik = Z.derinlikDuzelt;
   Z.derinlikDuzelt = function (sb, liste) {
-    if (sb.disTotem && SIM.totemDisDuzelt) SIM.totemDisDuzelt(sb);
-    var self = this, t = sb.disTotem;
+    var self = this, T = SIM.disTotemler ? SIM.disTotemler(sb) : [];
+    if (T.length) SIM.totemDisDuzelt(sb);
+    var dolu = {};
+    for (var q = 0; q < T.length; q++) dolu[T[q].x + ',' + T[q].y] = true;
     /* taşıma modunda konabilecek kareleri göster */
     if (typeof UI !== 'undefined' && UI.tabelaTasiniyor && UI.tabelaTasiniyor()) {
       var c = this.cz, nab = 0.2 + 0.1 * Math.sin(Date.now() / 300);
       for (var y = -1; y <= sb.h; y++) for (var x = -1; x <= sb.w; x++) {
-        if (SIM.totemDisUygun(sb, x, y) !== '') continue;
-        if (t && t.x === x && t.y === y && UI.tasinan === -2) continue;
+        if (SIM.totemDisUygun(sb, x, y) !== '' || dolu[x + ',' + y]) continue;
         var a = this.ekran(x + 0.08, y + 0.08, 0), b = this.ekran(x + 0.92, y + 0.08, 0), d = this.ekran(x + 0.92, y + 0.92, 0), e = this.ekran(x + 0.08, y + 0.92, 0);
         c.fillStyle = 'rgba(62,196,122,' + nab.toFixed(2) + ')';
         c.strokeStyle = 'rgba(62,196,122,.9)'; c.lineWidth = Math.max(1, 1.3 * this.kam.olcek);
         c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(d.x, d.y); c.lineTo(e.x, e.y); c.closePath(); c.fill(); c.stroke();
       }
     }
-    if (t) {
-      liste.push({ d: t.x + t.y + 1, tur: 'ozel', gx: t.x, gy: t.y, ciz: function () { self.binaCiz(sb, -2, t.x, t.y, t); } });
+    if (T.length) {
+      for (var n = 0; n < T.length; n++) (function (t, kimlik) {
+        liste.push({ d: t.x + t.y + 1, tur: 'ozel', gx: t.x, gy: t.y, ciz: function () { self.binaCiz(sb, kimlik, t.x, t.y, t); } });
+      })(T[n], -2 - n);
       /* aynı karedeki ağaç, çalı, direk çizilmesin */
       for (var i = liste.length - 1; i >= 0; i--) {
         var o = liste[i];
-        if (o.tur === 'sus' && !(o.s.w > 1 || o.s.h > 1) && Math.floor(o.s.gx + 0.01) === t.x && Math.floor(o.s.gy + 0.01) === t.y) liste.splice(i, 1);
+        if (o.tur === 'sus' && !(o.s.w > 1 || o.s.h > 1) && dolu[Math.floor(o.s.gx + 0.01) + ',' + Math.floor(o.s.gy + 0.01)]) liste.splice(i, 1);
       }
     }
     if (eskiDerinlik) eskiDerinlik.call(this, sb, liste);

@@ -185,7 +185,10 @@ const D = {
       if (y && y.t !== 'pompa' && (!tip || y.t === tip)) r.push({ i: i, b: y });
     }
     /* arsanın dışına konmuş tabela (yalnızca adıyla sorulunca sayılır) */
-    if (tip === 'totem' && sb.disTotem) r.push({ i: -2, b: sb.disTotem });
+    if (tip === 'totem') {
+      if (sb.disTotem) r.push({ i: -2, b: sb.disTotem });
+      for (var d = 0; d < (sb.disTotemler || []).length; d++) r.push({ i: -2 - d, b: sb.disTotemler[d] });
+    }
     return r;
   },
   binaSayisi: function (sb, tip) { return this.binalar(sb, tip).length; },

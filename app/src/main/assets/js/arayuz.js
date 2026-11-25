@@ -372,15 +372,15 @@ const UI = {
      ========================================================= */
   hucreTik: function (k) {
     var sb = D.sube();
-    if (k === -2) {                      /* arsa dışındaki tabela */
-      if (this.tasinan === null || this.tasinan === undefined) this.disTotemModal();
+    if (k <= -2) {                       /* arsa dışındaki tabela */
+      if (this.tasinan === null || this.tasinan === undefined) this.disTotemModal(k);
       return;
     }
     if (k < 0 || k >= sb.yapi.length) return;
     /* taşıma modu: hedef hücre seçiliyor */
     if (this.tasinan !== null && this.tasinan !== undefined) {
       var kaynak = this.tasinan;
-      if (kaynak === -2 ? SIM.totemIceri(sb, k) : SIM.yapiTasi(sb, kaynak, k)) { this.tasinan = null; this.ciz(); }
+      if (kaynak <= -2 ? SIM.totemIceri(sb, kaynak, k) : SIM.yapiTasi(sb, kaynak, k)) { this.tasinan = null; this.ciz(); }
       return;
     }
     var y = sb.yapi[k];
@@ -509,7 +509,7 @@ const UI = {
     h += '<button class="btn kucuk ikincil" onclick="UI.yik(' + k + ')">🧨 Yık</button>';
     h += '<button class="btn kucuk ikincil" onclick="UI.tasimayaBasla(' + k + ')">📦 Taşı ' + tl(SIM.tasimaBedeli(y)) + '</button>';
     h += '</div>';
-    if (y.t === 'totem') h += '<div class="not" style="margin-top:8px">Tabelayı arsanın 1 kare dışına, yol kenarına da koyabilirsin: Taşı\'ya bas, yeşil karelerden birine dokun.</div>';
+    if (y.t === 'totem') h += '<div class="not" style="margin-top:8px">Tabelayı arsanın 1 kare dışına, yol kenarına da koyabilirsin (dışarıda en fazla 2 tabela): Taşı\'ya bas, yeşil karelerden birine dokun.</div>';
 
     /* jeneratör yakıt deposu */
     if (y.t === 'jenerator') {
@@ -566,7 +566,7 @@ const UI = {
   tabelaTasiniyor: function () {
     var t = this.tasinan;
     if (t === null || t === undefined) return false;
-    if (t === -2) return true;
+    if (t <= -2) return true;
     var y = D.sube().yapi[t];
     return !!(y && y.t === 'totem');
   },
@@ -576,14 +576,14 @@ const UI = {
     if (SIM.totemDisari(D.sube(), this.tasinan, x, y)) { this.tasinan = null; this.ciz(); }
     return true;
   },
-  disTotemModal: function () {
-    var sb = D.sube(), y = sb.disTotem;
+  disTotemModal: function (k) {
+    var sb = D.sube(), y = SIM.disTotemler(sb)[-2 - k];
     if (!y) return;
     var h = '<div class="not">' + VERI.binalar.totem.aciklama + '</div>';
     h += '<div class="kv" style="margin-top:8px"><span>Konum</span><b>' + (y.y === sb.h ? 'Yol kenarı' : 'Arsa dışı') + '</b></div>';
     h += '<div class="btngrup" style="margin-top:12px">';
-    h += '<button class="btn kucuk" onclick="UI.tasimayaBasla(-2)">📦 Taşı ' + tl(SIM.tasimaBedeli(y)) + '</button>';
-    h += '<button class="btn kucuk ikincil" onclick="if(SIM.totemDisYik(D.sube())){UI.modalKapat();UI.ciz();}">🧨 Kaldır</button>';
+    h += '<button class="btn kucuk" onclick="UI.tasimayaBasla(' + k + ')">📦 Taşı ' + tl(SIM.tasimaBedeli(y)) + '</button>';
+    h += '<button class="btn kucuk ikincil" onclick="if(SIM.totemDisYik(D.sube(),' + k + ')){UI.modalKapat();UI.ciz();}">🧨 Kaldır</button>';
     h += '</div>';
     this.modal(VERI.binalar.totem.ad, h);
   },
