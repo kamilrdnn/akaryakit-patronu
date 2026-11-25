@@ -1,7 +1,7 @@
 {
-  "versionCode": 124,
-  "versionName": "1.2.18",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.18/AkaryakitPatronu-1.2.18.apk",
-  "size": 3293325,
-  "notes": "Oyun kapalıyken güncelleme bildirimi"
+  "versionCode": 125,
+  "versionName": "1.2.19",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.19/AkaryakitPatronu-1.2.19.apk",
+  "size": 3294901,
+  "notes": "Kasma giderildi ve sıra bekleyen araçlara ayrı şerit"
 }
