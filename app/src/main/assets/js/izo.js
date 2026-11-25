@@ -291,7 +291,7 @@ const IZO = {
             { gx: kpx.cikis, gy: kpx.seritY },
             { gx: kpx.cikis, gy: kpx.agizY },
             { gx: kpx.cikis, gy: sb.h + 1.72 },
-            { gx: sb.w + 6, gy: sb.h + 1.72 }
+            { gx: sb.w + 7, gy: sb.h + 1.72 }
           ];
         }
       }
@@ -314,8 +314,12 @@ const IZO = {
     var yolY = sb.h + 1;                 /* asfalt karosu */
     var yasak = function (gx, gy, w, h) {
       w = w || 1; h = h || 1;
-      /* istasyon arsası + önündeki beton + yol şeridi boş kalsın */
-      if (gx + w > -1.6 && gx < sb.w + 1.4 && gy + h > -1.8 && gy < sb.h + 3.2) return true;
+      /* istasyon arsası + önündeki beton */
+      if (gx + w > -1.6 && gx < sb.w + 1.4 && gy + h > -1.8 && gy < sb.h + 0.8) return true;
+      /* ana yol bandı (iki şerit + refüj + banket) */
+      if (gy + h > sb.h + 0.5 && gy < sb.h + 3.6) return true;
+      /* kasaba sokakları ve bina şeritleri */
+      if (gy + h > sb.h + 4.2 && gy < sb.h + 12) return true;
       return false;
     };
     var cakisma = function (gx, gy, w, h) {
@@ -380,9 +384,10 @@ const IZO = {
     var tarlaSayi = 3 + Math.floor(rnd(2));
     for (var t = 0; t < tarlaSayi; t++) {
       var tw = 1.9 + rnd(1.3), th = 1.5 + rnd(1.0);
-      var alan = t % 2 === 0 ? arka : { x0: -12, x1: -3.5, y0: -7, y1: sb.h + 10 };
+      var alan = t % 2 === 0 ? arka : { x0: -12, x1: -3.5, y0: -7, y1: sb.h - 0.5 };
       var ty = yerBul(tw, th, alan, 40);
-      if (!ty) ty = yerBul(tw, th, { x0: sb.w + 2.4, x1: sb.w + 11, y0: -6, y1: sb.h + 9 }, 40);
+      if (!ty) ty = yerBul(tw, th, { x0: sb.w + 2.4, x1: sb.w + 12, y0: -6, y1: sb.h - 0.5 }, 40);
+      if (!ty) ty = yerBul(tw, th, { x0: -12, x1: sb.w + 12, y0: sb.h + 13, y1: sb.h + 19 }, 40);
       if (!ty) continue;
       this.susler.push({
         tip: 'tarla', gx: ty.gx, gy: ty.gy, w: tw, h: th,
@@ -391,11 +396,11 @@ const IZO = {
     }
 
     /* --- yol boyu aydınlatma direkleri --- */
-    for (var d2 = -6; d2 <= sb.w + 7; d2 += 4) {
-      this.susler.push({ tip: 'direk', gx: d2, gy: sb.h + 2.45, w: 0.3, h: 0.3, yon: 1 });
+    for (var d2 = -8; d2 <= sb.w + 9; d2 += 4) {
+      this.susler.push({ tip: 'direk', gx: d2, gy: sb.h + 3.35, w: 0.3, h: 0.3, yon: 1 });
     }
-    /* otobüs durağı */
-    this.susler.push({ tip: 'durak', gx: sb.w + 1.9, gy: sb.h + 2.3, w: 1.2, h: 0.6 });
+    /* otobüs durağı (yolun karşı banketinde) */
+    this.susler.push({ tip: 'durak', gx: sb.w + 1.9, gy: sb.h + 3.3, w: 1.2, h: 0.6 });
 
     /* --- ağaç, çalı, taş serpiştirme --- */
     var dogaSayi = 34;
@@ -539,7 +544,7 @@ const IZO = {
     return {
       giris: girisX + kapiEn / 2,
       cikis: cikisX + kapiEn / 2,
-      yolY: sb.h + 1.35,          /* yolun bizim şeridimiz */
+      yolY: sb.h + 1.3,           /* istasyon tarafı şerit */
       agizY: sb.h + 0.95,         /* kapı ağzı */
       seritY: sb.h + 0.35         /* apron manevra şeridi */
     };
@@ -610,8 +615,8 @@ const IZO = {
           { gx: ar.gx - 0.9, gy: kp2.seritY },  /* şeride in */
           { gx: kp2.cikis, gy: kp2.seritY },    /* çıkış hizasına git */
           { gx: kp2.cikis, gy: kp2.agizY },     /* kapıdan çık */
-          { gx: kp2.cikis, gy: sb.h + 1.72 },   /* yolun sağ şeridine katıl */
-          { gx: sb.w + 6, gy: sb.h + 1.72 }
+          { gx: kp2.cikis, gy: sb.h + 1.72 },   /* yolun ikinci şeridine katıl */
+          { gx: sb.w + 7, gy: sb.h + 1.72 }
         ];
         ar.hiz = 1.5;
       }
@@ -665,11 +670,11 @@ const IZO = {
       else { cesit = 'oto'; renk = ['#d64545', '#3f7fd0', '#e0a92e', '#4aa96c', '#8a8f99', '#2f3b52', '#c96a2c', '#f0f2f5'][Math.floor(Math.random() * 8)]; }
       this.arabalar.push({
         mid: null, cesit: cesit,
-        gx: saga ? -5 : sb.w + 5,
-        gy: sb.h + (saga ? 1.3 : 1.72),
+        gx: saga ? -6 : sb.w + 6,
+        gy: sb.h + (saga ? 1.72 : 2.55),
         renk: renk,
         buyuk: buyuk,
-        yol: [{ gx: saga ? sb.w + 5.5 : -5.5, gy: sb.h + (saga ? 1.3 : 1.72) }],
+        yol: [{ gx: saga ? sb.w + 6.5 : -6.5, gy: sb.h + (saga ? 1.72 : 2.55) }],
         durum: 'gecis', hiz: (buyuk ? 1.7 : 2.4) + Math.random() * 1.3, sil: false
       });
     }
@@ -780,10 +785,8 @@ const IZO = {
 
     var I = this.isik();
     /* gökyüzü / zemin fonu */
-    var gkk = c.createLinearGradient(0, 0, 0, this.boy);
-    if (this.gece()) { gkk.addColorStop(0, '#111c30'); gkk.addColorStop(1, '#0c1322'); }
-    else { gkk.addColorStop(0, '#9fd3f0'); gkk.addColorStop(1, '#cfe9c4'); }
-    c.fillStyle = gkk;
+    var cimTon = this.cimenPaleti()[0];
+    c.fillStyle = this.gece() ? this.ton(cimTon, this.isik() * 0.9) : this.ton(cimTon, I);
     c.fillRect(0, 0, this.en, this.boy);
 
     this.vurus = [];
@@ -886,7 +889,7 @@ const IZO = {
       for (var gx = gxBas; gx <= gxSon; gx++) {
         var gy = t - gx;
         var ic = (gx >= 0 && gx < sb.w && gy >= 0 && gy < sb.h);
-        var yolMu = (gy === sb.h + 1);
+        var yolMu = (gy === sb.h + 1 || gy === sb.h + 2);
         var onluk = (gy === sb.h && gx >= -1 && gx <= sb.w);
         var renk, cimMi = false;
         if (yolMu) renk = asfalt;
@@ -1023,7 +1026,7 @@ const IZO = {
     if (this._zOnbellek && this._zAnahtar === anahtar) return this._zOnbellek;
     if (this._zDestekYok) return null;
 
-    var pay = 14;                                   /* çevre payı (karo) */
+    var pay = 22;                                   /* çevre payı (karo) */
     var minGX = -pay, maxGX = sb.w + pay, minGY = -pay, maxGY = sb.h + pay;
     /* dünya sınırları (ölçek 1) */
     var k1 = this.izo(minGX, minGY), k2 = this.izo(maxGX + 1, minGY),
@@ -1167,23 +1170,42 @@ const IZO = {
 
   yolCizgileri: function (sb) {
     var c = this.cz, I = this.isik();
-    var y = sb.h + 1.5;
-    /* orta sarı çift çizgi */
-    for (var k = 0; k < 2; k++) {
-      var oy = y + (k ? 0.04 : -0.04);
-      var a = this.ekran(-4, oy, 0), b = this.ekran(sb.w + 5, oy, 0);
-      c.strokeStyle = this.ton('#e8c44a', I);
-      c.lineWidth = Math.max(1, 1.6 * this.kam.olcek);
+    var ust = sb.h + 1, alt = sb.h + 3;          /* asfalt bandı */
+    var orta = sb.h + 2;                          /* refüj ekseni */
+
+    /* kenar beyaz sürekli çizgiler */
+    function cizgi(yv, renk, kalin, kesik) {
+      var a = IZO.ekran(-14, yv, 0.4), b = IZO.ekran(sb.w + 15, yv, 0.4);
+      c.strokeStyle = renk;
+      c.lineWidth = Math.max(1, kalin * IZO.kam.olcek);
+      if (kesik) {
+        var toplam = Math.hypot(b.x - a.x, b.y - a.y);
+        c.setLineDash([12 * IZO.kam.olcek, 10 * IZO.kam.olcek]);
+      }
       c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+      c.setLineDash([]);
     }
-    /* kenar beyaz kesikler */
-    c.strokeStyle = this.ton('#e8edf2', I);
-    c.lineWidth = Math.max(1, 1.3 * this.kam.olcek);
-    for (var gx = -4; gx < sb.w + 5; gx += 0.9) {
-      var p1 = this.ekran(gx, sb.h + 1.08, 0), p2 = this.ekran(gx + 0.45, sb.h + 1.08, 0);
-      c.beginPath(); c.moveTo(p1.x, p1.y); c.lineTo(p2.x, p2.y); c.stroke();
-      var q1 = this.ekran(gx, sb.h + 1.92, 0), q2 = this.ekran(gx + 0.45, sb.h + 1.92, 0);
-      c.beginPath(); c.moveTo(q1.x, q1.y); c.lineTo(q2.x, q2.y); c.stroke();
+    var beyaz = this.ton('#e8edf2', I);
+    cizgi(ust + 0.06, beyaz, 1.4, false);         /* dış kenar (istasyon tarafı) */
+    cizgi(alt - 0.06, beyaz, 1.4, false);         /* dış kenar (karşı taraf) */
+    cizgi(ust + 0.58, beyaz, 1.2, true);          /* şerit ayracı - yakın yön */
+    cizgi(orta + 0.62, beyaz, 1.2, true);         /* şerit ayracı - uzak yön */
+
+    /* refüj: iki sarı çizgi arası beton ada + yeşillik */
+    this.kutu(-14, orta - 0.12, 0, sb.w + 29, 0.24, 2.5, '#c9d0d8');
+    var sari = this.ton('#e8c44a', I);
+    cizgi(orta - 0.14, sari, 1.5, false);
+    cizgi(orta + 0.14, sari, 1.5, false);
+    /* refüj çalıları */
+    for (var gx = -12; gx < sb.w + 13; gx += 2.4) {
+      var p = this.ekran(gx, orta, 2.5);
+      var r = 5.2 * this.kam.olcek;
+      c.fillStyle = 'rgba(20,32,18,.18)';
+      c.beginPath(); c.ellipse(p.x, p.y, r * 1.1, r * 0.5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = this.ton('#45853d', I);
+      c.beginPath(); c.arc(p.x, p.y - r * 0.55, r, 0, Math.PI * 2); c.fill();
+      c.fillStyle = this.ton('#5ea254', I * 1.12);
+      c.beginPath(); c.arc(p.x - r * 0.3, p.y - r * 0.9, r * 0.62, 0, Math.PI * 2); c.fill();
     }
   },
 
