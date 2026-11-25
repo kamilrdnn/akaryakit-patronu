@@ -1,7 +1,7 @@
 {
-  "versionCode": 112,
-  "versionName": "1.2.7",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.7/AkaryakitPatronu-1.2.7.apk",
-  "size": 2872494,
-  "notes": "CI: update.json gönderimi çakışmada yeniden denesin"
+  "versionCode": 113,
+  "versionName": "1.2.8",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.8/AkaryakitPatronu-1.2.8.apk",
+  "size": 2966106,
+  "notes": "Uygulama simgesi ve mağaza görselleri"
 }
