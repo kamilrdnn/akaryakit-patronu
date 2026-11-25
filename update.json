@@ -1,7 +1,7 @@
 {
-  "versionCode": 119,
-  "versionName": "1.2.13",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.13/AkaryakitPatronu-1.2.13.apk",
-  "size": 2979994,
-  "notes": "CI: sürüm yayınlamayı yeniden dene (GitHub 503)"
+  "versionCode": 120,
+  "versionName": "1.2.14",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.14/AkaryakitPatronu-1.2.14.apk",
+  "size": 2980810,
+  "notes": "Gerçekçi araç ve dolum akışı"
 }
