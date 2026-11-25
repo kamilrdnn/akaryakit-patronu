@@ -42,10 +42,15 @@ jobs:
           son=$(gh release list -R "$GITHUB_REPOSITORY" --limit 100 --json tagName -q '.[].tagName' 2>/dev/null \
             | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n1 || true)
           if [ -z "$son" ]; then
-            yeni="1.0.1"
+            yeni="1.2.0"
           else
             IFS=. read -r buyuk kucuk yama <<< "$son"
             yeni="$buyuk.$kucuk.$((yama + 1))"
+          fi
+          # elle kurulan sürümlerin (1.0, 1.1) altında kalmasın
+          taban="1.2.0"
+          if [ "$(printf '%s\n%s\n' "$yeni" "$taban" | sort -V | head -n1)" != "$taban" ]; then
+            yeni="$taban"
           fi
           echo "Yeni sürüm: v$yeni (kod ${GITHUB_RUN_NUMBER})"
           echo "ad=$yeni" >> "$GITHUB_OUTPUT"
