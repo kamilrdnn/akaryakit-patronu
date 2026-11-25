@@ -1,7 +1,7 @@
 {
-  "versionCode": 122,
-  "versionName": "1.2.16",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.16/AkaryakitPatronu-1.2.16.apk",
-  "size": 2984178,
-  "notes": "Denge: arsa alımı büyüdü, yükseltmeler pahalandı"
+  "versionCode": 123,
+  "versionName": "1.2.17",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.17/AkaryakitPatronu-1.2.17.apk",
+  "size": 2984526,
+  "notes": "Çift yönlü bulvar ve yerleşim hataları"
 }
