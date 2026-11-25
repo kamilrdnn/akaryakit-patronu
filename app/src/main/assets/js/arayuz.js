@@ -294,16 +294,25 @@ const UI = {
     return h;
   },
 
+  etkinlikKalanYazi: function () {
+    var dk = Math.max(1, Math.ceil(SIM.etkinlikKalanMs() / 60000));
+    return dk >= 60 ? Math.floor(dk / 60) + ' sa ' + (dk % 60) + ' dk' : dk + ' dk';
+  },
+  etkinlikSayi: function (k, v) {
+    if (k.tanim.tip === 'ciro') return tl(v);
+    if (k.tanim.tip === 'litre') return say(v, 0) + ' L';
+    return String(v);
+  },
   kampanyaHtml: function () {
     var k = SIM.kampanya();
-    if (!k) return '<div></div>';
-    var kalan = 30 - ((D.s.gun - 1) % 30);
+    if (!k) return '<div></div>';                     /* tamamlandı: yenisi gelene kadar kart yok */
     var oran = Math.min(100, (k.sayac / k.tanim.hedef) * 100);
+    var ic = k.tanim.hedef > 99 ? '%' + Math.floor(oran) : k.sayac + '/' + k.tanim.hedef;
     var h = '<div class="kampanya tik" onclick="UI.kampanyaBilgi()">';
     h += '<div class="halka" style="background:conic-gradient(var(--mavi) ' + (oran * 3.6) + 'deg, #d8e0e8 0deg)">';
-    h += '<span style="background:#eef4fa;border-radius:50%;width:30px;height:30px;display:grid;place-items:center">' + k.sayac + '/' + k.tanim.hedef + '</span></div>';
+    h += '<span style="background:#eef4fa;border-radius:50%;width:30px;height:30px;display:grid;place-items:center">' + ic + '</span></div>';
     h += '<div><div class="kad">' + k.tanim.emoji + ' ' + k.tanim.ad + '</div>';
-    h += '<div class="kalt">' + (k.bitti ? 'Tamamlandı ✓' : kalan + ' gün kaldı') + '</div></div>';
+    h += '<div class="kalt">⏳ ' + this.etkinlikKalanYazi() + '</div></div>';
     h += '</div>';
     return h;
   },
@@ -340,13 +349,14 @@ const UI = {
   kampanyaBilgi: function () {
     var k = SIM.kampanya();
     if (!k) return;
-    var h = '<div class="not">Sezon kampanyası: istasyonunda <b>market</b> varsa her satışta müşterilerin bir kısmı bu üründen alır. Hedefe ulaşınca ödülü kazanırsın.</div>';
-    h += '<div class="kv" style="margin-top:10px"><span>Ürün</span><b>' + k.tanim.emoji + ' ' + k.tanim.ad + '</b></div>';
-    h += '<div class="kv"><span>İlerleme</span><b>' + k.sayac + ' / ' + k.tanim.hedef + '</b></div>';
+    var urun = k.tanim.tip === 'urun';
+    var h = '<div class="not">' + (urun ? 'İstasyonunda <b>market</b> varsa her satışta müşterilerin bir kısmı bu üründen alır.' : (k.tanim.aciklama || '')) + ' Hedefe ulaşınca ödülü kazanırsın. Etkinlikler 2 saatte bir değişir.</div>';
+    h += '<div class="kv" style="margin-top:10px"><span>Etkinlik</span><b>' + k.tanim.emoji + ' ' + k.tanim.ad + '</b></div>';
+    h += '<div class="kv"><span>İlerleme</span><b>' + this.etkinlikSayi(k, k.sayac) + ' / ' + this.etkinlikSayi(k, k.tanim.hedef) + '</b></div>';
     h += '<div class="kv"><span>Ödül</span><b class="yesilY">' + tl(k.tanim.odul) + '</b></div>';
-    h += '<div class="kv"><span>Kalan süre</span><b>' + (30 - ((D.s.gun - 1) % 30)) + ' gün</b></div>';
-    if (!D.binaSayisi(D.sube(), 'market')) h += '<div class="not"><span class="sariY">Bu şubede market yok — kampanya ilerlemiyor.</span></div>';
-    this.modal('Sezon Kampanyası', h);
+    h += '<div class="kv"><span>Kalan süre</span><b>' + this.etkinlikKalanYazi() + '</b></div>';
+    if (urun && !D.binaSayisi(D.sube(), 'market')) h += '<div class="not"><span class="sariY">Bu şubede market yok — bu etkinlik ilerlemiyor.</span></div>';
+    this.modal('Etkinlik', h);
   },
 
   hizliSiparis: function (y) {
@@ -1948,14 +1958,17 @@ const UI = {
     }
     h += '</div>';
     var k = SIM.kampanya();
+    h += '<div class="kart"><div class="baslik">Etkinlik</div>';
     if (k) {
-      h += '<div class="kart"><div class="baslik">Sezon kampanyası</div>';
-      h += '<div class="kv"><span>Ürün</span><b>' + k.tanim.emoji + ' ' + k.tanim.ad + '</b></div>';
-      h += '<div class="kv"><span>İlerleme</span><b>' + k.sayac + ' / ' + k.tanim.hedef + '</b></div>';
+      h += '<div class="kv"><span>Görev</span><b>' + k.tanim.emoji + ' ' + k.tanim.ad + '</b></div>';
+      h += '<div class="kv"><span>İlerleme</span><b>' + this.etkinlikSayi(k, k.sayac) + ' / ' + this.etkinlikSayi(k, k.tanim.hedef) + '</b></div>';
       h += '<div class="kv"><span>Ödül</span><b class="yesilY">' + tl(k.tanim.odul) + '</b></div>';
       h += '<div class="cubuk"><i style="width:' + kisitla(k.sayac / k.tanim.hedef * 100, 0, 100) + '%"></i></div>';
-      h += '</div>';
+      h += '<div class="not">Yenisi ' + this.etkinlikKalanYazi() + ' sonra.</div>';
+    } else {
+      h += '<div class="not">✓ Bu etkinliği tamamladın. Yenisi ' + this.etkinlikKalanYazi() + ' sonra gelecek.</div>';
     }
+    h += '</div>';
     return h;
   },
 

@@ -323,13 +323,29 @@ const VERI = {
     borcOrani: 0.65          /* net değerin en fazla bu kadarı borçlanılabilir */
   },
 
-  /* ---------------- sezon kampanyaları ---------------- */
-  kampanyalar: {
-    ilkbahar: { ad: 'Cam Suyu',     emoji: '💧', hedef: 12, odul: 45000 },
-    yaz:      { ad: 'Soğuk İçecek', emoji: '🥤', hedef: 14, odul: 60000 },
-    sonbahar: { ad: 'Kış Lastiği',  emoji: '🛞', hedef: 14, odul: 80000 },
-    kis:      { ad: 'Antifriz',     emoji: '🧊', hedef: 12, odul: 55000 }
-  },
+  /* ---------------- etkinlikler ----------------
+     Gerçek saate göre 2 saatte bir değişir; tamamlanınca karttan kalkar.
+     tip: urun (marketten ürün satışı) · satis (hizmet verilen araç) · litre · ciro
+     hedef ve odul taban değerdir; oyuncu seviyesiyle büyür. */
+  etkinlikSuresi: 2 * 60 * 60 * 1000,
+  etkinlikler: [
+    { tip: 'urun',  ad: 'Soğuk İçecek',     emoji: '🥤', hedef: 12, odul: 40000 },
+    { tip: 'satis', ad: 'Yoğun Mesai',      emoji: '🚗', hedef: 20, odul: 45000, aciklama: 'Hizmet verdiğin her araç sayılır.' },
+    { tip: 'urun',  ad: 'Cam Suyu',         emoji: '💧', hedef: 10, odul: 35000 },
+    { tip: 'litre', ad: 'Litre Yarışı',     emoji: '⛽', hedef: 900, odul: 55000, aciklama: 'Sattığın her litre yakıt sayılır.' },
+    { tip: 'urun',  ad: 'Sıcak Kahve',      emoji: '☕', hedef: 14, odul: 42000 },
+    { tip: 'ciro',  ad: 'Ciro Hedefi',      emoji: '💰', hedef: 60000, odul: 50000, aciklama: 'Yakıt satışından gelen ciro sayılır.' },
+    { tip: 'urun',  ad: 'Antifriz',         emoji: '🧊', hedef: 10, odul: 45000 },
+    { tip: 'satis', ad: 'Hızlı Servis',     emoji: '⚡', hedef: 28, odul: 60000, aciklama: 'Hizmet verdiğin her araç sayılır.' },
+    { tip: 'urun',  ad: 'Silecek Takımı',   emoji: '🧽', hedef: 9,  odul: 48000 },
+    { tip: 'litre', ad: 'Tanker Boşaltan',  emoji: '🛢️', hedef: 1500, odul: 80000, aciklama: 'Sattığın her litre yakıt sayılır.' },
+    { tip: 'urun',  ad: 'Atıştırmalık',     emoji: '🥨', hedef: 15, odul: 38000 },
+    { tip: 'urun',  ad: 'Motor Yağı',       emoji: '🛢️', hedef: 8,  odul: 52000 },
+    { tip: 'ciro',  ad: 'Büyük Kasa',       emoji: '🏦', hedef: 110000, odul: 85000, aciklama: 'Yakıt satışından gelen ciro sayılır.' },
+    { tip: 'urun',  ad: 'Kış Lastiği',      emoji: '🛞', hedef: 8,  odul: 70000 },
+    { tip: 'urun',  ad: 'Araç Kokusu',      emoji: '🌲', hedef: 12, odul: 36000 },
+    { tip: 'satis', ad: 'Müşteri Seli',     emoji: '🚦', hedef: 36, odul: 75000, aciklama: 'Hizmet verdiğin her araç sayılır.' }
+  ],
 
   /* ---------------- başarımlar ---------------- */
   basarimlar: [

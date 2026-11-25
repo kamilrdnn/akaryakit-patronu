@@ -588,7 +588,7 @@ const SIM = {
     if (!kacak) {
       ekGelir = this.ekTesisGeliri(sb, m);
       ekGelir += this.marketSatis(sb, m);
-      ekGelir += this.kampanyaIlerlet(sb);
+      ekGelir += this.kampanyaIlerlet(sb, m, verilen, ciro);
     } else { bahsis = 0; }
 
     s.para += ciro + bahsis + ekGelir;
@@ -665,32 +665,59 @@ const SIM = {
   /* =========================================================
      KAMPANYA / BAŞARIM
      ========================================================= */
-  kampanya: function () {
-    var s = D.s;
-    if (!s.kampanya) s.kampanya = { sezonIdx: s.sezonIdx, sayac: 0, bitti: false };
-    if (s.kampanya.sezonIdx !== s.sezonIdx) {
-      s.kampanya = { sezonIdx: s.sezonIdx, sayac: 0, bitti: false };
+  /* Etkinlik: gerçek saate göre 2 saatte bir yenisi gelir; tamamlanınca null döner (kart kalkar). */
+  etkinlikDilimi: function () {
+    if (this._dilimZorla !== undefined) return this._dilimZorla;      /* test için */
+    return Math.floor(Date.now() / VERI.etkinlikSuresi);
+  },
+  etkinlikKalanMs: function () {
+    return VERI.etkinlikSuresi - (Date.now() % VERI.etkinlikSuresi);
+  },
+  etkinlikKur: function (dilim, idx) {
+    var s = D.s, L = VERI.etkinlikler;
+    if (idx === undefined) {
+      idx = ((dilim * 7 + 3) % L.length + L.length) % L.length;
+      if (s.kampanya && s.kampanya.idx === idx) idx = (idx + 1) % L.length;   /* art arda aynısı gelmesin */
     }
-    var tanim = VERI.kampanyalar[VERI.sezonSira[s.sezonIdx]];
-    return { tanim: tanim, sayac: s.kampanya.sayac, bitti: s.kampanya.bitti };
+    var t = L[idx], sv = Math.max(1, s.seviye || 1);
+    var buyume = t.tip === 'urun' ? 1 + sv * 0.03 : (t.tip === 'satis' ? 1 + sv * 0.06 : 1 + sv * 0.35);
+    var hedef = Math.round(t.hedef * buyume);
+    if (t.tip === 'litre') hedef = Math.round(hedef / 50) * 50;
+    if (t.tip === 'ciro') hedef = Math.round(hedef / 5000) * 5000;
+    s.kampanya = { dilim: dilim, idx: idx, hedef: hedef, odul: Math.round(t.odul * (1 + sv * 0.22) / 1000) * 1000, sayac: 0, bitti: false };
+    return s.kampanya;
+  },
+  kampanya: function () {
+    var s = D.s, dilim = this.etkinlikDilimi();
+    if (!s.kampanya || s.kampanya.dilim !== dilim || s.kampanya.idx === undefined || !VERI.etkinlikler[s.kampanya.idx]) this.etkinlikKur(dilim);
+    var k = s.kampanya;
+    if (k.bitti) return null;                       /* tamamlandı: bir sonraki dilime kadar kart yok */
+    var t = VERI.etkinlikler[k.idx];
+    return { tanim: { ad: t.ad, emoji: t.emoji, tip: t.tip, aciklama: t.aciklama, hedef: k.hedef, odul: k.odul }, sayac: k.sayac, bitti: false };
   },
 
-  kampanyaIlerlet: function (sb) {
+  kampanyaIlerlet: function (sb, m, litre, ciro) {
     var s = D.s;
     var k = this.kampanya();
-    if (k.bitti) return 0;
-    if (!D.binaSayisi(sb, 'market')) return 0;
-    if (Math.random() > 0.26) return 0;
-    s.kampanya.sayac++;
-    var urunGeliri = Math.round(k.tanim.odul / k.tanim.hedef * 0.22);
-    if (s.kampanya.sayac >= k.tanim.hedef) {
+    if (!k) return 0;
+    var t = k.tanim, urunGeliri = 0;
+    if (t.tip === 'urun') {
+      if (!D.binaSayisi(sb, 'market')) return 0;
+      if (Math.random() > 0.26) return 0;
+      s.kampanya.sayac++;
+      urunGeliri = Math.round(t.odul / t.hedef * 0.22);
+    } else if (t.tip === 'satis') s.kampanya.sayac++;
+    else if (t.tip === 'litre') s.kampanya.sayac += Math.max(0, Math.round(litre || 0));
+    else if (t.tip === 'ciro') s.kampanya.sayac += Math.max(0, Math.round(ciro || 0));
+    if (s.kampanya.sayac >= t.hedef) {
+      s.kampanya.sayac = t.hedef;
       s.kampanya.bitti = true;
-      s.para += k.tanim.odul;
-      s.ist.bugunCiro += k.tanim.odul;
-      s.ist.ciro += k.tanim.odul;
+      s.para += t.odul;
+      s.ist.bugunCiro += t.odul;
+      s.ist.ciro += t.odul;
       s.marka = kisitla(s.marka + 3, 0, 100);
       D.xpEkle(400);
-      UI.bildir('🎉 Kampanya tamam', k.tanim.ad + ' hedefi doldu · ödül ' + tl(k.tanim.odul), 'iyi');
+      UI.bildir('🎉 Etkinlik tamam', t.ad + ' hedefi doldu · ödül ' + tl(t.odul), 'iyi');
     }
     return urunGeliri;
   },

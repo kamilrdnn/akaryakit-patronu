@@ -57,7 +57,7 @@ const D = {
       olaylar: [],
       pasifGelir: 0,
       basarimlar: [],
-      kampanya: { sezonIdx: 1, sayac: 0, bitti: false },
+      kampanya: null,
       ayar: { dolum: 'ikisi' },   /* 'tut' | 'onayar' | 'ikisi' */
       krediler: [],
       krediNotu: 55,
@@ -365,7 +365,7 @@ const D = {
     if (typeof s.gorevGun !== 'number') s.gorevGun = 0;
     if (typeof s.krediNotu !== 'number') s.krediNotu = 55;
     if (!s.ayar.dolum) s.ayar.dolum = 'ikisi';
-    if (!s.kampanya) s.kampanya = { sezonIdx: s.sezonIdx, sayac: 0, bitti: false };
+    /* etkinlik: eski sezon kampanyası kaydı varsa SIM.kampanya() yenisini kurar */
     if (typeof s.pasifGelir !== 'number') s.pasifGelir = 0;
     if (typeof s.marka !== 'number') s.marka = 10;
     if (typeof s.hiz !== 'number') s.hiz = 1;

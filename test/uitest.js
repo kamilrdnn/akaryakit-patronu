@@ -108,13 +108,14 @@ kontrol(w.document.getElementById('modalIc').innerHTML.indexOf('Kampanya') >= 0 
 UI.modalKapat();
 
 console.log('UI TEST 2c — kampanya ve başarım mantığı');
+SIM._dilimZorla = 1000;
+SIM.etkinlikKur(1000, 0);                       /* ürün türü etkinlik */
 const kmp = SIM.kampanya();
-kontrol(!!kmp && !!kmp.tanim && kmp.tanim.hedef > 0, 'kampanya tanımı gelmeli');
-D.s.kampanya.sayac = 0;
-/* market yokken ilerlememeli */
+kontrol(!!kmp && !!kmp.tanim && kmp.tanim.hedef > 0 && kmp.tanim.tip === 'urun', 'etkinlik tanımı gelmeli');
+/* market yokken ürün etkinliği ilerlememeli */
 let once = D.s.kampanya.sayac;
 for (let i = 0; i < 200; i++) SIM.kampanyaIlerlet(D.sube());
-kontrol(D.s.kampanya.sayac === once, 'market yokken kampanya ilerlememeli');
+kontrol(D.s.kampanya.sayac === once, 'market yokken ürün etkinliği ilerlememeli');
 /* market kurunca ilerlemeli */
 D.s.para = 9000000; D.s.seviye = 20;
 let bosHucre = -1;
@@ -122,10 +123,21 @@ for (let i = 0; i < D.sube().yapi.length; i++) if (D.sube().beton[i] && !D.sube(
 if (bosHucre < 0) { for (let i = 0; i < D.sube().beton.length; i++) if (!D.sube().beton[i]) { SIM.betonDok(D.sube(), i); bosHucre = i; break; } }
 SIM.binaKur(D.sube(), bosHucre, 'market');
 for (let i = 0; i < 400 && D.s.kampanya.sayac === 0; i++) SIM.kampanyaIlerlet(D.sube());
-kontrol(D.s.kampanya.sayac > 0, 'marketli şubede kampanya ilerlemeli');
-/* sezon değişince sıfırlanmalı */
-D.s.sezonIdx = (D.s.sezonIdx + 1) % 4;
-kontrol(SIM.kampanya().sayac === 0, 'sezon değişince kampanya sıfırlanmalı');
+kontrol(D.s.kampanya.sayac > 0, 'marketli şubede ürün etkinliği ilerlemeli');
+/* tamamlanınca kart kalkmalı, ödül gelmeli */
+{ const p0 = D.s.para; for (let i = 0; i < 5000 && SIM.kampanya(); i++) SIM.kampanyaIlerlet(D.sube());
+  kontrol(SIM.kampanya() === null, 'tamamlanan etkinlik kalkmalı');
+  kontrol(D.s.para > p0, 'etkinlik ödülü verilmeli');
+  kontrol(UI.kampanyaHtml().indexOf('kampanya') < 0, 'tamamlanınca kart görünmemeli'); }
+/* dilim değişince yeni ve farklı etkinlik gelmeli */
+{ const eski = D.s.kampanya.idx; SIM._dilimZorla = 1001; const y = SIM.kampanya();
+  kontrol(!!y && y.sayac === 0 && D.s.kampanya.idx !== eski, '2 saat sonra yeni etkinlik gelmeli'); }
+/* litre ve satış türleri marketsiz de ilerlemeli */
+{ SIM.etkinlikKur(1001, 3); SIM.kampanyaIlerlet(D.sube(), null, 40, 2000); kontrol(D.s.kampanya.sayac === 40, 'litre etkinliği litreyle ilerlemeli');
+  SIM.etkinlikKur(1001, 1); SIM.kampanyaIlerlet(D.sube(), null, 40, 2000); kontrol(D.s.kampanya.sayac === 1, 'satış etkinliği araçla ilerlemeli');
+  SIM.etkinlikKur(1001, 5); SIM.kampanyaIlerlet(D.sube(), null, 40, 2000); kontrol(D.s.kampanya.sayac === 2000, 'ciro etkinliği ciroyla ilerlemeli'); }
+{ SIM.etkinlikKur(1001, 5); D.s.kampanya.sayac = 1234; calistir('ciro etkinliği kartı', () => UI.kampanyaHtml()); calistir('ciro etkinliği bilgisi', () => UI.kampanyaBilgi()); UI.modalKapat(); calistir('başarım sekmesi', () => UI.sekmeGec('daha')); }
+delete SIM._dilimZorla;
 
 D.s.basarimlar = [];
 D.s.ist.ciro = 20000;
