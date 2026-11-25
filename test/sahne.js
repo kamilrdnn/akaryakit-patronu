@@ -51,7 +51,7 @@ sandbox.window = sandbox;
 const ctx = vm.createContext(sandbox);
 vm.runInContext('var UI={bildir:function(){},ciz:function(){},modal:function(){},tikCiz:function(){},basarimToast:function(){}};' +
                 'var OYUN={duruyor:false};', ctx);
-['veri.js', 'durum.js', 'sim.js', 'izo.js'].forEach(f => {
+['veri.js', 'durum.js', 'sim.js', 'izo.js','model.js'].forEach(f => {
   vm.runInContext(fs.readFileSync(A + f, 'utf8'), ctx, { filename: f });
 });
 const D = vm.runInContext('D', ctx);

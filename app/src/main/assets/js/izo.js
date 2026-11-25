@@ -1026,8 +1026,8 @@ const IZO = {
       var o = liste[n];
       if (o.tur === 'yapi') this.yapiCiz(sb, o.i, o.gx, o.gy);
       else if (o.tur === 'sus') this.susCiz(o.s);
-      else if (o.tur === 'insan') this.insanCiz(o.p.gx, o.p.gy, o.p.renk, o.p.faz, o.p.sapka);
-      else if (o.tur === 'yaya') this.insanCiz(o.p.gx, o.p.gy, o.p.renk, o.p.faz, null);
+      else if (o.tur === 'insan') this.insanModel(o.p, o.p.sapka);
+      else if (o.tur === 'yaya') this.insanModel(o.p, null);
       else this.arabaCiz(o.a);
     }
 

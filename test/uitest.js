@@ -30,6 +30,7 @@ const dosyalar = [
   ['js/durum.js', ['D', 'KAYIT_ANAHTAR', 'tl', 'tlTam', 'say', 'litre', 'yuzde', 'ikiHane', 'rastgele', 'rastgeleTam', 'secRast', 'kisitla', 'id']],
   ['js/sim.js', ['SIM']],
   ['js/izo.js', ['IZO']],
+  ['js/model.js', []],
   ['js/ses.js', ['SES']],
   ['js/servis.js', ['SERVIS']],
   ['js/mini.js', ['MINI']],
