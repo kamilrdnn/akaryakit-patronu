@@ -203,7 +203,7 @@ SIM.iseAl(sb, aday);
 SIM.pompaAta(sb, aday.id, pompaIdx6);
 const genisOnce = sb.w;
 kontrol(SIM.arsaGenislet(sb), 'arsa genişlemeli');
-kontrol(sb.w > genisOnce || sb.h > 3, 'boyut artmalı');
+kontrol(sb.w >= genisOnce + 2 || sb.h > 4, 'arsa tek alımda belirgin büyümeli: ' + sb.w + 'x' + sb.h);
 const atanan = sb.personel[0];
 kontrol(sb.yapi[atanan.pompa] && sb.yapi[atanan.pompa].t === 'pompa',
   'genişleme sonrası pompacının pompası hâlâ pompa olmalı (idx ' + atanan.pompa + ')');

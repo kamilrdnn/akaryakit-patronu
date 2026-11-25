@@ -635,6 +635,9 @@ const UI = {
       h += '<div class="kv"><span>Boş arsa</span><b>' + bosArsa + '</b></div>';
       h += '<div class="kv"><span>Üzerine yapı kurulabilir</span><b>' + bosHucre + '</b></div>';
       if (sb.w < lok.w || sb.h < lok.h) {
+        var yW = Math.min(lok.w, sb.w + 2), yH = Math.min(lok.h, sb.h + 1);
+        var kazanc = (yW * yH) - (sb.w * sb.h);
+        h += '<div class="kv"><span>Bu alımla</span><b class="yesilY">' + sb.w + '×' + sb.h + ' → ' + yW + '×' + yH + ' (+' + kazanc + ' hücre)</b></div>';
         h += '<button class="btn genis" style="margin-top:10px" onclick="UI.arsaGenislet()">Arsa satın al · ' + tl(SIM.arsaBedeli(sb)) + '</button>';
       } else h += '<div class="not">Bu lokasyonda arsanın tamamı senin.</div>';
       if (bosArsa) h += '<button class="btn ikincil genis" style="margin-top:8px" onclick="UI.betonDokOto()">Beton dök · ' + tl(SIM.betonFiyat(sb)) + '</button>';

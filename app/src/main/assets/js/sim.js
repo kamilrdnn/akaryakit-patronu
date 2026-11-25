@@ -2086,7 +2086,7 @@ const SIM = {
     if (!y) return 0;
     if (y.t === 'pompa') return y.sv >= VERI.pompa.akis.length ? 0 : VERI.pompa.yukseltme[y.sv];
     var tan = VERI.binalar[y.t];
-    return y.sv >= tan.sv ? 0 : Math.round(tan.svFiyat * Math.pow(1.6, y.sv - 1));
+    return y.sv >= tan.sv ? 0 : Math.round(tan.svFiyat * 1.35 * Math.pow(1.95, y.sv - 1));
   },
 
   bakimBedeli: function (y) {
@@ -2139,9 +2139,10 @@ const SIM = {
     if (sb.w >= lok.w && sb.h >= lok.h) return false;
     var bedel = Math.round((sb.w * sb.h) * 22000 * lok.trafik);
     if (!D.harca(bedel)) return false;
-    /* satır/sütun ekle */
-    var yeniW = sb.w, yeniH = sb.h;
-    if (sb.w < lok.w && (sb.w <= sb.h || sb.h >= lok.h)) yeniW = sb.w + 1; else yeniH = sb.h + 1;
+    /* her alımda iki sütun + bir satır (ya da sınıra kadar) — parsel hızlı büyür */
+    var yeniW = Math.min(lok.w, sb.w + 2);
+    var yeniH = Math.min(lok.h, sb.h + 1);
+    if (yeniW === sb.w && yeniH === sb.h) return false;
     var yeniYapi = new Array(yeniW * yeniH).fill(null);
     var yeniBeton = new Array(yeniW * yeniH).fill(false);
     for (var y = 0; y < sb.h; y++) {

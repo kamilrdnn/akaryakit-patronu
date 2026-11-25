@@ -21,7 +21,7 @@ const VERI = {
     // hassas dolum için kısık akış (tabancayı az sıkma)
     yavasAkis: [0.30, 0.34, 0.38, 0.44, 0.50],
     yavasEvAkis: [0.20, 0.24, 0.28, 0.34, 0.40],
-    yukseltme: [0, 24000, 52000, 110000, 240000],
+    yukseltme: [0, 65000, 160000, 390000, 920000],
     guc: { benzin: 0.6, dizel: 0.6, lpg: 1.1, ev: 22 }  // kW
   },
 
