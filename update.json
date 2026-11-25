@@ -1,7 +1,7 @@
 {
-  "versionCode": 138,
-  "versionName": "1.2.32",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.32/AkaryakitPatronu-1.2.32.apk",
-  "size": 3337345,
-  "notes": "Derinlik sırası düzeltildi, uzun araçlar kısaltıldı, müşteri yorumları çeşitlendi"
+  "versionCode": 139,
+  "versionName": "1.2.33",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.33/AkaryakitPatronu-1.2.33.apk",
+  "size": 3339249,
+  "notes": "Tabela arsanın 1 kare dışına ve yol kenarına konabilir"
 }
