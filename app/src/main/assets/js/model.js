@@ -313,11 +313,11 @@
     for (var i = 0; i < n; i++) {
       var x1 = a + i * gen, x2 = x1 + gen;
       var rk = i % 2 === 0 ? renkA : (renkB || '#fbfaf5');
-      this.cokgen([this.ekran(x1, sabit, z), this.ekran(x2, sabit, z), this.ekran(x2, sabit + cik, z - 5), this.ekran(x1, sabit + cik, z - 5)], this.ton(rk, 1.0 * I));
-      this.cokgen([this.ekran(x1, sabit + cik, z - 5), this.ekran(x2, sabit + cik, z - 5), this.ekran(x2, sabit + cik, z - 8), this.ekran(x1, sabit + cik, z - 8)], this.ton(rk, 0.8 * I));
+      this.cokgen([this.ekran(x1, sabit, z), this.ekran(x2, sabit, z), this.ekran(x2, sabit + cik, z - 3.5), this.ekran(x1, sabit + cik, z - 3.5)], this.ton(rk, 1.0 * I));
+      this.cokgen([this.ekran(x1, sabit + cik, z - 3.5), this.ekran(x2, sabit + cik, z - 3.5), this.ekran(x2, sabit + cik, z - 6), this.ekran(x1, sabit + cik, z - 6)], this.ton(rk, 0.8 * I));
     }
     /* yan üçgen */
-    this.cokgen([this.ekran(b, sabit, z), this.ekran(b, sabit + cik, z - 5), this.ekran(b, sabit, z - 5)], this.ton(renkA, 0.66 * I));
+    this.cokgen([this.ekran(b, sabit, z), this.ekran(b, sabit + cik, z - 3.5), this.ekran(b, sabit, z - 3.5)], this.ton(renkA, 0.66 * I));
   };
 
   /** ekrana dönük küçük levha */
@@ -843,6 +843,65 @@
     lastikci: 38, adblue: 34, kamera: 62, yangin: 28, market: 34, kafe: 40, yikama: 34, yag: 34, restoran: 56, ofis: 58
   };
 
+  /* ---------------------------------------------------------
+     VİTRİN İÇİ: raf, mal, teşhir dolabı, doğrama
+     Camın arkasına bakılınca dükkânın içi görünür; gece ışıkla canlanır.
+     --------------------------------------------------------- */
+  Z.vitrinMal = {
+    market:   ['#e05a4e', '#f0b429', '#4f93d6', '#56b870', '#e8744f', '#9f7aea', '#d94f78', '#3fb6a8'],
+    kafe:     ['#8c5a34', '#c98a4b', '#efe3cc', '#6b4226', '#d9a05b', '#b07a45'],
+    restoran: ['#d6633f', '#e8b05a', '#7fa650', '#c44a3d', '#e0c48a', '#9a6b3f']
+  };
+
+  Z.vitrinIci = function (a, b, sabit, z1, z2, tur) {
+    var c = this.cz, o = this.kam.olcek, I = this.isik(), gece = this.gece();
+    if (o < 0.42) return;                       /* uzaktan görünmez, çizme */
+    var mal = this.vitrinMal[tur] || this.vitrinMal.market;
+    var en = b - a, yuk = z2 - z1;
+    var ic = gece ? 1.14 : 0.82;                /* gece içerisi aydınlık */
+
+    /* teşhir dolabı (solda, camlı buzdolabı) */
+    var dolapB = a + en * 0.22;
+    this.cokgen(this.yuzDortgen('on', a + en * 0.04, dolapB, sabit, z1 + yuk * 0.06, z2 - yuk * 0.08),
+      gece ? 'rgba(186,232,255,.62)' : 'rgba(198,224,242,.5)');
+    for (var dr = 0; dr < 3; dr++) {
+      var dz = z1 + yuk * (0.22 + dr * 0.24);
+      this.cokgen(this.yuzDortgen('on', a + en * 0.05, dolapB - en * 0.01, sabit, dz, dz + yuk * 0.055),
+        this.ton(mal[(dr * 2) % mal.length], ic * 0.95));
+    }
+
+    /* iki raf bandı + üstlerindeki mallar */
+    var rafA = dolapB + en * 0.04, rafB = b - en * 0.03;
+    for (var r = 0; r < 2; r++) {
+      var rz = z1 + yuk * (0.2 + r * 0.38);
+      this.cokgen(this.yuzDortgen('on', rafA, rafB, sabit, rz - yuk * 0.045, rz),
+        this.ton(gece ? '#a07b4a' : '#8a93a0', ic));
+      for (var u = 0; u < 4; u++) {
+        var ux = rafA + (rafB - rafA) * (0.05 + u * 0.245);
+        var uw = (rafB - rafA) * 0.17;
+        var uy = rz + yuk * (0.1 + ((u + r * 3) % 3) * 0.045);
+        this.cokgen(this.yuzDortgen('on', ux, ux + uw, sabit, rz, uy),
+          this.ton(mal[(u + r * 3) % mal.length], ic));
+      }
+    }
+
+    /* dikey doğrama kayıtları */
+    for (var k = 1; k < 3; k++) {
+      var kx = a + en * (k / 3);
+      this.cokgen(this.yuzDortgen('on', kx - en * 0.012, kx + en * 0.012, sabit, z1, z2),
+        'rgba(74,86,104,' + (gece ? 0.5 : 0.62) + ')');
+    }
+    /* cam parıltısı: sol üstten inen ince bant */
+    if (!gece) {
+      this.cokgen([
+        this.ekran(a + en * 0.08, sabit, z2), this.ekran(a + en * 0.3, sabit, z2),
+        this.ekran(a + en * 0.14, sabit, z1), this.ekran(a + en * 0.02, sabit, z1)
+      ], 'rgba(255,255,255,.17)');
+    }
+    /* alt kaide */
+    this.cokgen(this.yuzDortgen('on', a - 0.012, b + 0.012, sabit, z1 - 2.4, z1 + 0.4), this.ton('#e7e2d8', 0.95 * I));
+  };
+
   Z.dukkanModel = function (gx, gy, o) {
     var I = this.isik(), c = this.cz;
     var x0 = gx + 0.1, y0 = gy + 0.1, w = 0.8, d = 0.8, on = y0 + d, sag = x0 + w;
@@ -869,10 +928,11 @@
       this.kapi('on', x0 + 0.62, x0 + 0.74, on, 14, '#3f4a57');
     } else {
       this.pencere('on', x0 + 0.06, x0 + 0.5, on, 5, 16, { sade: true, denizlik: false });
+      if (o.vitrin) this.vitrinIci(x0 + 0.06, x0 + 0.5, on, 5, 16, o.vitrin);
       this.kapi('on', x0 + 0.56, x0 + 0.74, on, 15.5, '#5a4636', { cam: true });
     }
     this.pencere('sag', y0 + 0.14, y0 + 0.66, sag, 7, 15, { sade: !!o.garaj });
-    if (o.tente) this.tente(x0 + 0.02, sag - 0.02, on, 21.5, 0.15, o.cati, '#fbfaf5');
+    if (o.tente) this.tente(x0 + 0.02, sag - 0.02, on, 24.5, 0.13, o.cati, '#fbfaf5');
     /* çatı */
     if (o.catiTip === 'kirma') this.catiKirma(x0, y0, 2 + h, w, d, 11, o.cati, 0.06);
     else if (o.catiTip === 'besik') this.catiBesik(x0, y0, 2 + h, w, d, 10, o.cati, 0.06);
@@ -893,9 +953,9 @@
     var kat;
     switch (t) {
     case 'market':
-      this.dukkanModel(gx, gy, { govde: '#f3f0ea', cati: '#d64545', kat: Math.min(2, 1 + Math.floor(sv / 3)), tente: true, klima: true, yazi: 'MARKET' }); return;
+      this.dukkanModel(gx, gy, { govde: '#f3f0ea', cati: '#d64545', kat: Math.min(2, 1 + Math.floor(sv / 3)), tente: true, klima: true, yazi: 'MARKET', vitrin: 'market' }); return;
     case 'kafe':
-      this.dukkanModel(gx, gy, { govde: '#ecd9bd', cati: '#8a5a3b', kat: Math.min(2, 1 + Math.floor(sv / 3)), tente: true, catiTip: 'besik', yazi: 'KAFE' });
+      this.dukkanModel(gx, gy, { govde: '#ecd9bd', cati: '#8a5a3b', kat: Math.min(2, 1 + Math.floor(sv / 3)), tente: true, catiTip: 'besik', yazi: 'KAFE', vitrin: 'kafe' });
       /* dışarıda masa + şemsiye */
       this.silindir(gx + 0.9, gy + 0.98, 0, 0.1, 6, '#c9a57a');
       var sp = this.ekran(gx + 0.95, gy + 1.03, 17);
@@ -904,7 +964,7 @@
       c.quadraticCurveTo(sp.x, sp.y + 6 * o, sp.x - 9 * o, sp.y + 3 * o); c.fill();
       return;
     case 'restoran':
-      this.dukkanModel(gx, gy, { govde: '#f1dcc0', cati: '#b5572e', kat: Math.min(3, 2 + Math.floor(sv / 3)), tente: true, catiTip: 'kirma', yazi: 'LOKANTA' }); return;
+      this.dukkanModel(gx, gy, { govde: '#f1dcc0', cati: '#b5572e', kat: Math.min(3, 2 + Math.floor(sv / 3)), tente: true, catiTip: 'kirma', yazi: 'LOKANTA', vitrin: 'restoran' }); return;
     case 'ofis':
       this.dukkanModel(gx, gy, { govde: '#dbe3ec', cati: '#49586b', kat: Math.min(3, 2 + Math.floor(sv / 2)), klima: true, yazi: 'OFİS' }); return;
     case 'yag':
@@ -1529,6 +1589,16 @@
     c.beginPath(); c.moveTo(x + s(3) * yon, omuz); c.lineTo(elx, ely); c.stroke();
     var ten = this.ton(TEN[tohum % 4], I);
     c.fillStyle = ten; c.beginPath(); c.arc(elx, ely, s(1.15), 0, 6.3); c.fill();
+    /* alışveriş poşeti: elden sarkar, yürürken hafif savrulur */
+    if (p.poset) {
+      var px = elx + s(0.3) * yon + (yuru ? s(0.7) * sw : 0), py = ely + s(1.1);
+      c.strokeStyle = this.ton(p.poset, I * 0.8); c.lineWidth = s(0.6);
+      c.beginPath(); c.moveTo(px - s(1.3), py); c.quadraticCurveTo(px, py - s(1.6), px + s(1.3), py); c.stroke();
+      c.fillStyle = this.ton(p.poset, I);
+      this.yuvarlakKutu(px - s(1.7), py, s(3.4), s(4.2), s(0.6)); c.fill();
+      c.fillStyle = 'rgba(0,0,0,.12)';
+      this.yuvarlakKutu(px + s(0.5), py, s(1.2), s(4.2), s(0.5)); c.fill();
+    }
     if (p.tip === 'temizlik') {
       c.strokeStyle = this.ton('#8a6a42', I); c.lineWidth = s(1);
       c.beginPath(); c.moveTo(elx, ely - s(5)); c.lineTo(elx + s(2.5) * yon, y); c.stroke();

@@ -28,6 +28,13 @@ Bu dosya, oturum kesilirse yeni oturumun kaldığı yerden devam edebilmesi içi
 - Çevre trafiğinde otobüs/tır/taksi/minibüs çeşitliliği
 
 ## Son turda eklenenler (3)
+- Gölgeler: yinelenen kutu/gölge tanımları temizlendi, sprite yumuşatıldı,
+  gölge artık güneşin saatine göre yön değiştiriyor ve gece siliklesiyor
+- Dükkân vitrini: market/kafe/lokantada raf, mal, teşhir dolabı ve doğrama görünüyor;
+  tente yükseltildi ki vitrin kapanmasın
+- Yayalar: market/kafe çıkışında poşet taşıyor, kalabalık istasyonda sayı artıyor
+- `sahne.js` TEST 6 artık belleği tüketmiyor (çizim 3 karede bir; @napi-rs/canvas
+  drawImage native bellek bırakıyor) — üç test takımı da geçiyor
 - Mağaza ekran görüntüleri: `test/ekran.js` (Playwright) gerçek oyundan 6 adet 1080x1920 PNG üretiyor
 - `test/kayit.js`: ekran görüntüsü ve denge ölçümü için gelişmiş hazır kayıt üretici
 
@@ -42,6 +49,5 @@ Bu dosya, oturum kesilirse yeni oturumun kaldığı yerden devam edebilmesi içi
 - CI artık AAB de üretiyor; magaza/ altında gizlilik ve mağaza metni
 
 ## Sıradaki işler
-1. **Sahne**: istasyon içi yaya hareketi, market vitrin detayı, araç gölgelerinde yumuşatma
-2. **Oynanış**: rakip istasyon olayları, fiyat savaşı, tanker filosu yönetimi
-3. **Denge**: 60 günlük bot simülasyonunu yeni programlarla yeniden ölç
+1. **Oynanış**: rakip istasyon olayları, fiyat savaşı, tanker filosu yönetimi
+2. **Denge**: 60 günlük bot simülasyonunu yeni programlarla yeniden ölç

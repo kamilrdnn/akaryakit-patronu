@@ -173,31 +173,59 @@ const IZO = {
     var t;
     try { t = document.createElement('canvas'); } catch (e) { t = null; }
     if (!t || !t.getContext) return null;
-    var N = 64;
+    var N = 96;
     t.width = N; t.height = N;
     var tc = t.getContext('2d');
     if (!tc) return null;
     var g = tc.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N / 2);
-    g.addColorStop(0, 'rgba(0,0,0,1)');
-    g.addColorStop(0.55, 'rgba(0,0,0,.42)');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
+    /* yumuşak geçiş: ortada bile tam siyah değil, kenar uzun sönümlü */
+    g.addColorStop(0.00, 'rgba(0,0,0,.86)');
+    g.addColorStop(0.32, 'rgba(0,0,0,.62)');
+    g.addColorStop(0.58, 'rgba(0,0,0,.30)');
+    g.addColorStop(0.80, 'rgba(0,0,0,.10)');
+    g.addColorStop(1.00, 'rgba(0,0,0,0)');
     tc.fillStyle = g;
     tc.fillRect(0, 0, N, N);
     this._golgeSprite = t;
     return t;
   },
 
-  /* sprite ile ucuz gölge */
+  /* güneşin o saatteki yönü ve gücü: gölge nereye, ne kadar uzun ve koyu düşsün.
+     Sabah batıya, akşam doğuya uzar; öğlen kısa ve koyu, gece silik olur. */
+  golgeYon: function () {
+    var anah = D.s.saat * 60 + D.s.dk;
+    if (this._gyAnah === anah && this._gy) return this._gy;
+    var sa = D.s.saat + D.s.dk / 60;
+    var gunduz = sa > 6 && sa < 18;
+    var t = gunduz ? (sa - 6) / 12 : 0.5;
+    var yuk = gunduz ? Math.sin(Math.PI * t) : 0;      /* güneşin yüksekliği 0..1 */
+    var uz = gunduz ? 1 + (1 - yuk) * 1.05 : 1.12;     /* alçak güneş → uzun gölge */
+    this._gy = {
+      x: gunduz ? (0.5 - t) * -0.78 * uz : 0.10,       /* yatay kayma (rx katı) */
+      y: 0.22 * uz,                                     /* dikey kayma (ry katı) */
+      uz: uz,
+      guc: gunduz ? 0.55 + 0.45 * yuk : 0.34            /* gece gölge silikleşir */
+    };
+    this._gyAnah = anah;
+    return this._gy;
+  },
+
+  /* sprite ile ucuz ve yumuşak gölge (güneş yönüne kayar) */
   golgeCiz: function (ekranX, ekranY, rx, ry, alfa) {
     var sp = this.golgeSprite();
     var c = this.cz;
+    var y = this.golgeYon();
+    var gx2 = rx * (1 + (y.uz - 1) * 0.45);
+    var gy2 = ry * (1 + (y.uz - 1) * 0.22);
+    var px = ekranX + rx * y.x, py = ekranY + ry * y.y;
+    var a = alfa * y.guc;
     if (!sp) {
-      c.fillStyle = 'rgba(0,0,0,' + (alfa * 0.5).toFixed(2) + ')';
-      c.beginPath(); c.ellipse(ekranX, ekranY, rx, ry, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(0,0,0,' + (a * 0.5).toFixed(2) + ')';
+      c.beginPath(); c.ellipse(px, py, gx2, gy2, 0, 0, Math.PI * 2); c.fill();
       return;
     }
-    c.globalAlpha = alfa;
-    c.drawImage(sp, ekranX - rx, ekranY - ry, rx * 2, ry * 2);
+    c.globalAlpha = a;
+    c.drawImage(sp, px - gx2, py - gy2, gx2 * 2, gy2 * 2);
     c.globalAlpha = 1;
   },
 
@@ -206,80 +234,6 @@ const IZO = {
     var rx = (w + d) * this.TW / 4 * this.kam.olcek * 0.72;
     var ry = (w + d) * this.TH / 4 * this.kam.olcek * 0.72;
     this.golgeCiz(p.x, p.y, Math.max(4, rx), Math.max(2, ry), (koyu || 0.3) * this.isik());
-  },
-
-  /** kutu: (gx,gy) köşesinden w×d karo, z yüksekliğinden h piksel yukarı */
-  kutu: function (gx, gy, z, w, d, h, renk, vurusa) {
-    var I = this.isik();
-    var ust = this.ton(renk, 1.0 * I), sag = this.ton(renk, 0.78 * I), sol = this.ton(renk, 0.58 * I);
-    var A = this.ekran(gx, gy, z + h), B = this.ekran(gx + w, gy, z + h),
-        C = this.ekran(gx + w, gy + d, z + h), Dd = this.ekran(gx, gy + d, z + h);
-    var Bk = this.ekran(gx + w, gy, z), Ck = this.ekran(gx + w, gy + d, z), Dk = this.ekran(gx, gy + d, z);
-    this.cokgen([Dd, C, Ck, Dk], sol);        // sol yüz
-    this.cokgen([B, C, Ck, Bk], sag);         // sağ yüz
-    this.cokgen([A, B, C, Dd], ust);          // üst yüz
-    /* üst kenarda ince aydınlık: kenarlar yumuşasın */
-    var cz = this.cz;
-    cz.strokeStyle = this.ton(renk, Math.min(1.25, 1.18 * I));
-    cz.lineWidth = Math.max(0.6, 0.9 * this.kam.olcek);
-    cz.beginPath();
-    cz.moveTo(Dd.x, Dd.y); cz.lineTo(A.x, A.y); cz.lineTo(B.x, B.y);
-    cz.stroke();
-    if (vurusa) this.vurus.push({ tip: vurusa.tip, i: vurusa.i, poly: [A, B, Bk, Ck, Dk, Dd] });
-    return { A: A, B: B, C: C, D: Dd };
-  },
-
-  /* nesne altına yumuşak gölge */
-  /* bir kez üretilen yumuşak gölge sprite'ı */
-  golgeSprite: function () {
-    if (this._golgeSprite) return this._golgeSprite;
-    var t;
-    try { t = document.createElement('canvas'); } catch (e) { t = null; }
-    if (!t || !t.getContext) return null;
-    var N = 64;
-    t.width = N; t.height = N;
-    var tc = t.getContext('2d');
-    if (!tc) return null;
-    var g = tc.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N / 2);
-    g.addColorStop(0, 'rgba(0,0,0,1)');
-    g.addColorStop(0.55, 'rgba(0,0,0,.42)');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    tc.fillStyle = g;
-    tc.fillRect(0, 0, N, N);
-    this._golgeSprite = t;
-    return t;
-  },
-
-  /* sprite ile ucuz gölge */
-  golgeCiz: function (ekranX, ekranY, rx, ry, alfa) {
-    var sp = this.golgeSprite();
-    var c = this.cz;
-    if (!sp) {
-      c.fillStyle = 'rgba(0,0,0,' + (alfa * 0.5).toFixed(2) + ')';
-      c.beginPath(); c.ellipse(ekranX, ekranY, rx, ry, 0, 0, Math.PI * 2); c.fill();
-      return;
-    }
-    c.globalAlpha = alfa;
-    c.drawImage(sp, ekranX - rx, ekranY - ry, rx * 2, ry * 2);
-    c.globalAlpha = 1;
-  },
-
-  golge: function (gx, gy, w, d, koyu) {
-    var c = this.cz;
-    var p = this.ekran(gx + w / 2, gy + d / 2, 0);
-    var rx = (w + d) * this.TW / 4 * this.kam.olcek * 0.62;
-    var ry = (w + d) * this.TH / 4 * this.kam.olcek * 0.62;
-    var g = c.createRadialGradient(p.x, p.y, 1, p.x, p.y, Math.max(rx, 6));
-    var a = (koyu || 0.3) * this.isik();
-    g.addColorStop(0, 'rgba(0,0,0,' + a + ')');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    c.save();
-    c.translate(p.x, p.y);
-    c.scale(1, ry / Math.max(rx, 1));
-    c.translate(-p.x, -p.y);
-    c.fillStyle = g;
-    c.beginPath(); c.arc(p.x, p.y, Math.max(rx, 6), 0, Math.PI * 2); c.fill();
-    c.restore();
   },
 
   /* küçük insan figürü (personel / müşteri) */
@@ -541,15 +495,15 @@ const IZO = {
     for (var i = 0; i < bi.length; i++) {
       var t = bi[i].b.t;
       if (t === 'market' || t === 'kafe' || t === 'restoran' || t === 'wc' || t === 'atm' || t === 'mescit') {
-        hedefler.push({ gx: bi[i].i % sb.w + 0.5, gy: Math.floor(bi[i].i / sb.w) + 0.95 });
+        hedefler.push({ gx: bi[i].i % sb.w + 0.5, gy: Math.floor(bi[i].i / sb.w) + 0.95, t: t });
       }
     }
     if (!hedefler.length) { this.yayalar = []; return; }
 
     /* gece kapalıysa yaya olmasın */
     var kapali = SIM.geceKapali && SIM.geceKapali(sb);
-    var hedefSayi = kapali ? 0 : Math.min(this.dusukKalite ? 2 : 4,
-      1 + Math.floor(sb.kuyruk.length / 2) + (hedefler.length > 2 ? 1 : 0));
+    var hedefSayi = kapali ? 0 : Math.min(this.dusukKalite ? 2 : 6,
+      1 + Math.floor(sb.kuyruk.length / 2) + Math.min(2, Math.floor(hedefler.length / 2)));
     var renkler = ['#c75f5f', '#4f7fc0', '#d1a23c', '#5aa06c', '#8e6fb0', '#c98a4b'];
 
     var serbest = 0;
@@ -596,6 +550,7 @@ const IZO = {
           if (p.asama === 'gidiyor') {               /* markete vardı */
             p.asama = 'aliyor';
             p.bekle = 3 + Math.random() * 4;
+            if (this.posetliMi(p.hedef)) p.poset = this.posetRenk();
             p.hedef = p.donus;
           } else {                                   /* aracına döndü */
             p.sil = true;
@@ -604,6 +559,7 @@ const IZO = {
         }
         /* serbest yaya: yeni hedef */
         p.bekle = 1.5 + Math.random() * 4;
+        if (this.posetliMi(p.hedef)) p.poset = this.posetRenk();
         if (Math.random() < 0.4) p.hedef = { gx: 0.4 + Math.random() * (sb.w - 0.8), gy: sb.h - 0.25 };
         else p.hedef = hedefler[Math.floor(Math.random() * hedefler.length)];
         continue;
@@ -613,6 +569,15 @@ const IZO = {
       p.gy += dy / uz * adim;
     }
     for (var sy = this.yayalar.length - 1; sy >= 0; sy--) if (this.yayalar[sy].sil) this.yayalar.splice(sy, 1);
+  },
+
+  /* alışveriş yapılan tesisten çıkan yaya poşet taşır */
+  posetliMi: function (hedef) {
+    return !!(hedef && (hedef.t === 'market' || hedef.t === 'kafe' || hedef.t === 'restoran'));
+  },
+  posetRenk: function () {
+    var r = ['#e8edf2', '#d94f78', '#f0b429', '#4f93d6', '#56b870'];
+    return r[Math.floor(Math.random() * r.length)];
   },
 
   /* markete uğrayacak müşterinin aracı otoparka geçer */
@@ -1860,7 +1825,22 @@ const IZO = {
     this.pencereler(gx, gy, h, kat);
   },
 
-  /* dükkân vitrini: cam, kapı, tabela */
+  /* ön cephe üzerine dörtgen boya (x1..x2 karo, z1..z2 piksel) */
+  cepheDort: function (gx, gy, x1, x2, z1, z2, renk) {
+    this.cokgen([
+      this.ekran(gx + x1, gy + 0.9, z2), this.ekran(gx + x2, gy + 0.9, z2),
+      this.ekran(gx + x2, gy + 0.9, z1), this.ekran(gx + x1, gy + 0.9, z1)
+    ], renk);
+  },
+
+  /* vitrinde görünen raf malları — sabit desen, karede titremesin */
+  vitrinUrun: {
+    market: ['#e05a4e', '#f0b429', '#4f93d6', '#56b870', '#e8744f', '#9f7aea', '#d94f78', '#3fb6a8'],
+    kafe: ['#8c5a34', '#c98a4b', '#e8d5b0', '#6b4226', '#d9a05b', '#f0e0c0'],
+    restoran: ['#d6633f', '#e8b05a', '#7fa650', '#c44a3d', '#e0c48a', '#9a6b3f']
+  },
+
+  /* dükkân vitrini: cam, raflar, kapı, tabela */
   vitrin: function (gx, gy, t, catiRenk, h) {
     var c = this.cz, o = this.kam.olcek, gece = this.gece();
     /* cam bant */
@@ -1868,10 +1848,49 @@ const IZO = {
     var a = this.ekran(gx + 0.14, gy + 0.9, 16), b = this.ekran(gx + 0.56, gy + 0.9, 16);
     var a2 = this.ekran(gx + 0.14, gy + 0.9, 4), b2 = this.ekran(gx + 0.56, gy + 0.9, 4);
     this.cokgen([a, b, b2, a2], camRenk);
+
+    /* ---- vitrin içi: raflar, ürünler, doğrama ---- */
+    if (o > 0.5) {
+      var urunler = this.vitrinUrun[t] || this.vitrinUrun.market;
+      /* iki raf bandı */
+      var raflar = [[6.5, 9.0], [11.0, 13.5]];
+      for (var r = 0; r < raflar.length; r++) {
+        var z1 = raflar[r][0], z2 = raflar[r][1];
+        /* raf tahtası */
+        this.cepheDort(gx, gy, 0.15, 0.55, z1 - 0.9, z1, gece ? 'rgba(150,110,60,.75)' : 'rgba(110,120,135,.5)');
+        /* üstündeki mallar */
+        for (var u = 0; u < 5; u++) {
+          var ux = 0.17 + u * 0.078;
+          var yuk = z1 + (z2 - z1) * (0.55 + ((u + r * 3) % 3) * 0.15);
+          var renk = urunler[(u + r * 3) % urunler.length];
+          this.cepheDort(gx, gy, ux, ux + 0.055, z1, yuk, this.ton(renk, gece ? 1.08 : 0.92));
+        }
+      }
+      /* buzdolabı / teşhir dolabı sol uçta */
+      this.cepheDort(gx, gy, 0.145, 0.175, 4, 16, gece ? 'rgba(190,230,255,.55)' : 'rgba(205,228,245,.45)');
+      /* doğrama: dikey kayıtlar */
+      for (var d2 = 1; d2 < 3; d2++) {
+        var dx2 = 0.14 + (0.42 * d2) / 3;
+        this.cepheDort(gx, gy, dx2 - 0.008, dx2 + 0.008, 4, 16, 'rgba(60,74,92,.62)');
+      }
+      /* üst ve alt çerçeve */
+      this.cepheDort(gx, gy, 0.14, 0.56, 15.4, 16.4, 'rgba(55,68,86,.7)');
+      this.cepheDort(gx, gy, 0.14, 0.56, 3.2, 4.2, 'rgba(70,84,102,.8)');
+    }
+
     /* kapı */
     var k1 = this.ekran(gx + 0.62, gy + 0.9, 15), k2 = this.ekran(gx + 0.84, gy + 0.9, 15);
     var k3 = this.ekran(gx + 0.84, gy + 0.9, 2), k4 = this.ekran(gx + 0.62, gy + 0.9, 2);
     this.cokgen([k1, k2, k3, k4], gece ? 'rgba(255,226,160,.75)' : 'rgba(70,96,125,.8)');
+    if (o > 0.5) {
+      /* kapı çerçevesi, orta kayıt ve kol */
+      this.cepheDort(gx, gy, 0.615, 0.635, 2, 15, 'rgba(48,60,76,.8)');
+      this.cepheDort(gx, gy, 0.828, 0.848, 2, 15, 'rgba(48,60,76,.8)');
+      this.cepheDort(gx, gy, 0.725, 0.740, 2, 15, 'rgba(48,60,76,.7)');
+      this.cepheDort(gx, gy, 0.700, 0.720, 7.5, 9.0, 'rgba(225,232,240,.9)');
+      /* çalışma saati çıkartması */
+      this.cepheDort(gx, gy, 0.655, 0.700, 11.5, 13.2, gece ? 'rgba(120,230,160,.85)' : 'rgba(240,246,252,.8)');
+    }
     /* tabela */
     if (o > 0.55) {
       var tp = this.ekran(gx + 0.5, gy + 0.92, 2 + h * 0.42 + 7);

@@ -272,18 +272,92 @@ console.log('SAHNE TEST 6 — uzun süreli çizim kararlılığı');
 D.yeni(); D.s.para = 9000000; D.s.seviye = 20;
 IZO._sahneAnahtar = '';
 let cizimHatasi = 0;
+/* 400 oyun dakikası boyunca motor her dakika döner; çizim her 3 karede bir yapılır.
+   Sebep: @napi-rs/canvas'ta drawImage çağrısı native bellek bırakıyor (tarayıcıda
+   böyle bir sorun yok). Her karede çizince test makinesinin belleği tükeniyor; bu
+   aralık hem sahne kararlılığını hem de motoru tam 400 dakika boyunca ölçüyor. */
 for (let i = 0; i < 400; i++) {
   try {
     SIM.dakika();
     IZO.guncelle(0.05);
-    IZO.ciz();
+    if (i % 3 === 0) IZO.ciz();
   } catch (e) { cizimHatasi++; if (cizimHatasi === 1) console.log('  ✗ ' + e.message + ' | ' + (e.stack || '').split('\n')[1]); }
 }
 kontrol(cizimHatasi === 0, '400 karede çizim hatası olmamalı: ' + cizimHatasi);
 kontrol(IZO.arabalar.length < 40, 'araç listesi şişmemeli: ' + IZO.arabalar.length);
 kontrol(IZO.ucanlar.length <= 14, 'uçan yazı listesi sınırlı olmalı');
 
+console.log('SAHNE TEST 7 — gölge yönü, vitrin ve poşetli yaya');
+{
+  /* --- gölge: güneşin saatine göre yön değiştirir, gece silikleşir --- */
+  D.s.saat = 8; D.s.dk = 0; IZO._gyAnah = null;
+  const sabah = IZO.golgeYon();
+  D.s.saat = 16; D.s.dk = 0; IZO._gyAnah = null;
+  const aksam = IZO.golgeYon();
+  D.s.saat = 12; D.s.dk = 0; IZO._gyAnah = null;
+  const oglen = IZO.golgeYon();
+  D.s.saat = 23; D.s.dk = 0; IZO._gyAnah = null;
+  const gece = IZO.golgeYon();
+  kontrol(sabah.x < 0 && aksam.x > 0, 'gölge sabah bir yöne, akşam diğer yöne düşmeli');
+  kontrol(Math.abs(oglen.x) < Math.abs(sabah.x), 'öğlen gölge en kısa olmalı');
+  kontrol(oglen.uz < sabah.uz, 'alçak güneşte gölge uzamalı');
+  kontrol(gece.guc < oglen.guc, 'gece gölge silikleşmeli');
+  kontrol(oglen.guc <= 1.0 && gece.guc > 0, 'gölge gücü 0-1 arasında olmalı');
+  /* aynı dakikada önbellekten dönmeli */
+  kontrol(IZO.golgeYon() === gece, 'golgeYon aynı dakikada önbellekten dönmeli');
+
+  /* --- izo.js içinde yinelenen tanım kalmamalı --- */
+  const kaynak = fs.readFileSync(A + 'izo.js', 'utf8');
+  ['kutu: function', 'golge: function', 'golgeCiz: function', 'golgeSprite: function'].forEach(ad => {
+    const say = kaynak.split('\n  ' + ad).length - 1;
+    kontrol(say === 1, ad + ' bir kez tanımlanmalı, ' + say + ' kez var');
+  });
+
+  /* --- vitrin içi çizimi --- */
+  kontrol(typeof IZO.vitrinIci === 'function', 'vitrinIci tanımlı olmalı');
+  kontrol(!!IZO.vitrinMal.market && !!IZO.vitrinMal.kafe && !!IZO.vitrinMal.restoran, 'üç dükkân için raf malı olmalı');
+  D.s.saat = 13; D.s.dk = 0; IZO._gyAnah = null;
+  let vHata = '';
+  try {
+    IZO.cz.save();
+    IZO.vitrinIci(0.16, 0.6, 0.9, 5, 16, 'market');
+    IZO.vitrinIci(0.16, 0.6, 0.9, 5, 16, 'kafe');
+    D.s.saat = 22; IZO.vitrinIci(0.16, 0.6, 0.9, 5, 16, 'restoran');
+    IZO.cz.restore();
+  } catch (e) { vHata = e.message; }
+  kontrol(!vHata, 'vitrin içi hatasız çizilmeli: ' + vHata);
+  D.s.saat = 13;
+
+  /* --- markete giden yaya dönüşte poşet taşır --- */
+  D.yeni(); D.s.para = 9000000; D.s.seviye = 20;
+  const sbp = D.sube();
+  for (let i = 0; i < sbp.beton.length; i++) sbp.beton[i] = true;
+  SIM.binaKur(sbp, 0, 'market');
+  kontrol(D.binaSayisi(sbp, 'market') === 1, 'test için market kurulmalı');
+  IZO.yayalar = [];
+  IZO.yayaGuncelle(sbp, 0.05);
+  kontrol(IZO.yayalar.length > 0, 'markette yaya doğmalı');
+  const hedefler = IZO.yayalar.map(y => y.hedef).filter(h => h && h.t);
+  kontrol(hedefler.length > 0, 'yaya hedefi bina türünü taşımalı');
+  kontrol(IZO.posetliMi({ t: 'market' }) && IZO.posetliMi({ t: 'kafe' }), 'market ve kafe poşetli olmalı');
+  kontrol(!IZO.posetliMi({ t: 'wc' }) && !IZO.posetliMi(null), 'tuvalet çıkışında poşet olmamalı');
+  /* aracından inip markete giren müşteri dönüşte poşetli olmalı */
+  const yolcu = {
+    gx: 1, gy: 1, hedef: { gx: 1, gy: 1, t: 'market' }, bekle: 0, renk: '#c75f5f',
+    faz: 0, hiz: 0.5, aracId: 'test1', donus: { gx: 2, gy: 2 }, asama: 'gidiyor'
+  };
+  IZO.yayalar = [yolcu];
+  IZO.yayaGuncelle(sbp, 0.05);
+  kontrol(!!yolcu.poset, 'markete varan müşteri dönüşte poşet taşımalı');
+  kontrol(yolcu.asama === 'aliyor', 'müşteri alışveriş aşamasına geçmeli');
+  /* poşetli yaya çizilebilmeli */
+  let pHata = '';
+  try { IZO.insanModel({ gx: 1, gy: 1, renk: '#c75f5f', faz: 1, yuruyor: true, yon: 1, tohum: 3, poset: '#f0b429' }, null); }
+  catch (e) { pHata = e.message; }
+  kontrol(!pHata, 'poşetli yaya hatasız çizilmeli: ' + pHata);
+}
+
 console.log('');
-if (hata === 0) console.log('✅ SAHNE TESTLERİ GEÇTİ (6 başlık) — PNG çıktıları test/ klasöründe');
+if (hata === 0) console.log('✅ SAHNE TESTLERİ GEÇTİ (7 başlık) — PNG çıktıları test/ klasöründe');
 else console.log('❌ ' + hata + ' SAHNE HATASI');
 process.exit(hata ? 1 : 0);
