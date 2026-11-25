@@ -1,7 +1,7 @@
 {
-  "versionCode": 126,
-  "versionName": "1.2.20",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.20/AkaryakitPatronu-1.2.20.apk",
-  "size": 3296373,
-  "notes": "Gerçek araç modelleri, yön düzeltmesi ve geniş giriş betonu"
+  "versionCode": 128,
+  "versionName": "1.2.22",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.22/AkaryakitPatronu-1.2.22.apk",
+  "size": 3298113,
+  "notes": "Giriş menüsü: Yeni oyun düğmesi çalışıyor"
 }
