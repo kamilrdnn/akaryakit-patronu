@@ -2,6 +2,6 @@
   "name": "akaryakit-testler",
   "private": true,
   "description": "Akaryakıt Patronu oyun motoru ve arayüz testleri",
-  "scripts": { "test": "node test.js && node uitest.js" },
-  "devDependencies": { "jsdom": "^26.0.0" }
+  "scripts": { "test": "node test.js && node uitest.js && node sahne.js" },
+  "devDependencies": { "jsdom": "^26.0.0", "@napi-rs/canvas": "^0.1.0" }
 }

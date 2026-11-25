@@ -15,6 +15,15 @@ Reklam yok, uygulama içi satın alma yok. İnternet yalnızca güncelleme denet
    - 0,30 L üzeri taşma → fazla yakıt yere döküldü, parası senden
 5. **BİTİR & ÖDET** ile satışı kapat.
 
+## Görünüm
+
+İstasyon, canvas üstünde çizilen **izometrik 3B sahnedir**: yoldan geçen ve pompaya yanaşan
+araçlar, kutu modelli pompa/kanopi/tesisler, gün-gece aydınlatması (gece yanan vitrinler,
+araç farları, kanopi ışığı), sezona göre değişen ağaçlar, satıştan sonra havaya uçan kazanç
+yazıları. Sahne sürüklenerek kaydırılır, çift parmakla veya + / − düğmeleriyle yakınlaştırılır;
+pompaya veya boş araziye dokunarak iş yapılır. Üstteki HUD yakıt göstergelerini, Mağaza ve
+kısayol düğmelerini, sezon kampanyasını ve sıradaki lokasyonun ilerlemesini gösterir.
+
 ## Sistemler
 
 | Alan | İçerik |
@@ -28,6 +37,7 @@ Reklam yok, uygulama içi satın alma yok. İnternet yalnızca güncelleme denet
 | Dünya | Gün/gece döngüsü, yoğun saatler, 4 sezon, müşteri akını, arıza, denetim, sağanak, tur otobüsleri. |
 | Büyüme | Kasaba → çevre yolu → otoyol → marina → metropol. Her lokasyonun kendi trafiği ve araç profili var. |
 | Son oyun | 5 yıldızlı şubeyi devredip kalıcı pasif gelir; rafineri + tanker filosu ile indirimli tedarik. |
+| Hedefler | 16 başarım (ciro, tam isabet, pompa sayısı, zincir, rafineri…) ve her sezon değişen kampanya ürünü. |
 
 ## Teknik
 
@@ -35,7 +45,8 @@ Reklam yok, uygulama içi satın alma yok. İnternet yalnızca güncelleme denet
   (`https://appassets.androidplatform.net`) kullanıldığı için `localStorage` kayıtları
   güncellemelerde silinmez.
 - **Oyun:** `app/src/main/assets/` içinde saf JS/CSS — motor (`sim.js`), durum (`durum.js`),
-  elle dolum (`servis.js`), arayüz (`arayuz.js`), veri tanımları (`veri.js`).
+  elle dolum (`servis.js`), izometrik sahne (`izo.js`), arayüz (`arayuz.js`), veri (`veri.js`).
+  Dış kütüphane yok, hazır görsel dosyası yok: bütün sahne kodla çizilir.
 - **Kayıt:** `localStorage`, 20 saniyede bir ve her satıştan sonra otomatik. `durum.js`
   içindeki `onar()` eski kayıtları yeni sürümün alanlarıyla tamamlar.
 - **Güncelleme:** Oyun açılışta `update.json` dosyasını okur; yeni `versionCode` varsa
@@ -76,5 +87,8 @@ cd test && npm install && node test.js && node uitest.js
   yanlış yakıt), inşa-yükseltme-bakım, arsa genişletmede indeks kayması, sipariş teslimi,
   60 oyun günü kesintisiz simülasyon, kayıt-yükleme ve eski kayıt onarımı, devretme,
   rafineri, güç dengesi.
-- `uitest.js` — 10 başlık: jsdom üzerinde bütün sekmelerin çizimi, modallar, fiyat
-  kaydırıcıları, sipariş, elle dolum akışı, yanlış tabanca, geri tuşu, şube geçişi, sıfırlama.
+- `uitest.js` — 10 başlık: jsdom üzerinde bütün sekmelerin çizimi, HUD bileşenleri, kampanya
+  ve başarım mantığı, izometrik dönüşümler, modallar, fiyat kaydırıcıları, sipariş, elle dolum
+  akışı, yanlış tabanca, geri tuşu, şube geçişi, sıfırlama.
+- `sahne.js` — 6 başlık: gerçek canvas üstünde sahne render'ı (gündüz/gece/kış), araç yolu ve
+  park etme, dokunma isabeti, 400 kare kararlılık. `test/sahne-*.png` dosyalarını üretir.

@@ -29,6 +29,7 @@ const dosyalar = [
   ['js/veri.js', ['VERI']],
   ['js/durum.js', ['D', 'KAYIT_ANAHTAR', 'tl', 'tlTam', 'say', 'litre', 'yuzde', 'ikiHane', 'rastgele', 'rastgeleTam', 'secRast', 'kisitla', 'id']],
   ['js/sim.js', ['SIM']],
+  ['js/izo.js', ['IZO']],
   ['js/servis.js', ['SERVIS']],
   ['js/arayuz.js', ['UI']],
   ['js/guncelle.js', ['GUNCELLE']],
@@ -46,7 +47,7 @@ function calistir(ad, fn) {
   try { fn(); } catch (e) { console.log('  ✗ ' + ad + ' hata: ' + e.message + ' | ' + (e.stack || '').split('\n')[1]); hata++; }
 }
 
-const { D, SIM, UI, SERVIS, VERI, GUNCELLE, OYUN } = w;
+const { D, SIM, UI, SERVIS, VERI, GUNCELLE, OYUN, IZO } = w;
 
 console.log('UI TEST 1 — açılış ekranı');
 calistir('acilisCiz', () => OYUN.acilisCiz());
@@ -55,17 +56,94 @@ kontrol(w.document.getElementById('acilis').innerHTML.indexOf('BAŞLA') > 0, 'BA
 console.log('UI TEST 2 — oyunu başlat ve tüm sekmeleri çiz');
 calistir('basla', () => OYUN.basla(true));
 kontrol(w.document.getElementById('alt').children.length === 7, '7 sekme olmalı');
-kontrol(w.document.getElementById('govde').innerHTML.length > 500, 'istasyon ekranı dolu olmalı');
+kontrol(w.document.getElementById('hud').innerHTML.length > 400, 'istasyon HUD dolu olmalı');
+kontrol(w.document.getElementById('hud').classList.contains('ac'), 'istasyonda HUD açık olmalı');
+kontrol(!w.document.getElementById('govde').classList.contains('ac'), 'istasyonda panel kapalı olmalı');
 
 /* para ve seviye ver, her şey açılsın */
 D.s.para = 90000000; D.s.seviye = 20;
 UI.sekmeler.forEach(sk => {
   calistir('sekme ' + sk.id, () => { UI.sekmeGec(sk.id); });
-  const g = w.document.getElementById('govde').innerHTML;
+  const kap = sk.id === 'istasyon' ? 'hud' : 'govde';
+  const g = w.document.getElementById(kap).innerHTML;
   kontrol(g.length > 200, sk.id + ' ekranı boş kalmamalı (' + g.length + ')');
   kontrol(g.indexOf('undefined') < 0, sk.id + ' ekranında "undefined" geçmemeli');
   kontrol(g.indexOf('NaN') < 0, sk.id + ' ekranında "NaN" geçmemeli');
+  if (sk.id !== 'istasyon') kontrol(g.indexOf('panelBas') > 0, sk.id + ' panelinde geri başlığı olmalı');
 });
+
+console.log('UI TEST 2b — HUD bileşenleri');
+UI.sekmeGec('istasyon');
+let hud = w.document.getElementById('hud').innerHTML;
+kontrol(hud.indexOf('Mağaza') > 0, 'Mağaza butonu olmalı');
+kontrol(hud.indexOf('yakitKart') > 0, 'yakıt göstergesi olmalı');
+kontrol(hud.indexOf('SIRADAKİ') > 0 || hud.indexOf('ZİNCİR') > 0, 'sıradaki lokasyon kartı olmalı');
+kontrol(hud.indexOf('kampanya') > 0, 'sezon kampanyası kartı olmalı');
+kontrol(hud.indexOf('kamBtn') > 0, 'kamera butonları olmalı');
+calistir('hızlı sipariş', () => UI.hizliSiparis('benzin'));
+kontrol(w.document.getElementById('modalIc').innerHTML.indexOf('Tankı doldur') > 0, 'hızlı sipariş modalı açılmalı');
+UI.modalKapat();
+calistir('kampanya bilgisi', () => UI.kampanyaBilgi());
+kontrol(w.document.getElementById('modalIc').innerHTML.indexOf('Kampanya') >= 0 ||
+        w.document.getElementById('modalIc').innerHTML.indexOf('İlerleme') > 0, 'kampanya modalı açılmalı');
+UI.modalKapat();
+
+console.log('UI TEST 2c — kampanya ve başarım mantığı');
+const kmp = SIM.kampanya();
+kontrol(!!kmp && !!kmp.tanim && kmp.tanim.hedef > 0, 'kampanya tanımı gelmeli');
+D.s.kampanya.sayac = 0;
+/* market yokken ilerlememeli */
+let once = D.s.kampanya.sayac;
+for (let i = 0; i < 200; i++) SIM.kampanyaIlerlet(D.sube());
+kontrol(D.s.kampanya.sayac === once, 'market yokken kampanya ilerlememeli');
+/* market kurunca ilerlemeli */
+D.s.para = 9000000; D.s.seviye = 20;
+let bosHucre = -1;
+for (let i = 0; i < D.sube().yapi.length; i++) if (D.sube().beton[i] && !D.sube().yapi[i]) { bosHucre = i; break; }
+if (bosHucre < 0) { for (let i = 0; i < D.sube().beton.length; i++) if (!D.sube().beton[i]) { SIM.betonDok(D.sube(), i); bosHucre = i; break; } }
+SIM.binaKur(D.sube(), bosHucre, 'market');
+for (let i = 0; i < 400 && D.s.kampanya.sayac === 0; i++) SIM.kampanyaIlerlet(D.sube());
+kontrol(D.s.kampanya.sayac > 0, 'marketli şubede kampanya ilerlemeli');
+/* sezon değişince sıfırlanmalı */
+D.s.sezonIdx = (D.s.sezonIdx + 1) % 4;
+kontrol(SIM.kampanya().sayac === 0, 'sezon değişince kampanya sıfırlanmalı');
+
+D.s.basarimlar = [];
+D.s.ist.ciro = 20000;
+const paraB = D.s.para;
+calistir('başarım', () => SIM.basarimKontrol());
+kontrol(D.s.basarimlar.indexOf('ilk10k') >= 0, 'ciro başarımı açılmalı');
+kontrol(D.s.para > paraB, 'başarım ödülü verilmeli');
+const sayiB = D.s.basarimlar.length;
+SIM.basarimKontrol();
+kontrol(D.s.basarimlar.length === sayiB, 'aynı başarım iki kez verilmemeli');
+
+console.log('UI TEST 2d — izometrik hesaplar');
+kontrol(typeof IZO.izo === 'function', 'IZO yüklenmeli');
+const pz = IZO.izo(2, 3);
+kontrol(pz.x === (2 - 3) * 32 && pz.y === (2 + 3) * 16, 'izo izdüşümü doğru olmalı');
+IZO.kam = { x: 100, y: 50, olcek: 1, kuruldu: true };
+const geri = IZO.karo(IZO.izo(4, 2).x + 100, IZO.izo(4, 2).y + 50);
+kontrol(Math.abs(geri.gx - 4) < 0.001 && Math.abs(geri.gy - 2) < 0.001, 'ekran→karo dönüşümü tersine çalışmalı');
+kontrol(IZO.ton('#808080', 1).indexOf('rgb(') === 0, 'ton() rgb döndürmeli');
+D.s.saat = 12; kontrol(IZO.isik() === 1, 'öğlen tam ışık');
+D.s.saat = 2;  kontrol(IZO.isik() < 0.6 && IZO.gece(), 'gece karanlık');
+D.s.saat = 10;
+kontrol(IZO.noktaIcinde(5, 5, [{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10}]), 'nokta içinde sınaması doğru');
+kontrol(!IZO.noktaIcinde(20, 5, [{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10}]), 'dışarıdaki nokta yakalanmamalı');
+IZO.ucur(1, 1, '+100 ₺');
+kontrol(IZO.ucanlar.length === 1, 'uçan yazı eklenmeli');
+calistir('araba üretimi', () => {
+  IZO.arabalar = [];
+  const sbx = D.sube();
+  sbx.kuyruk.length = 0;
+  let mm = null;
+  for (let i = 0; i < 300 && !mm; i++) mm = SIM.musteriYap(sbx);
+  if (mm) { sbx.kuyruk.push(mm); SIM.atama(sbx); IZO.musteriArabalari(sbx); }
+});
+kontrol(IZO.arabalar.length >= 1, 'müşteri için araç oluşmalı');
+calistir('araba ilerleme', () => { for (let i = 0; i < 300; i++) IZO.arabalar.forEach(a => IZO.arabaIlerlet(a, 0.05)); });
+kontrol(true, 'araç ilerletme hata vermemeli');
 
 console.log('UI TEST 3 — hücre tıklama ve modallar');
 UI.sekmeGec('istasyon');

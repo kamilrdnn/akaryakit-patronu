@@ -127,6 +127,35 @@ const VERI = {
     { id:'hava',   ad:'Sağanak Yağış',   emoji:'🌧️', olasilik:.11, sure:[60,180], aciklama:'Yağmur trafiği düşürdü ama yıkamayı artırdı.' }
   ],
 
+
+  /* ---------------- sezon kampanyaları ---------------- */
+  kampanyalar: {
+    ilkbahar: { ad: 'Cam Suyu',     emoji: '💧', hedef: 12, odul: 45000 },
+    yaz:      { ad: 'Klima Gazı',   emoji: '❄️', hedef: 10, odul: 60000 },
+    sonbahar: { ad: 'Kış Lastiği',  emoji: '🛞', hedef: 14, odul: 80000 },
+    kis:      { ad: 'Antifriz',     emoji: '🧊', hedef: 12, odul: 55000 }
+  },
+
+  /* ---------------- başarımlar ---------------- */
+  basarimlar: [
+    { id: 'ilk10k',    ad: 'Esnaf oldun!',        aciklama: 'İlk 10.000 ₺ ciro',              odul: 5000,    kosul: function (s) { return s.ist.ciro >= 10000; } },
+    { id: 'ilk100k',   ad: 'İşler açıldı',        aciklama: '100.000 ₺ ciro',                 odul: 20000,   kosul: function (s) { return s.ist.ciro >= 100000; } },
+    { id: 'milyon',    ad: 'Milyoncu',            aciklama: '1.000.000 ₺ ciro',               odul: 120000,  kosul: function (s) { return s.ist.ciro >= 1000000; } },
+    { id: 'onmilyon',  ad: 'Akaryakıt baronu',    aciklama: '10.000.000 ₺ ciro',              odul: 900000,  kosul: function (s) { return s.ist.ciro >= 10000000; } },
+    { id: 'tam10',     ad: 'Hassas el',           aciklama: '10 tam isabetli dolum',          odul: 8000,    kosul: function (s) { return s.ist.tamIsabet >= 10; } },
+    { id: 'tam100',    ad: 'Pompa ustası',        aciklama: '100 tam isabetli dolum',         odul: 70000,   kosul: function (s) { return s.ist.tamIsabet >= 100; } },
+    { id: 'musteri500',ad: 'Kalabalık',           aciklama: '500 müşteriye hizmet',           odul: 35000,   kosul: function (s) { return s.ist.musteri >= 500; } },
+    { id: 'dortpompa', ad: 'Sıra beklemesin',     aciklama: 'Tek şubede 4 pompa',             odul: 25000,   kosul: function (s) { return D.pompalar(D.sube()).length >= 4; } },
+    { id: 'tumyakit',  ad: 'Dört koldan',         aciklama: 'Benzin, dizel, LPG ve şarj',     odul: 60000,   kosul: function (s) { var sb = D.sube(); var t = {}; D.pompalar(sb).forEach(function (p) { t[p.p.yakit] = 1; }); return t.benzin && t.dizel && t.lpg && t.ev; } },
+    { id: 'gunes',     ad: 'Kendi enerjin',       aciklama: 'Üretimin tüketimini karşılasın', odul: 50000,   kosul: function (s) { var sb = D.sube(); return D.gucUretim(sb) >= D.gucTuketim(sb) && D.gucTuketim(sb) > 5; } },
+    { id: 'ikincisube',ad: 'Zincir başlıyor',     aciklama: 'İkinci şubeyi aç',               odul: 100000,  kosul: function (s) { return s.subeler.length >= 2; } },
+    { id: 'bessube',   ad: 'Beş kol',             aciklama: 'Beş lokasyonun da olsun',        odul: 1200000, kosul: function (s) { return s.subeler.length >= 5; } },
+    { id: 'rafineri',  ad: 'Kaynaktan',           aciklama: 'Rafineri kur',                   odul: 400000,  kosul: function (s) { return s.rafineri.aktif; } },
+    { id: 'devir',     ad: 'Franchise',           aciklama: 'Bir şubeyi devret',              odul: 250000,  kosul: function (s) { return s.devredilen.length >= 1; } },
+    { id: 'bessyildiz',ad: 'Beş yıldız',          aciklama: 'Bir şubeyi 5 yıldıza çıkar',     odul: 150000,  kosul: function (s) { return D.yildiz() >= 5; } },
+    { id: 'temiz',     ad: 'Pırıl pırıl',         aciklama: 'Temizlik ve bakım %90 üstü',     odul: 30000,   kosul: function (s) { var sb = D.sube(); return sb.temizlik >= 90 && D.bakimOrt(sb) >= 90; } }
+  ],
+
   /* ---------------- seviye ---------------- */
   xpTablo: [0,1200,3200,6800,12500,21000,33000,50000,74000,106000,150000,208000,286000,392000,530000,720000,980000,1320000,1800000,2450000],
 

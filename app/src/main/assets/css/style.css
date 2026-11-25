@@ -21,7 +21,14 @@ input[type=range]{width:100%}
   flex:0 0 auto;background:linear-gradient(180deg,#19253a,#141c2b);
   border-bottom:1px solid var(--cizgi);padding:8px 10px 6px;
 }
-#govde{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:10px 10px 14px;-webkit-overflow-scrolling:touch}
+#icerik{position:relative;flex:1 1 auto;overflow:hidden}
+#tuval{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none}
+#hud{position:absolute;inset:0;pointer-events:none;display:none}
+#hud.ac{display:block}
+#hud .tik{pointer-events:auto}
+#govde{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:10px 10px 14px;
+  -webkit-overflow-scrolling:touch;background:var(--bg);display:none}
+#govde.ac{display:block}
 #alt{
   flex:0 0 auto;display:flex;background:#111a28;border-top:1px solid var(--cizgi);
   padding:4px 2px 6px;gap:1px;
@@ -219,3 +226,93 @@ input[type=range]{width:100%}
 .sec.secili{border-color:var(--ana)}
 .sec .st{font-weight:700;font-size:13.5px}
 .sec .ss{font-size:11px;color:var(--sol);margin-top:3px;line-height:1.4}
+
+
+/* ================= HUD (izometrik sahne üstü) ================= */
+.hudUst{position:absolute;left:8px;right:8px;top:6px;display:flex;flex-direction:column;gap:6px}
+.hudAlt{position:absolute;left:8px;right:8px;bottom:8px;display:flex;flex-direction:column;gap:7px}
+
+.yakitKart{
+  background:rgba(13,19,31,.88);border:1px solid rgba(255,255,255,.07);border-radius:16px;
+  padding:7px 9px;display:flex;gap:7px;backdrop-filter:blur(3px)
+}
+.yk{flex:1;display:flex;align-items:center;gap:5px;min-width:0}
+.yk .ad{font-size:9.5px;color:var(--sol);font-weight:700;letter-spacing:.3px}
+.yk .cb{flex:1;height:7px;border-radius:5px;background:#0a0f18;overflow:hidden;min-width:18px}
+.yk .cb>i{display:block;height:100%;border-radius:5px}
+.yk .sip{
+  width:24px;height:24px;flex:0 0 24px;border-radius:50%;background:var(--ana);
+  display:grid;place-items:center;font-size:13px;color:#fff;box-shadow:0 2px 0 #a9321a
+}
+.yk .sip:active{transform:translateY(2px);box-shadow:none}
+.yk.dolu .sip{background:var(--kart2);box-shadow:0 2px 0 #10182400;opacity:.5}
+
+.hudSatir{display:flex;gap:7px;align-items:center}
+.magaza{
+  background:var(--ana);border-radius:14px;padding:9px 14px;font-weight:800;font-size:14px;
+  display:flex;align-items:center;gap:7px;box-shadow:0 3px 0 #a9321a
+}
+.magaza:active{transform:translateY(2px);box-shadow:0 1px 0 #a9321a}
+.hudIk{
+  width:42px;height:42px;flex:0 0 42px;border-radius:13px;background:rgba(18,26,40,.9);
+  border:1px solid rgba(255,255,255,.07);display:grid;place-items:center;font-size:19px;position:relative
+}
+.hudIk:active{transform:translateY(2px)}
+.hudIk .say{
+  position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--kirmizi);
+  font-size:10.5px;font-weight:800;display:grid;place-items:center;padding:0 4px;border:2px solid #0e1420
+}
+.hudBosluk{flex:1}
+
+.kampanya{
+  background:rgba(238,244,250,.95);color:#15202f;border-radius:16px;padding:7px 11px 7px 7px;
+  display:flex;align-items:center;gap:9px;box-shadow:var(--golge);max-width:62%
+}
+.kampanya .halka{
+  width:38px;height:38px;flex:0 0 38px;border-radius:50%;display:grid;place-items:center;
+  font-size:11px;font-weight:800;color:#15202f
+}
+.kampanya .kad{font-size:12.5px;font-weight:800;display:flex;align-items:center;gap:4px}
+.kampanya .kalt{font-size:10.5px;color:#5a6676}
+
+.sonraki{
+  background:rgba(13,19,31,.9);border:1px solid rgba(255,255,255,.07);border-radius:16px;
+  padding:7px 10px;min-width:150px;max-width:62%
+}
+.sonraki .sust{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sonraki .set{font-size:9.5px;color:var(--sol);letter-spacing:.6px;font-weight:700}
+.sonraki .sad{font-size:13px;font-weight:800}
+.sonraki .syz{font-size:12px;font-weight:800;color:var(--mavi)}
+
+.doldurBtn{
+  background:linear-gradient(180deg,var(--ana2),var(--ana));border-radius:16px;padding:12px 14px;
+  font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;gap:9px;
+  box-shadow:0 4px 0 #a9321a;animation:nabiz2 1.6s infinite
+}
+.doldurBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #a9321a;animation:none}
+@keyframes nabiz2{0%,100%{filter:brightness(1)}50%{filter:brightness(1.14)}}
+
+.kamBtnler{position:absolute;right:8px;bottom:118px;display:flex;flex-direction:column;gap:6px}
+.kamBtn{
+  width:36px;height:36px;border-radius:11px;background:rgba(18,26,40,.85);
+  border:1px solid rgba(255,255,255,.07);display:grid;place-items:center;font-size:16px;font-weight:800
+}
+
+.basarimToast{
+  position:fixed;left:10px;right:10px;bottom:72px;z-index:85;
+  background:linear-gradient(180deg,#2f9e5e,#1f7a46);border-radius:14px;padding:10px 13px;
+  box-shadow:var(--golge);display:flex;align-items:center;gap:10px;animation:gir .25s ease-out
+}
+.basarimToast .bik{font-size:22px}
+.basarimToast .bad{font-size:13.5px;font-weight:800}
+.basarimToast .baz{font-size:11px;opacity:.85}
+
+/* panel başlığı (sekme ekranları) */
+.panelBas{
+  display:flex;align-items:center;gap:10px;margin:-2px 0 10px;
+}
+.panelBas h2{font-size:18px;font-weight:800;flex:1}
+.panelBas .geri{
+  width:36px;height:36px;border-radius:11px;background:var(--kart);border:1px solid var(--cizgi);
+  display:grid;place-items:center;font-size:17px
+}

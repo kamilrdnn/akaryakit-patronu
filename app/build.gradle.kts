@@ -11,16 +11,19 @@ android {
         applicationId = "com.kamil.akaryakit"
         minSdk = 24
         targetSdk = 35
-        versionCode = (System.getenv("APP_VERSION_CODE") ?: "1").toInt()
-        versionName = System.getenv("APP_VERSION_NAME") ?: "1.0"
+        versionCode = (System.getenv("APP_VERSION_CODE")?.takeIf { it.isNotBlank() } ?: "1").toInt()
+        versionName = System.getenv("APP_VERSION_NAME")?.takeIf { it.isNotBlank() } ?: "1.0"
     }
 
     signingConfigs {
         create("yayin") {
-            storeFile = file(System.getenv("KEYSTORE_FILE") ?: "akaryakit-release.jks")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "akaryakit2026"
-            keyAlias = System.getenv("KEY_ALIAS") ?: "akaryakit"
-            keyPassword = System.getenv("KEY_PASSWORD") ?: "akaryakit2026"
+            // Boş ortam değişkeni de yok sayılır: CI'da yalnızca KEYSTORE_BASE64
+            // secret'ı zorunlu, diğerleri bu varsayılanlara düşer.
+            fun cevre(ad: String) = System.getenv(ad)?.takeIf { it.isNotBlank() }
+            storeFile = file(cevre("KEYSTORE_FILE") ?: "akaryakit-release.jks")
+            storePassword = cevre("KEYSTORE_PASSWORD") ?: "akaryakit2026"
+            keyAlias = cevre("KEY_ALIAS") ?: "akaryakit"
+            keyPassword = cevre("KEY_PASSWORD") ?: "akaryakit2026"
         }
     }
 

@@ -93,6 +93,8 @@ const SIM = {
     /* --- yeni olay --- */
     if (Math.random() < 0.22) this.olayUret();
 
+    this.basarimKontrol();
+
     /* --- memnuniyet yavaş toparlanma --- */
     sb.memnuniyet = kisitla(sb.memnuniyet + (sb.temizlik > 70 ? 0.4 : -0.3), 0, 100);
     s.marka = kisitla(s.marka + (sb.memnuniyet - 60) * 0.012, 0, 100);
@@ -481,8 +483,9 @@ const SIM = {
       sb.memnuniyet = kisitla(sb.memnuniyet - 1.6, 0, 100);
     }
 
-    /* --- ek tesis geliri --- */
+    /* --- ek tesis geliri + sezon kampanyası --- */
     var ekGelir = this.ekTesisGeliri(sb, m);
+    ekGelir += this.kampanyaIlerlet(sb);
 
     s.para += ciro + bahsis + ekGelir;
     s.ist.ciro += ciro + ekGelir;
@@ -495,6 +498,14 @@ const SIM = {
     D.xpEkle(xp);
 
     sb.hizmetSayac++;
+    this.basarimKontrol();
+
+    /* izometrik sahnede uçan kazanç */
+    if (window.IZO && IZO.cz && m.pompa !== null) {
+      var px = m.pompa % sb.w, py = Math.floor(m.pompa / sb.w);
+      IZO.ucur(px + 0.5, py + 0.4, '+' + tl(ciro + bahsis + ekGelir),
+        isabet === 'tam' ? '#ffd166' : (isabet === 'tasma' ? '#ff8f8f' : '#6ee2a0'));
+    }
 
     return {
       tip: 'ok', isabet: isabet, satilan: satilan, dokulen: dokulen,
@@ -524,6 +535,56 @@ const SIM = {
       }
     }
     return top;
+  },
+
+  /* =========================================================
+     KAMPANYA / BAŞARIM
+     ========================================================= */
+  kampanya: function () {
+    var s = D.s;
+    if (!s.kampanya) s.kampanya = { sezonIdx: s.sezonIdx, sayac: 0, bitti: false };
+    if (s.kampanya.sezonIdx !== s.sezonIdx) {
+      s.kampanya = { sezonIdx: s.sezonIdx, sayac: 0, bitti: false };
+    }
+    var tanim = VERI.kampanyalar[VERI.sezonSira[s.sezonIdx]];
+    return { tanim: tanim, sayac: s.kampanya.sayac, bitti: s.kampanya.bitti };
+  },
+
+  kampanyaIlerlet: function (sb) {
+    var s = D.s;
+    var k = this.kampanya();
+    if (k.bitti) return 0;
+    if (!D.binaSayisi(sb, 'market')) return 0;
+    if (Math.random() > 0.26) return 0;
+    s.kampanya.sayac++;
+    var urunGeliri = Math.round(k.tanim.odul / k.tanim.hedef * 0.22);
+    if (s.kampanya.sayac >= k.tanim.hedef) {
+      s.kampanya.bitti = true;
+      s.para += k.tanim.odul;
+      s.ist.bugunCiro += k.tanim.odul;
+      s.ist.ciro += k.tanim.odul;
+      s.marka = kisitla(s.marka + 3, 0, 100);
+      D.xpEkle(400);
+      UI.bildir('🎉 Kampanya tamam', k.tanim.ad + ' hedefi doldu · ödül ' + tl(k.tanim.odul), 'iyi');
+    }
+    return urunGeliri;
+  },
+
+  basarimKontrol: function () {
+    var s = D.s;
+    if (!s.basarimlar) s.basarimlar = [];
+    for (var i = 0; i < VERI.basarimlar.length; i++) {
+      var b = VERI.basarimlar[i];
+      if (s.basarimlar.indexOf(b.id) >= 0) continue;
+      var oldu = false;
+      try { oldu = !!b.kosul(s); } catch (e) { oldu = false; }
+      if (!oldu) continue;
+      s.basarimlar.push(b.id);
+      s.para += b.odul;
+      s.ist.bugunCiro += b.odul;
+      D.xpEkle(250);
+      if (UI.basarimToast) UI.basarimToast(b);
+    }
   },
 
   /* =========================================================

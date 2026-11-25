@@ -56,6 +56,8 @@ const D = {
       },
       olaylar: [],
       pasifGelir: 0,
+      basarimlar: [],
+      kampanya: { sezonIdx: 1, sayac: 0, bitti: false },
       devredilen: [],
       ist: {
         satisL: { benzin: 0, dizel: 0, lpg: 0, ev: 0 },
@@ -296,6 +298,8 @@ const D = {
     if (!s.rafineri) s.rafineri = { aktif: false, sv: 0, tanker: 0 };
     if (!s.olaylar) s.olaylar = [];
     if (!s.devredilen) s.devredilen = [];
+    if (!s.basarimlar) s.basarimlar = [];
+    if (!s.kampanya) s.kampanya = { sezonIdx: s.sezonIdx, sayac: 0, bitti: false };
     if (typeof s.pasifGelir !== 'number') s.pasifGelir = 0;
     if (typeof s.marka !== 'number') s.marka = 10;
     if (typeof s.hiz !== 'number') s.hiz = 1;

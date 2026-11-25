@@ -1,14 +1,16 @@
-/* Akaryakıt Patronu — arayüz */
+/* Akaryakıt Patronu — arayüz (izometrik sahne + paneller) */
 'use strict';
 
 const UI = {
   sekme: 'istasyon',
-  secHucre: null,
   modalAcik: false,
+  adaylar: null,
+  bildirimGecmisi: [],
+  okunmamis: 0,
 
   sekmeler: [
     { id: 'istasyon', ad: 'İstasyon', ik: '⛽' },
-    { id: 'insa',     ad: 'İnşa',     ik: '🏗️' },
+    { id: 'insa',     ad: 'Mağaza',   ik: '🏗️' },
     { id: 'fiyat',    ad: 'Fiyat',    ik: '🏷️' },
     { id: 'siparis',  ad: 'Sipariş',  ik: '🚚' },
     { id: 'personel', ad: 'Personel', ik: '🧑‍🔧' },
@@ -27,6 +29,7 @@ const UI = {
            '<span class="ik">' + s.ik + '</span>' + s.ad + '</button>';
     }
     document.getElementById('alt').innerHTML = h;
+    try { IZO.kur(); } catch (e) { /* tuval yoksa oyun yine çalışır */ }
     this.sekmeGec('istasyon');
   },
 
@@ -36,8 +39,11 @@ const UI = {
       var el = document.getElementById('sk_' + this.sekmeler[i].id);
       if (el) el.classList.toggle('aktif', this.sekmeler[i].id === id);
     }
-    document.getElementById('govde').scrollTop = 0;
+    if (id === 'daha') this.okunmamis = 0;
+    var g = document.getElementById('govde');
+    if (g) g.scrollTop = 0;
     this.ciz();
+    if (id === 'istasyon') { try { IZO.boyutla(); } catch (e) {} }
   },
 
   /* =========================================================
@@ -46,41 +52,51 @@ const UI = {
   ciz: function () {
     if (!D.s) return;
     this.ustCiz();
-    var g = document.getElementById('govde');
-    switch (this.sekme) {
-      case 'istasyon': g.innerHTML = this.istasyonHtml(); break;
-      case 'insa':     g.innerHTML = this.insaHtml(); break;
-      case 'fiyat':    g.innerHTML = this.fiyatHtml(); break;
-      case 'siparis':  g.innerHTML = this.siparisHtml(); break;
-      case 'personel': g.innerHTML = this.personelHtml(); break;
-      case 'subeler':  g.innerHTML = this.subelerHtml(); break;
-      case 'daha':     g.innerHTML = this.dahaHtml(); break;
+    var hud = document.getElementById('hud');
+    var govde = document.getElementById('govde');
+    if (!hud || !govde) return;
+
+    if (this.sekme === 'istasyon') {
+      hud.classList.add('ac');
+      govde.classList.remove('ac');
+      hud.innerHTML = this.hudHtml();
+    } else {
+      hud.classList.remove('ac');
+      govde.classList.add('ac');
+      govde.innerHTML = this.panelHtml();
     }
   },
 
-  /* sadece canlı ekranlar tik'te yenilenir (girdi odağı bozulmasın).
-     Yeniden çizimde gövde ve kuyruk şeridinin kaydırma konumu korunur. */
+  /* canlı yenileme: kaydırma konumu korunur */
   tikCiz: function () {
     if (!D.s) return;
     this.ustCiz();
     if (this.modalAcik || SERVIS.acik) return;
-    if (this.sekme !== 'istasyon' && this.sekme !== 'siparis') return;
-
+    if (this.sekme === 'istasyon') {
+      var hud = document.getElementById('hud');
+      if (hud) hud.innerHTML = this.hudHtml();
+      return;
+    }
+    if (this.sekme !== 'siparis') return;
     var govde = document.getElementById('govde');
-    var kayGovde = govde ? govde.scrollTop : 0;
-    var kuyrukEl = document.getElementById('kuyruk');
-    var kayKuyruk = kuyrukEl ? kuyrukEl.scrollLeft : 0;
-    var izgaraEl = document.getElementById('izgaraSar');
-    var kayIzgaraY = izgaraEl ? izgaraEl.scrollTop : 0;
-    var kayIzgaraX = izgaraEl ? izgaraEl.scrollLeft : 0;
+    if (!govde) return;
+    var kay = govde.scrollTop;
+    govde.innerHTML = this.panelHtml();
+    govde.scrollTop = kay;
+  },
 
-    this.ciz();
-
-    if (govde) govde.scrollTop = kayGovde;
-    var yeniKuyruk = document.getElementById('kuyruk');
-    if (yeniKuyruk && kayKuyruk) yeniKuyruk.scrollLeft = kayKuyruk;
-    var yeniIzgara = document.getElementById('izgaraSar');
-    if (yeniIzgara) { yeniIzgara.scrollTop = kayIzgaraY; yeniIzgara.scrollLeft = kayIzgaraX; }
+  panelHtml: function () {
+    var bas = '', ic = '';
+    switch (this.sekme) {
+      case 'insa':     bas = '🏗️ Mağaza & İnşaat'; ic = this.insaHtml(); break;
+      case 'fiyat':    bas = '🏷️ Fiyatlar';        ic = this.fiyatHtml(); break;
+      case 'siparis':  bas = '🚚 Sipariş';         ic = this.siparisHtml(); break;
+      case 'personel': bas = '🧑‍🔧 Personel';      ic = this.personelHtml(); break;
+      case 'subeler':  bas = '🗺️ Şubeler';         ic = this.subelerHtml(); break;
+      case 'daha':     bas = '☰ Yönetim';          ic = this.dahaHtml(); break;
+      default: return '';
+    }
+    return '<div class="panelBas"><button class="geri" onclick="UI.sekmeGec(\'istasyon\')">‹</button><h2>' + bas + '</h2></div>' + ic;
   },
 
   ustCiz: function () {
@@ -104,144 +120,179 @@ const UI = {
     h += '<div class="rozet"><span class="yildiz">' + '★'.repeat(yildiz) + '☆'.repeat(5 - yildiz) + '</span></div>';
     h += '<div class="rozet">' + sz.emoji + ' ' + sz.ad + '</div>';
     h += '<div class="rozet">😊 <b>' + Math.round(sb.memnuniyet) + '</b></div>';
-    if (s.olaylar.length) {
-      for (var i = 0; i < s.olaylar.length; i++) {
-        var ov = null;
-        for (var j = 0; j < VERI.olaylar.length; j++) if (VERI.olaylar[j].id === s.olaylar[i].id) ov = VERI.olaylar[j];
-        if (ov) h += '<div class="rozet">' + ov.emoji + ' <b>' + ov.ad + '</b> ' + s.olaylar[i].kalan + 'dk</div>';
-      }
+    for (var i = 0; i < s.olaylar.length; i++) {
+      var ov = null;
+      for (var j = 0; j < VERI.olaylar.length; j++) if (VERI.olaylar[j].id === s.olaylar[i].id) ov = VERI.olaylar[j];
+      if (ov) h += '<div class="rozet">' + ov.emoji + ' <b>' + ov.ad + '</b> ' + s.olaylar[i].kalan + 'dk</div>';
     }
     h += '</div>';
     h += '<div class="cubuk ince" style="margin-top:6px"><i style="width:' + xpOran + '%;background:var(--mor)"></i></div>';
 
     document.getElementById('ust').innerHTML = h;
-    document.body.classList.toggle('gecemod', gece);
   },
 
   hizDegis: function () {
     var sira = [1, 2, 3];
-    var i = sira.indexOf(D.s.hiz);
-    D.s.hiz = sira[(i + 1) % sira.length];
+    D.s.hiz = sira[(sira.indexOf(D.s.hiz) + 1) % sira.length];
     this.ustCiz();
   },
 
   /* =========================================================
-     İSTASYON
+     HUD — izometrik sahnenin üstü
      ========================================================= */
-  istasyonHtml: function () {
+  hudHtml: function () {
     var sb = D.sube(), s = D.s;
     var h = '';
 
-    if (sb.devredildi) {
-      h += '<div class="kart"><div class="baslik">Devredilmiş şube</div>';
-      h += '<div class="not">Bu şubeyi devrettin, günlük pasif gelir getiriyor. Oynamak için Şubeler sekmesinden başka bir şubeye geç.</div></div>';
-      return h;
-    }
-
-    /* bekleyen müşteri uyarısı */
-    var bekleyen = [];
-    for (var i = 0; i < sb.kuyruk.length; i++) if (sb.kuyruk[i].durum === 'pompada') bekleyen.push(sb.kuyruk[i]);
-    if (bekleyen.length) {
-      h += '<button class="btn genis" style="margin-bottom:10px" onclick="SERVIS.ac(' + bekleyen[0].pompa + ')">';
-      h += bekleyen[0].emoji + ' POMPA ' + (bekleyen[0].pompa + 1) + ' — ' + bekleyen[0].etiket + ' · DOLDUR';
-      h += '</button>';
-    }
-
-    /* ızgara */
-    h += '<div id="izgaraSar"><div id="izgara" style="grid-template-columns:repeat(' + sb.w + ',minmax(54px,1fr))">';
-    for (var k = 0; k < sb.w * sb.h; k++) h += this.hucreHtml(sb, k);
-    h += '</div></div>';
-
-    /* kuyruk */
-    h += '<div class="kart sik" style="margin-top:10px"><div class="baslik">Kuyruk · ' + sb.kuyruk.length + ' araç</div>';
-    if (!sb.kuyruk.length) {
-      h += '<div class="bos">Şu an müşteri yok. Fiyatını düşürmek veya tesis açmak trafiği artırır.</div>';
-    } else {
-      h += '<div id="kuyruk">';
-      for (var m = 0; m < sb.kuyruk.length; m++) {
-        var mu = sb.kuyruk[m];
-        var oran = mu.sabirKalan / Math.max(1, mu.sabir);
-        h += '<div class="mus' + (oran < 0.3 ? ' acil' : '') + '"' + (mu.pompa !== null ? ' onclick="SERVIS.ac(' + mu.pompa + ')"' : '') + '>';
-        h += '<div class="ar">' + mu.emoji + ' <span class="etiket ' + mu.yakit + '">' + VERI.yakitlar[mu.yakit].kisa + '</span></div>';
-        h += '<div class="ist">' + mu.etiket + '</div>';
-        h += '<div class="sure">' + (mu.pompa !== null ? 'Pompa ' + (mu.pompa + 1) : 'sırada bekliyor') + '</div>';
-        h += '<div class="cubuk ince"><i style="width:' + (oran * 100) + '%;background:' + (oran < 0.3 ? 'var(--kirmizi)' : oran < 0.6 ? 'var(--sari)' : 'var(--yesil)') + '"></i></div>';
-        h += '</div>';
-      }
-      h += '</div>';
-    }
-    h += '</div>';
-
-    /* tanklar */
-    h += '<div class="kart"><div class="baslik">Tanklar</div>';
+    /* ---- üst: yakıt göstergeleri ---- */
+    h += '<div class="hudUst">';
+    h += '<div class="yakitKart tik">';
     ['benzin', 'dizel', 'lpg'].forEach(function (y) {
-      var t = sb.tank[y];
       var kap = D.tankKap(sb, y);
-      t.kap = kap;
-      var o = kap > 0 ? (t.dolu / kap) * 100 : 0;
-      h += '<div class="satir"><div class="sol"><div class="ikon">' + VERI.yakitlar[y].emoji + '</div>';
-      h += '<div><div class="ad">' + VERI.yakitlar[y].ad + '</div>';
-      h += '<div class="alt">' + say(t.dolu, 0) + ' / ' + say(kap, 0) + ' L · satış ' + say(sb.fiyat[y], 2) + ' ₺</div>';
-      h += '<div class="cubuk" style="width:150px"><i style="width:' + o + '%;background:' + (o < 15 ? 'var(--kirmizi)' : o < 35 ? 'var(--sari)' : 'var(--yesil)') + '"></i></div>';
-      h += '</div></div>';
-      h += '<button class="btn minik ikincil" onclick="UI.sekmeGec(\'siparis\')">Sipariş</button>';
+      sb.tank[y].kap = kap;
+      var o = kap > 0 ? (sb.tank[y].dolu / kap) * 100 : 0;
+      var renk = o < 15 ? 'var(--kirmizi)' : o < 35 ? 'var(--sari)' : 'var(--yesil)';
+      var yolda = false;
+      for (var i = 0; i < sb.siparis.length; i++) if (sb.siparis[i].yakit === y) yolda = true;
+      h += '<div class="yk' + (o > 92 ? ' dolu' : '') + '">';
+      h += '<span class="ad">' + VERI.yakitlar[y].kisa + '</span>';
+      h += '<span class="cb"><i style="width:' + o + '%;background:' + renk + '"></i></span>';
+      h += '<button class="sip" onclick="UI.hizliSiparis(\'' + y + '\')">' + (yolda ? '🚚' : '⟳') + '</button>';
       h += '</div>';
     });
     h += '</div>';
 
-    /* güç + temizlik */
-    var tuk = D.gucTuketim(sb), ure = D.gucUretim(sb);
-    h += '<div class="kart"><div class="baslik">İşletme</div>';
-    h += '<div class="kv"><span>Elektrik</span><b>' + say(ure, 1) + ' / ' + say(tuk, 1) + ' kW ' +
-      (sb.kesinti ? '<span class="kirmiziY">· ŞEBEKE YOK</span>' : (ure >= tuk ? '<span class="yesilY">· kendi üretimin yeter</span>' : '<span class="mini">· şebekeden ' + say(tuk - ure, 1) + ' kW</span>')) + '</b></div>';
-    h += '<div class="kv"><span>Temizlik</span><b>' + Math.round(sb.temizlik) + '%</b></div>';
-    h += '<div class="kv"><span>Bakım ortalaması</span><b>' + Math.round(D.bakimOrt(sb)) + '%</b></div>';
-    h += '<div class="kv"><span>Günlük kira+gider</span><b>' + tl(SIM.kiraGunluk(sb)) + '</b></div>';
-    h += '<div class="kv"><span>Beklenen müşteri</span><b>' + say(SIM.saatlikMusteri(sb), 1) + ' / saat</b></div>';
-    h += '<div class="btngrup" style="margin-top:8px">';
-    h += '<button class="btn kucuk ikincil" onclick="UI.temizlikOnay()">🧹 Temizlik ' + tl(2500 + (100 - sb.temizlik) * 220) + '</button>';
-    h += '</div></div>';
+    /* ---- buton satırı ---- */
+    h += '<div class="hudSatir">';
+    h += '<button class="magaza tik" onclick="UI.sekmeGec(\'insa\')">🛒 Mağaza</button>';
+    h += '<div class="hudBosluk"></div>';
+    h += '<button class="hudIk tik" onclick="UI.sekmeGec(\'subeler\')">🗺️</button>';
+    h += '<button class="hudIk tik" onclick="UI.sekmeGec(\'fiyat\')">🏷️</button>';
+    var yoldaSayi = sb.siparis.length;
+    h += '<button class="hudIk tik" onclick="UI.sekmeGec(\'siparis\')">📦' + (yoldaSayi ? '<span class="say">' + yoldaSayi + '</span>' : '') + '</button>';
+    h += '<button class="hudIk tik" onclick="UI.sekmeGec(\'daha\')">⚙️' + (this.okunmamis ? '<span class="say">' + this.okunmamis + '</span>' : '') + '</button>';
+    h += '</div>';
+
+    /* ---- kampanya + sıradaki lokasyon ---- */
+    h += '<div class="hudSatir" style="align-items:flex-start">';
+    h += this.kampanyaHtml();
+    h += '<div class="hudBosluk"></div>';
+    h += this.sonrakiHtml();
+    h += '</div>';
+    h += '</div>';
+
+    /* ---- kamera butonları ---- */
+    h += '<div class="kamBtnler">';
+    h += '<button class="kamBtn tik" onclick="IZO.yakinlas(1.2)">+</button>';
+    h += '<button class="kamBtn tik" onclick="IZO.yakinlas(0.84)">−</button>';
+    h += '<button class="kamBtn tik" onclick="IZO.ortala()">⊙</button>';
+    h += '</div>';
+
+    /* ---- alt: bekleyen müşteri ---- */
+    h += '<div class="hudAlt">';
+    var bekleyen = null, bekSayi = 0;
+    for (var k = 0; k < sb.kuyruk.length; k++) {
+      if (sb.kuyruk[k].durum === 'pompada') { bekSayi++; if (!bekleyen) bekleyen = sb.kuyruk[k]; }
+    }
+    if (sb.devredildi) {
+      h += '<div class="yakitKart tik" style="justify-content:center">Bu şube devredildi — Şubeler\'den başka şubeye geç.</div>';
+    } else if (bekleyen) {
+      h += '<button class="doldurBtn tik" onclick="SERVIS.ac(' + bekleyen.pompa + ')">';
+      h += bekleyen.emoji + ' POMPA ' + (bekleyen.pompa + 1) + ' · ' + bekleyen.etiket;
+      h += (bekSayi > 1 ? ' <span class="etiket uyari">+' + (bekSayi - 1) + '</span>' : '');
+      h += '</button>';
+    } else if (!D.pompalar(sb).length) {
+      h += '<button class="doldurBtn tik" onclick="UI.sekmeGec(\'insa\')">🏗️ POMPA KUR</button>';
+    }
+    h += '</div>';
 
     return h;
   },
 
-  hucreHtml: function (sb, k) {
-    var y = sb.yapi[k];
-    var cls = 'huc', ic = '', ek = '';
-    if (!sb.beton[k]) {
-      cls += '';
-      ic = '<div class="e" style="opacity:.3">▫</div><div class="et">boş arsa</div>';
-    } else if (!y) {
-      cls += ' beton';
-      ic = '<div class="e" style="opacity:.35">＋</div><div class="et">beton</div>';
-    } else if (y.t === 'pompa') {
-      cls += ' dolu pompa';
-      var musteri = y.mesgul ? SIM.musteriBul(sb, y.mesgul) : null;
-      if (musteri) cls += musteri.durum === 'pompada' ? ' bekleyen' : ' mesgul';
-      if (y.arizali) cls += ' arizali';
-      ic = '<div class="e">' + (y.yakit === 'ev' ? '🔌' : '⛽') + '</div>';
-      ic += '<div class="et" style="color:' + VERI.yakitlar[y.yakit].renk + '">' + VERI.yakitlar[y.yakit].kisa + ' sv' + y.sv + '</div>';
-      if (musteri) ic += '<div class="musteri">' + musteri.emoji + '</div>';
-      if (y.arizali) ek = '<div class="uyari">🔧</div>';
-      else if (y.bakim < 45) ek = '<div class="uyari">⚠️</div>';
-    } else {
-      cls += ' dolu';
-      if (y.arizali) cls += ' arizali';
-      var tan = VERI.binalar[y.t];
-      ic = '<div class="e">' + tan.emoji + '</div><div class="et">' + tan.ad.split(' ')[0] + ' sv' + y.sv + '</div>';
-      if (y.arizali) ek = '<div class="uyari">🔧</div>';
-      else if (y.bakim < 45) ek = '<div class="uyari">⚠️</div>';
-    }
-    return '<button class="' + cls + '" onclick="UI.hucreTik(' + k + ')">' + ic + ek + '</button>';
+  kampanyaHtml: function () {
+    var k = SIM.kampanya();
+    if (!k) return '<div></div>';
+    var kalan = 30 - ((D.s.gun - 1) % 30);
+    var oran = Math.min(100, (k.sayac / k.tanim.hedef) * 100);
+    var h = '<div class="kampanya tik" onclick="UI.kampanyaBilgi()">';
+    h += '<div class="halka" style="background:conic-gradient(var(--mavi) ' + (oran * 3.6) + 'deg, #d8e0e8 0deg)">';
+    h += '<span style="background:#eef4fa;border-radius:50%;width:30px;height:30px;display:grid;place-items:center">' + k.sayac + '/' + k.tanim.hedef + '</span></div>';
+    h += '<div><div class="kad">' + k.tanim.emoji + ' ' + k.tanim.ad + '</div>';
+    h += '<div class="kalt">' + (k.bitti ? 'Tamamlandı ✓' : kalan + ' gün kaldı') + '</div></div>';
+    h += '</div>';
+    return h;
   },
 
+  sonrakiHtml: function () {
+    var s = D.s;
+    var hedef = null;
+    for (var i = 0; i < VERI.lokasyonlar.length; i++) {
+      var l = VERI.lokasyonlar[i], varMi = false;
+      for (var j = 0; j < s.subeler.length; j++) if (s.subeler[j].lok === l.id) varMi = true;
+      if (!varMi) { hedef = l; break; }
+    }
+    if (!hedef) {
+      if (!s.rafineri.aktif) {
+        var o2 = Math.min(100, (s.para / VERI.rafineri.fiyat) * 100);
+        return '<div class="sonraki tik" onclick="UI.sekmeGec(\'daha\')"><div class="sust"><span class="set">SIRADAKİ</span><span class="syz">%' + Math.round(o2) + '</span></div>' +
+               '<div class="sad">⚙️ Rafineri</div><div class="cubuk"><i style="width:' + o2 + '%"></i></div></div>';
+      }
+      return '<div class="sonraki tik" onclick="UI.sekmeGec(\'subeler\')"><div class="sust"><span class="set">ZİNCİR</span><span class="syz">TAM</span></div>' +
+             '<div class="sad">🏆 Bütün lokasyonlar senin</div></div>';
+    }
+    var paraOran = Math.min(100, (s.para / hedef.fiyat) * 100);
+    var svOran = Math.min(100, (s.seviye / hedef.seviyeSart) * 100);
+    var oran = Math.min(paraOran, svOran);
+    var h = '<div class="sonraki tik" onclick="UI.sekmeGec(\'subeler\')">';
+    h += '<div class="sust"><span class="set">SIRADAKİ</span><span class="syz">%' + Math.round(oran) + '</span></div>';
+    h += '<div class="sad">' + hedef.emoji + ' ' + hedef.ad + '</div>';
+    h += '<div class="cubuk"><i style="width:' + oran + '%"></i></div>';
+    h += '<div class="mini" style="margin-top:3px">' + (s.seviye < hedef.seviyeSart ? 'Seviye ' + hedef.seviyeSart + ' gerek' : tl(hedef.fiyat)) + '</div>';
+    h += '</div>';
+    return h;
+  },
+
+  kampanyaBilgi: function () {
+    var k = SIM.kampanya();
+    if (!k) return;
+    var h = '<div class="not">Sezon kampanyası: istasyonunda <b>market</b> varsa her satışta müşterilerin bir kısmı bu üründen alır. Hedefe ulaşınca ödülü kazanırsın.</div>';
+    h += '<div class="kv" style="margin-top:10px"><span>Ürün</span><b>' + k.tanim.emoji + ' ' + k.tanim.ad + '</b></div>';
+    h += '<div class="kv"><span>İlerleme</span><b>' + k.sayac + ' / ' + k.tanim.hedef + '</b></div>';
+    h += '<div class="kv"><span>Ödül</span><b class="yesilY">' + tl(k.tanim.odul) + '</b></div>';
+    h += '<div class="kv"><span>Kalan süre</span><b>' + (30 - ((D.s.gun - 1) % 30)) + ' gün</b></div>';
+    if (!D.binaSayisi(D.sube(), 'market')) h += '<div class="not"><span class="sariY">Bu şubede market yok — kampanya ilerlemiyor.</span></div>';
+    this.modal('Sezon Kampanyası', h);
+  },
+
+  hizliSiparis: function (y) {
+    var sb = D.sube();
+    var kap = D.tankKap(sb, y);
+    var yer = Math.floor(kap - sb.tank[y].dolu);
+    if (yer < 100) { this.bildir('Tank dolu', VERI.yakitlar[y].ad + ' tankı zaten dolu.', 'uyari'); return; }
+    var birim = D.toptanFiyat(y);
+    var h = '<div class="kv"><span>Tanktaki</span><b>' + say(sb.tank[y].dolu, 0) + ' / ' + say(kap, 0) + ' L</b></div>';
+    h += '<div class="kv"><span>Toptan fiyat</span><b>' + say(birim, 2) + ' ₺/L</b></div>';
+    h += '<div class="btngrup" style="margin-top:12px">';
+    [1000, 2500, 5000].forEach(function (m) {
+      if (m > yer) return;
+      h += '<button class="btn kucuk ikincil" onclick="UI.siparis(\'' + y + '\',' + m + ')">' + say(m, 0) + ' L<br><span class="mini">' + tl(m * birim) + '</span></button>';
+    });
+    h += '<button class="btn kucuk" onclick="UI.siparis(\'' + y + '\',' + yer + ')">Tankı doldur<br><span class="mini">' + tl(yer * birim) + '</span></button>';
+    h += '</div>';
+    this.modal(VERI.yakitlar[y].emoji + ' ' + VERI.yakitlar[y].ad + ' siparişi', h);
+  },
+
+  /* =========================================================
+     HÜCRE / YAPI ETKİLEŞİMİ
+     ========================================================= */
   hucreTik: function (k) {
-    var sb = D.sube(), y = sb.yapi[k];
+    var sb = D.sube();
+    if (k < 0 || k >= sb.yapi.length) return;
+    var y = sb.yapi[k];
     if (y && y.t === 'pompa' && y.mesgul) {
       var m = SIM.musteriBul(sb, y.mesgul);
       if (m && m.durum === 'pompada') { SERVIS.ac(k); return; }
     }
-    this.secHucre = k;
     if (!sb.beton[k]) this.betonModal(k);
     else if (!y) this.insaModal(k);
     else this.yapiModal(k);
@@ -289,7 +340,7 @@ const UI = {
       var kapali = pompaSayi >= lok.maxPompa || s.para < f;
       h += '<button class="sec" ' + (kapali ? 'style="opacity:.45"' : '') + ' onclick="UI.pompaKur(' + k + ',\'' + y + '\')">';
       h += '<div class="st">' + VERI.yakitlar[y].emoji + ' ' + VERI.yakitlar[y].ad + ' pompası</div>';
-      h += '<div class="ss">' + tl(f) + ' · akış ' + say(y === 'ev' ? VERI.pompa.evAkis[0] : VERI.pompa.akis[0], 2) + ' ' + VERI.yakitlar[y].birim + '/sn';
+      h += '<div class="ss">' + tl(f) + ' · akış ' + say(y === 'ev' ? VERI.pompa.evAkis[0] : VERI.pompa.akis[0], 1) + ' ' + VERI.yakitlar[y].birim + '/sn';
       h += '<br>güç ' + VERI.pompa.guc[y] + ' kW</div></button>';
     });
     h += '</div>';
@@ -316,11 +367,11 @@ const UI = {
 
   yapiModal: function (k) {
     var sb = D.sube(), y = sb.yapi[k];
-    var h = '';
-    var ad, aciklama;
+    if (!y) return;
+    var h = '', ad, aciklama;
     if (y.t === 'pompa') {
       ad = VERI.yakitlar[y.yakit].ad + ' Pompası ' + (k + 1);
-      aciklama = 'Akış ' + say(D.akis(y), 2) + ' ' + VERI.yakitlar[y.yakit].birim + '/sn';
+      aciklama = 'Tam akış ' + say(D.akis(y), 1) + ' · yavaş ' + say(D.yavasAkis(y), 2) + ' ' + VERI.yakitlar[y.yakit].birim + '/sn';
       if (y.yakit === 'benzin' || y.yakit === 'dizel') aciklama += ' · çok tabancalı (benzin+dizel)';
     } else {
       ad = VERI.binalar[y.t].ad;
@@ -372,7 +423,7 @@ const UI = {
   pompaAta: function (pid, pompa, k) { SIM.pompaAta(D.sube(), pid, pompa); this.yapiModal(k); },
 
   /* =========================================================
-     İNŞA SEKMESİ
+     İNŞA PANELİ
      ========================================================= */
   insaHtml: function () {
     var sb = D.sube(), lok = D.lok(sb);
@@ -388,6 +439,7 @@ const UI = {
     } else {
       h += '<div class="not">Bu lokasyonda arsa tamamen alındı.</div>';
     }
+    h += '<div class="not">Sahnedeki boş araziye dokunarak da beton dökebilir, beton hücreye dokunarak pompa veya tesis kurabilirsin.</div>';
     h += '</div>';
 
     h += '<div class="kart"><div class="baslik">Pompalar · ' + D.pompalar(sb).length + '/' + lok.maxPompa + '</div>';
@@ -397,7 +449,7 @@ const UI = {
       var pp = po[p].p;
       h += '<div class="satir" onclick="UI.yapiModal(' + po[p].i + ')"><div class="sol"><div class="ikon">' + (pp.yakit === 'ev' ? '🔌' : '⛽') + '</div>';
       h += '<div><div class="ad">' + VERI.yakitlar[pp.yakit].ad + ' · Pompa ' + (po[p].i + 1) + '</div>';
-      h += '<div class="alt">sv.' + pp.sv + ' · akış ' + say(D.akis(pp), 2) + ' · bakım ' + Math.round(pp.bakim) + '%</div></div></div>';
+      h += '<div class="alt">sv.' + pp.sv + ' · akış ' + say(D.akis(pp), 1) + ' · bakım ' + Math.round(pp.bakim) + '%</div></div></div>';
       h += (pp.arizali ? '<span class="etiket kotu">ARIZA</span>' : pp.bakim < 45 ? '<span class="etiket uyari">bakım</span>' : '<span class="etiket iyi">çalışıyor</span>');
       h += '</div>';
     }
@@ -416,11 +468,15 @@ const UI = {
     }
     h += '</div>';
 
-    h += '<div class="kart"><div class="baslik">İstasyon planı</div>';
-    h += '<div id="izgaraSar"><div id="izgara" style="grid-template-columns:repeat(' + sb.w + ',minmax(54px,1fr))">';
-    for (var k2 = 0; k2 < sb.w * sb.h; k2++) h += this.hucreHtml(sb, k2);
-    h += '</div></div>';
-    h += '<div class="not">Boş hücreye dokun → beton dök → pompa veya tesis kur.</div></div>';
+    var tuk = D.gucTuketim(sb), ure = D.gucUretim(sb);
+    h += '<div class="kart"><div class="baslik">İşletme</div>';
+    h += '<div class="kv"><span>Elektrik</span><b>' + say(ure, 1) + ' / ' + say(tuk, 1) + ' kW</b></div>';
+    h += '<div class="kv"><span>Temizlik</span><b>' + Math.round(sb.temizlik) + '%</b></div>';
+    h += '<div class="kv"><span>Bakım ortalaması</span><b>' + Math.round(D.bakimOrt(sb)) + '%</b></div>';
+    h += '<div class="kv"><span>Günlük kira+gider</span><b>' + tl(SIM.kiraGunluk(sb)) + '</b></div>';
+    h += '<div class="kv"><span>Beklenen müşteri</span><b>' + say(SIM.saatlikMusteri(sb), 1) + ' / saat</b></div>';
+    h += '<button class="btn ikincil genis" style="margin-top:10px" onclick="UI.temizlikOnay()">🧹 Temizlik yaptır · ' + tl(2500 + (100 - sb.temizlik) * 220) + '</button>';
+    h += '</div>';
     return h;
   },
 
@@ -462,9 +518,7 @@ const UI = {
     VERI.yakitSira.forEach(function (y) {
       h += '<div class="kv"><span>' + VERI.yakitlar[y].ad + ' toptan</span><b>' + say(D.toptanFiyat(y), 2) + ' ₺</b></div>';
     });
-    if (s.rafineri.aktif) {
-      h += '<div class="not">Rafinerin sayesinde toptan fiyatlardan %' + Math.round(VERI.rafineri.indirim[s.rafineri.sv] * 100) + ' indirim alıyorsun.</div>';
-    }
+    if (s.rafineri.aktif) h += '<div class="not">Rafinerin sayesinde toptan fiyatlardan %' + Math.round(VERI.rafineri.indirim[s.rafineri.sv] * 100) + ' indirim alıyorsun.</div>';
     h += '<div class="kv"><span>Şebeke elektriği</span><b>' + say(VERI.sebekeFiyat, 2) + ' ₺/kWh</b></div>';
     h += '<div class="kv"><span>Beklenen müşteri</span><b>' + say(SIM.saatlikMusteri(sb), 1) + ' / saat</b></div>';
     h += '</div>';
@@ -473,7 +527,10 @@ const UI = {
 
   fiyatKaydir: function (y, v) {
     D.sube().fiyat[y] = +(+v).toFixed(2);
+    var govde = document.getElementById('govde');
+    var kay = govde ? govde.scrollTop : 0;
     this.ciz();
+    if (govde) govde.scrollTop = kay;
   },
   fiyatOtomatik: function (oran) {
     var sb = D.sube();
@@ -527,20 +584,18 @@ const UI = {
       h += '<div class="not">Teslim süresi 8-25 dakika, nakliye bedeli yok.</div>';
     } else {
       h += '<div class="not">Dış tedarikçiyle çalışıyorsun: nakliye bedeli var, teslim 45-150 dakika sürer. Rafineri kurarsan maliyet düşer, teslim hızlanır.</div>';
-      h += '<button class="btn ikincil genis" style="margin-top:10px" onclick="UI.sekmeGec(\'daha\')">Rafineriye göz at</button>';
     }
     h += '</div>';
     return h;
   },
 
   siparis: function (y, mik) {
-    if (SIM.siparisVer(D.sube(), y, mik)) this.ciz();
+    if (SIM.siparisVer(D.sube(), y, mik)) { if (this.modalAcik) this.modalKapat(); else this.ciz(); }
   },
 
   /* =========================================================
      PERSONEL
      ========================================================= */
-  adaylar: null,
   personelHtml: function () {
     var sb = D.sube();
     var h = '<div class="kart"><div class="baslik">Kadro · ' + sb.personel.length + '/12</div>';
@@ -619,9 +674,9 @@ const UI = {
     h += '<div class="kart"><div class="baslik">Yeni lokasyonlar</div>';
     for (var k = 0; k < VERI.lokasyonlar.length; k++) {
       var lk = VERI.lokasyonlar[k];
-      var var_ = false;
-      for (var m = 0; m < s.subeler.length; m++) if (s.subeler[m].lok === lk.id) var_ = true;
-      if (var_) continue;
+      var varMi = false;
+      for (var m = 0; m < s.subeler.length; m++) if (s.subeler[m].lok === lk.id) varMi = true;
+      if (varMi) continue;
       var kilit = s.seviye < lk.seviyeSart;
       h += '<div class="satir"><div class="sol"><div class="ikon">' + lk.emoji + '</div><div><div class="ad">' + lk.ad + '</div>';
       h += '<div class="alt">trafik ×' + say(lk.trafik, 2) + ' · ' + lk.w + '×' + lk.h + ' arsa · ' + lk.maxPompa + ' pompa<br>' + lk.aciklama + '</div></div></div>';
@@ -663,13 +718,23 @@ const UI = {
   },
 
   /* =========================================================
-     DAHA (istatistik, rafineri, ayarlar)
+     DAHA
      ========================================================= */
   dahaHtml: function () {
     var s = D.s, i = s.ist;
     var h = '';
 
-    /* rafineri */
+    var kazanilan = s.basarimlar || [];
+    h += '<div class="kart"><div class="baslik">🏆 Başarımlar · ' + kazanilan.length + '/' + VERI.basarimlar.length + '</div>';
+    for (var b = 0; b < VERI.basarimlar.length; b++) {
+      var ba = VERI.basarimlar[b];
+      var alindi = kazanilan.indexOf(ba.id) >= 0;
+      h += '<div class="satir"><div class="sol"><div class="ikon">' + (alindi ? '🏅' : '🔒') + '</div>';
+      h += '<div><div class="ad"' + (alindi ? '' : ' style="opacity:.6"') + '>' + ba.ad + '</div><div class="alt">' + ba.aciklama + '</div></div></div>';
+      h += '<span class="etiket ' + (alindi ? 'iyi' : '') + '">' + tl(ba.odul) + '</span></div>';
+    }
+    h += '</div>';
+
     h += '<div class="kart"><div class="baslik">⚙️ Rafineri</div>';
     if (!s.rafineri.aktif) {
       h += '<div class="not">' + VERI.rafineri.aciklama + '</div>';
@@ -688,7 +753,6 @@ const UI = {
     }
     h += '</div>';
 
-    /* istatistik */
     h += '<div class="kart"><div class="baslik">📊 İstatistik</div>';
     h += '<div class="kv"><span>Toplam ciro</span><b>' + tl(i.ciro) + '</b></div>';
     h += '<div class="kv"><span>Toplam kâr</span><b class="' + (i.kar >= 0 ? 'yesilY' : 'kirmiziY') + '">' + tl(i.kar) + '</b></div>';
@@ -703,7 +767,6 @@ const UI = {
     h += '<div class="kv"><span>XP</span><b>' + say(s.xp, 0) + ' / ' + say(D.sonrakiXp(), 0) + '</b></div>';
     h += '</div>';
 
-    /* son günler */
     if (i.gunluk.length) {
       h += '<div class="kart"><div class="baslik">Son günler</div>';
       var bas = Math.max(0, i.gunluk.length - 7);
@@ -715,7 +778,15 @@ const UI = {
       h += '</div>';
     }
 
-    /* ayarlar */
+    if (this.bildirimGecmisi.length) {
+      h += '<div class="kart"><div class="baslik">🔔 Son olaylar</div>';
+      for (var n = this.bildirimGecmisi.length - 1; n >= Math.max(0, this.bildirimGecmisi.length - 12); n--) {
+        var bg = this.bildirimGecmisi[n];
+        h += '<div class="kv"><span>' + bg.saat + '</span><b style="font-weight:500;text-align:right">' + bg.baslik + (bg.metin ? ' — <span class="mini">' + bg.metin + '</span>' : '') + '</b></div>';
+      }
+      h += '</div>';
+    }
+
     h += '<div class="kart"><div class="baslik">⚙️ Ayarlar</div>';
     h += '<div class="kv"><span>Oyun hızı</span><b>' + s.hiz + '×</b></div>';
     h += '<div class="btngrup" style="margin-top:8px">';
@@ -726,7 +797,6 @@ const UI = {
     h += '<div class="not">Sürüm <b id="surumYazi">—</b> · Oyun tamamen çevrimdışı çalışır; internet yalnızca güncelleme denetiminde kullanılır.</div>';
     h += '</div>';
 
-    /* ipuçları */
     h += '<div class="kart"><div class="baslik">💡 İpuçları</div>';
     for (var t = 0; t < VERI.ipuclari.length; t++) h += '<div class="kv"><span>·</span><b style="font-weight:500;text-align:right">' + VERI.ipuclari[t] + '</b></div>';
     h += '</div>';
@@ -759,15 +829,31 @@ const UI = {
   },
 
   /* =========================================================
-     BİLDİRİM
+     BİLDİRİM / BAŞARIM
      ========================================================= */
   bildir: function (baslik, metin, tip) {
+    if (D.s) {
+      this.bildirimGecmisi.push({ baslik: baslik, metin: metin || '', saat: ikiHane(D.s.saat) + ':' + ikiHane(D.s.dk) });
+      if (this.bildirimGecmisi.length > 40) this.bildirimGecmisi.shift();
+      if (this.sekme !== 'daha') this.okunmamis = Math.min(99, this.okunmamis + 1);
+    }
     var k = document.getElementById('bildirimler');
+    if (!k) return;
     var d = document.createElement('div');
     d.className = 'bld ' + (tip || '');
     d.innerHTML = '<b>' + baslik + '</b>' + (metin || '');
     k.appendChild(d);
     if (k.children.length > 4) k.removeChild(k.firstChild);
     setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 4200);
+  },
+
+  basarimToast: function (ba) {
+    var d = document.createElement('div');
+    d.className = 'basarimToast';
+    d.innerHTML = '<span class="bik">🏅</span><div style="flex:1"><div class="bad">Başarım: ' + ba.ad + '</div>' +
+                  '<div class="baz">' + ba.aciklama + ' · +' + tl(ba.odul) + '</div></div>';
+    document.body.appendChild(d);
+    setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 4600);
+    try { if (window.AndroidKabuk) AndroidKabuk.titret(70); } catch (e) {}
   }
 };
