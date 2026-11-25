@@ -1745,3 +1745,209 @@
     }
   };
 })();
+
+/* =========================================================
+   BÖLÜM 4 — marka tabelası (totem): bir kez çizilir, hazır resim olarak basılır
+   ========================================================= */
+(function () {
+  var Z = IZO;
+  var KUCULT = 0.58;
+  var OLCU = {
+    klasik: { direk: 30, en: 60, bas: 24, satir: 15, ayak: 'govde' },
+    genis:  { direk: 30, en: 78, bas: 25, satir: 16, ayak: 'cift' },
+    kule:   { direk: 58, en: 50, bas: 21, satir: 13, ayak: 'govde', tepe: true },
+    tente:  { direk: 16, en: 72, bas: 23, satir: 15, ayak: 'cift', kemer: true }
+  };
+
+  Z.totemOlcu = function (st, n) {
+    var ol = OLCU[st.sekil] || OLCU.klasik;
+    var H = ol.bas + 3 + (n ? n * ol.satir + 5 : 0) + 9;
+    return { ol: ol, H: H, alt: 5 + ol.direk };
+  };
+
+  Z.totemYakitlar = function (sb, st) {
+    var l = [];
+    if (!st.fiyat) return l;
+    ['benzin', 'dizel', 'lpg', 'ev'].forEach(function (y) {
+      if (y === 'ev') { if (SIM.yakitVar(sb, 'ev')) l.push(y); }
+      else if (sb.tank[y]) l.push(y);
+    });
+    return l;
+  };
+
+  /* (0,0) karosuna çizer */
+  Z.totemModel = function (st, satirlar) {
+    var c = this.cz, o = this.kam.olcek, I = this.isik(), gece = this.gece(), self = this;
+    var olc = this.totemOlcu(st, satirlar.length), ol = olc.ol;
+    var s = function (v) { return v * o; };
+    var isikli = function (r, enAz) { return gece ? r : self.ton(r, Math.max(I, enAz || 0.8)); };
+
+    /* --- kaide: çiçeklik --- */
+    this.golge(0.24, 0.24, 0.56, 0.56, 0.34);
+    var kg = ol.ayak === 'cift' ? 0.3 : 0;
+    this.prizma(this.ayak(0.5, 0.5, 0.56 + kg, 0.44, 0.12, 0, 3), 0, 5, '#cfd5db');
+    this.prizma(this.ayak(0.5, 0.5, 0.48 + kg, 0.36, 0.1, 0, 3), 5, 0.6, '#6b5138', { kenarsiz: true });
+    var T = this.ekran(0.5, 0.5, 5);
+    var W = s(ol.en), H = s(olc.H);
+    var x0 = T.x - W / 2, yAlt = T.y - s(ol.direk), y0 = yAlt - H;
+    var kal = s(5);                                   /* pano kalınlığı */
+
+    /* --- ayaklar --- */
+    var ayakCiz = function (x, w) {
+      var g = c.createLinearGradient(x, 0, x + w, 0);
+      g.addColorStop(0, self.ton('#aeb7c1', I)); g.addColorStop(0.45, self.ton('#eef2f5', I)); g.addColorStop(1, self.ton('#8f99a5', I));
+      c.fillStyle = g; c.fillRect(x, yAlt - s(1), w, T.y - yAlt + s(1.5));
+      c.fillStyle = self.ton('#6f7985', I);
+      c.beginPath(); c.moveTo(x + w, yAlt); c.lineTo(x + w + kal * 0.6, yAlt - kal * 0.3); c.lineTo(x + w + kal * 0.6, T.y - kal * 0.3); c.lineTo(x + w, T.y + s(0.5)); c.fill();
+    };
+    if (ol.ayak === 'cift') { ayakCiz(x0 + W * 0.13, s(5)); ayakCiz(x0 + W * 0.87 - s(5), s(5)); }
+    else {
+      var gw = W * 0.56;
+      ayakCiz(T.x - gw / 2, gw);
+      c.fillStyle = isikli(st.pano, 0.75);
+      c.fillRect(T.x - gw / 2 + s(3), yAlt, s(3.2), T.y - yAlt);
+    }
+    /* çalılar (ayakların önünde) */
+    var pal = this.sezonAd() === 'kis' ? ['#dfe8ec', '#c3d1d8', '#f6fafc'] : ['#58a348', '#3d8334', '#86c873'];
+    var b1 = this.ekran(0.34, 0.66, 5.5), b2 = this.ekran(0.62, 0.72, 5.5), b3 = this.ekran(0.72, 0.5, 5.5);
+    this.lob(b3.x, b3.y - s(2), s(4), pal); this.lob(b1.x, b1.y - s(2.4), s(4.6), pal); this.lob(b2.x, b2.y - s(2), s(4.2), pal);
+
+    /* --- pano gövdesi: yan ve üst kalınlık --- */
+    var r = s(4);
+    c.fillStyle = this.ton('#7c8794', I);
+    c.beginPath(); c.moveTo(x0 + W - r, y0); c.lineTo(x0 + W + kal - r, y0 - kal * 0.5);
+    c.lineTo(x0 + W + kal, y0 - kal * 0.5 + r); c.lineTo(x0 + W + kal, yAlt - kal * 0.5 - r); c.lineTo(x0 + W, yAlt); c.lineTo(x0 + W, y0); c.fill();
+    c.fillStyle = this.ton('#dfe5ea', I);
+    c.beginPath(); c.moveTo(x0 + r, y0); c.lineTo(x0 + kal + r, y0 - kal * 0.5); c.lineTo(x0 + W + kal - r, y0 - kal * 0.5); c.lineTo(x0 + W - r, y0); c.fill();
+    /* ön yüz çerçevesi */
+    var fg = c.createLinearGradient(x0, y0, x0 + W, y0);
+    fg.addColorStop(0, isikli('#f7f9fb', 0.75)); fg.addColorStop(1, isikli('#d5dce3', 0.75));
+    c.fillStyle = fg; this.yuvarlakKutu(x0, y0, W, H, r); c.fill();
+
+    /* --- marka başlığı --- */
+    var p = s(2.2), bw = W - p * 2, bh = s(ol.bas), bx = x0 + p, by = y0 + p;
+    if (gece) { c.save(); c.shadowColor = st.pano; c.shadowBlur = s(7); }
+    var bg = c.createLinearGradient(0, by, 0, by + bh);
+    bg.addColorStop(0, isikli(this.karis(st.pano, '#ffffff', 0.2), 0.8)); bg.addColorStop(0.55, isikli(st.pano, 0.8)); bg.addColorStop(1, isikli(this.karis(st.pano, '#000000', 0.18), 0.8));
+    c.fillStyle = bg;
+    if (ol.kemer) {
+      c.beginPath(); c.moveTo(bx, by + bh); c.lineTo(bx, by + s(6)); c.quadraticCurveTo(bx + bw / 2, by - s(5), bx + bw, by + s(6)); c.lineTo(bx + bw, by + bh); c.closePath();
+    } else this.yuvarlakKutu(bx, by, bw, bh, s(3));
+    c.fill();
+    if (gece) c.restore();
+    /* parlama */
+    c.fillStyle = 'rgba(255,255,255,.16)';
+    this.yuvarlakKutu(bx + s(1.5), by + s(1.5), bw - s(3), bh * 0.36, s(2)); c.fill();
+    /* logo rozeti + ad */
+    var lr = bh * 0.34, lx = bx + lr + s(3), ly = by + bh / 2 + (ol.kemer ? s(1.5) : 0);
+    c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.arc(lx, ly, lr, 0, 6.3); c.fill();
+    c.strokeStyle = this.karis(st.pano, '#000000', 0.25); c.lineWidth = Math.max(0.6, s(0.7)); c.stroke();
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = Math.round(lr * 1.25) + 'px sans-serif'; c.fillStyle = '#17243d';
+    c.fillText(st.logo, lx, ly + s(0.4));
+    var alan = bw - lr * 2 - s(8), fb = bh * 0.5, mx = lx + lr + s(2.5) + alan / 2;
+    var satir = [st.ad];
+    c.font = '800 ' + fb.toFixed(1) + 'px sans-serif';
+    if (c.measureText(st.ad).width > alan * 1.3 && st.ad.indexOf(' ') > 0) {
+      /* uzun ad: iki satıra böl (ortaya en yakın boşluktan) */
+      var bos = -1, orta = st.ad.length / 2;
+      for (var q = 0; q < st.ad.length; q++) if (st.ad[q] === ' ' && (bos < 0 || Math.abs(q - orta) < Math.abs(bos - orta))) bos = q;
+      satir = [st.ad.slice(0, bos), st.ad.slice(bos + 1)];
+      fb = bh * 0.36;
+    }
+    var sigar = function () { for (var w = 0; w < satir.length; w++) if (c.measureText(satir[w]).width > alan) return false; return true; };
+    c.font = '800 ' + fb.toFixed(1) + 'px sans-serif';
+    while (!sigar() && fb > 3) { fb -= 0.5; c.font = '800 ' + fb.toFixed(1) + 'px sans-serif'; }
+    for (var w2 = 0; w2 < satir.length; w2++) {
+      var ty2 = ly + (satir.length === 2 ? (w2 - 0.5) * fb * 1.08 : 0);
+      c.fillStyle = 'rgba(0,0,0,.28)'; c.fillText(satir[w2], mx, ty2 + s(0.9));
+      c.fillStyle = st.yazi; c.fillText(satir[w2], mx, ty2 + s(0.3));
+    }
+
+    /* --- fiyat satırları --- */
+    var yy = by + bh + s(3);
+    if (satirlar.length) {
+      var ph = satirlar.length * s(ol.satir) + s(3);
+      c.fillStyle = gece ? '#05080d' : '#141b25';
+      this.yuvarlakKutu(bx, yy - s(1), bw, ph, s(2.5)); c.fill();
+      for (var k = 0; k < satirlar.length; k++) {
+        var sat = satirlar[k], sy = yy + s(0.5) + s(ol.satir) * (k + 0.5);
+        var rh = s(ol.satir) * 0.66, rw = Math.min(bw * 0.33, s(19));
+        c.fillStyle = sat.renk; this.yuvarlakKutu(bx + s(2), sy - rh / 2, rw, rh, rh * 0.35); c.fill();
+        c.fillStyle = '#ffffff'; c.textAlign = 'center';
+        c.font = '800 ' + (rh * 0.68).toFixed(1) + 'px sans-serif';
+        c.fillText(sat.kisa, bx + s(2) + rw / 2, sy + s(0.3));
+        c.textAlign = 'right';
+        var pf = s(ol.satir) * 0.7;
+        c.font = 'bold ' + pf.toFixed(1) + 'px ui-monospace, Menlo, monospace';
+        while (c.measureText(sat.fiyat).width > bw - rw - s(8) && pf > 3) { pf -= 0.5; c.font = 'bold ' + pf.toFixed(1) + 'px ui-monospace, Menlo, monospace'; }
+        if (gece) { c.save(); c.shadowColor = 'rgba(255,190,80,.9)'; c.shadowBlur = s(4); }
+        c.fillStyle = gece ? '#ffd98a' : '#ffe9b0';
+        c.fillText(sat.fiyat, bx + bw - s(2.5), sy + s(0.4));
+        if (gece) c.restore();
+        if (k < satirlar.length - 1) { c.fillStyle = 'rgba(255,255,255,.09)'; c.fillRect(bx + s(2), sy + s(ol.satir) / 2 - s(0.3), bw - s(4), Math.max(0.5, s(0.5))); }
+      }
+      yy += ph + s(1);
+    }
+    /* --- alt şerit --- */
+    c.fillStyle = isikli(this.karis(st.pano, '#000000', 0.12), 0.8);
+    this.yuvarlakKutu(bx, yy, bw, s(7), s(2)); c.fill();
+    c.fillStyle = st.yazi; c.textAlign = 'center';
+    c.font = '800 ' + s(4.3).toFixed(1) + 'px sans-serif';
+    c.fillText(ol.en > 60 ? 'HOŞ GELDİNİZ  •  7/24' : '7/24 AÇIK', bx + bw / 2, yy + s(3.8));
+
+    /* --- kule: tepede dönen-logo görünümlü disk --- */
+    if (ol.tepe) {
+      var ty = y0 - s(13);
+      c.fillStyle = this.ton('#8f99a5', I); c.fillRect(T.x - s(1.5), y0 - s(4), s(3), s(4.5));
+      if (gece) { c.save(); c.shadowColor = st.pano; c.shadowBlur = s(8); }
+      c.fillStyle = this.ton('#7c8794', I); c.beginPath(); c.arc(T.x + kal * 0.6, ty - kal * 0.3, s(10.5), 0, 6.3); c.fill();
+      c.fillStyle = isikli(st.pano, 0.8); c.beginPath(); c.arc(T.x, ty, s(10.5), 0, 6.3); c.fill();
+      if (gece) c.restore();
+      c.fillStyle = '#ffffff'; c.beginPath(); c.arc(T.x, ty, s(7.6), 0, 6.3); c.fill();
+      c.font = s(9.5).toFixed(1) + 'px sans-serif'; c.fillStyle = '#17243d'; c.textAlign = 'center';
+      c.fillText(st.logo, T.x, ty + s(0.6));
+    }
+    c.textBaseline = 'alphabetic';
+  };
+
+  var eskiBina = Z.binaCiz;
+  Z.binaCiz = function (sb, i, gx, gy, b) {
+    if (b.t !== 'totem') return eskiBina.call(this, sb, i, gx, gy, b);
+    var self = this, o = this.kam.olcek, c = this.cz;
+    var st = this.tabelaStili();
+    var yk = this.totemYakitlar(sb, st), satirlar = [], anh = '';
+    for (var k = 0; k < yk.length; k++) {
+      var sat = { kisa: VERI.yakitlar[yk[k]].kisa, renk: VERI.yakitlar[yk[k]].renk, fiyat: say(sb.fiyat[yk[k]], 2) };
+      satirlar.push(sat); anh += sat.kisa + sat.fiyat + ';';
+    }
+    var olc = this.totemOlcu(st, satirlar.length);
+    var m = this.ekran(gx + 0.5, gy + 0.5, 0);
+    var kk = KUCULT * o;
+    var ust = (olc.alt + olc.H + (olc.ol.tepe ? 26 : 8)) * KUCULT;
+
+    /* dokunma alanları: pano + kaide */
+    if (!this._vurusKapali && this.vurus) {
+      var yA = m.y - olc.alt * kk, yU = yA - olc.H * kk, yw = olc.ol.en * kk / 2 + 2 * o;
+      this.vurus.push({ tip: 'hucre', i: i, poly: [{ x: m.x - yw, y: yU }, { x: m.x + yw, y: yU }, { x: m.x + yw, y: m.y + 8 * kk }, { x: m.x - yw, y: m.y + 8 * kk }] });
+    }
+    if (this.gece() && !this.dusukKalite) this.hale(m.x, m.y - (olc.alt + olc.H * 0.5) * kk, olc.ol.en * kk * 1.25, '255,236,200', 0.22);
+
+    var sinir = { sol: olc.ol.en * KUCULT / 2 + 8, sag: olc.ol.en * KUCULT / 2 + 12, ust: ust + 8, alt: 24, S: 3 };
+    var ciz = function () {
+      var cc = self.cz, q = self.ekran(0.5, 0.5, 0);
+      cc.save(); cc.translate(q.x, q.y); cc.scale(KUCULT, KUCULT); cc.translate(-q.x, -q.y);
+      try { self.totemModel(st, satirlar); } finally { cc.restore(); }
+    };
+    var sp = this.spriteAl('totem|' + st.sekil + '|' + st.pano + '|' + st.yazi + '|' + st.ad + '|' + st.logo + '|' + anh, sinir, 0.5, 0.5, ciz);
+    if (sp && !sp.hata) this.sprBas(sp, gx + 0.5, gy + 0.5);
+    else {
+      /* önbellek yoksa eski çizim */
+      c.save(); c.translate(m.x, m.y); c.scale(KUCULT, KUCULT); c.translate(-m.x, -m.y);
+      var ev = this._vurusKapali; this._vurusKapali = true;
+      try { this.binaCizIc(sb, i, gx, gy, b); } catch (e) { }
+      this._vurusKapali = ev;
+      c.restore();
+    }
+  };
+})();
