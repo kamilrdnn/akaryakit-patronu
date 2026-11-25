@@ -361,8 +361,8 @@ const IZO = {
             { gx: a.gx, gy: kpx.seritY },
             { gx: kpx.cikis, gy: kpx.seritY },
             { gx: kpx.cikis, gy: kpx.agizY },
-            { gx: kpx.cikis, gy: sb.h + 1.72 },
-            { gx: sb.w + 7, gy: sb.h + 1.72 }
+            { gx: kpx.cikis + 0.5, gy: sb.h + 1.3 },
+            { gx: sb.w + 7, gy: sb.h + 1.3 }
           ];
         }
       }
@@ -383,14 +383,15 @@ const IZO = {
     var self = this;
 
     var yolY = sb.h + 1;                 /* asfalt karosu */
+    var ek = (SIM.yolEk ? SIM.yolEk(sb) : 0);    /* yol genişletme: ek şerit satırı */
     var yasak = function (gx, gy, w, h) {
       w = w || 1; h = h || 1;
       /* istasyon arsası + önündeki beton */
       if (gx + w > -1.6 && gx < sb.w + 1.4 && gy + h > -1.8 && gy < sb.h + 0.8) return true;
       /* ana yol bandı (iki şerit + refüj + banket) */
-      if (gy + h > sb.h + 0.5 && gy < sb.h + 3.6) return true;
+      if (gy + h > sb.h + 0.5 && gy < sb.h + ek + 3.6) return true;
       /* kasaba sokakları ve bina şeritleri */
-      if (gy + h > sb.h + 4.2 && gy < sb.h + 12) return true;
+      if (gy + h > sb.h + ek + 4.2 && gy < sb.h + ek + 12) return true;
       return false;
     };
     var cakisma = function (gx, gy, w, h) {
@@ -411,13 +412,13 @@ const IZO = {
       return null;
     };
 
-    var genis = { x0: -11, x1: sb.w + 11, y0: -10, y1: sb.h + 12 };
-    var kasaba = { x0: -11, x1: sb.w + 11, y0: sb.h + 4.2, y1: sb.h + 13 };   /* yolun karşısı */
+    var genis = { x0: -11, x1: sb.w + 11, y0: -10, y1: sb.h + ek + 12 };
+    var kasaba = { x0: -11, x1: sb.w + 11, y0: sb.h + ek + 4.2, y1: sb.h + ek + 13 };   /* yolun karşısı */
     var arka = { x0: -11, x1: sb.w + 11, y0: -9, y1: -2.2 };                  /* istasyonun arkası */
 
     /* --- kasaba: sokak boyunca hizalı binalar --- */
     var binaTipleri = ['apartman', 'dukkan', 'ev', 'ev', 'ofis', 'apartman', 'ev', 'dukkan'];
-    var sokaklar = [sb.h + 6, sb.h + 10];          /* yatay sokak satırları */
+    var sokaklar = [sb.h + ek + 6, sb.h + ek + 10];          /* yatay sokak satırları */
     this.kasabaSokaklari = sokaklar.slice();
     var sira = 0;
     for (var sk = 0; sk < sokaklar.length; sk++) {
@@ -448,7 +449,7 @@ const IZO = {
       }
     }
     /* cami: kasabanın simgesi */
-    var camiYer = yerBul(1.25, 1.25, { x0: -8, x1: sb.w + 8, y0: sb.h + 12, y1: sb.h + 15 }, 40);
+    var camiYer = yerBul(1.25, 1.25, { x0: -8, x1: sb.w + 8, y0: sb.h + ek + 12, y1: sb.h + ek + 15 }, 40);
     if (camiYer) this.susler.push({ tip: 'cami', gx: camiYer.gx, gy: camiYer.gy, w: 1.25, h: 1.25 });
 
     /* --- tarlalar: arka ve yanlar --- */
@@ -458,7 +459,7 @@ const IZO = {
       var alan = t % 2 === 0 ? arka : { x0: -12, x1: -3.5, y0: -7, y1: sb.h - 0.5 };
       var ty = yerBul(tw, th, alan, 40);
       if (!ty) ty = yerBul(tw, th, { x0: sb.w + 2.4, x1: sb.w + 12, y0: -6, y1: sb.h - 0.5 }, 40);
-      if (!ty) ty = yerBul(tw, th, { x0: -12, x1: sb.w + 12, y0: sb.h + 13, y1: sb.h + 19 }, 40);
+      if (!ty) ty = yerBul(tw, th, { x0: -12, x1: sb.w + 12, y0: sb.h + ek + 13, y1: sb.h + ek + 19 }, 40);
       if (!ty) continue;
       this.susler.push({
         tip: 'tarla', gx: ty.gx, gy: ty.gy, w: tw, h: th,
@@ -468,10 +469,10 @@ const IZO = {
 
     /* --- yol boyu aydınlatma direkleri --- */
     for (var d2 = -8; d2 <= sb.w + 9; d2 += 4) {
-      this.susler.push({ tip: 'direk', gx: d2, gy: sb.h + 3.35, w: 0.3, h: 0.3, yon: 1 });
+      this.susler.push({ tip: 'direk', gx: d2, gy: sb.h + ek + 3.35, w: 0.3, h: 0.3, yon: 1 });
     }
     /* otobüs durağı (yolun karşı banketinde) */
-    this.susler.push({ tip: 'durak', gx: sb.w + 1.9, gy: sb.h + 3.3, w: 1.2, h: 0.6 });
+    this.susler.push({ tip: 'durak', gx: sb.w + 1.9, gy: sb.h + ek + 3.3, w: 1.2, h: 0.6 });
 
     /* --- ağaç, çalı, taş serpiştirme --- */
     var dogaSayi = 24;
@@ -1031,7 +1032,7 @@ const IZO = {
       for (var gx = gxBas; gx <= gxSon; gx++) {
         var gy = t - gx;
         var ic = (gx >= 0 && gx < sb.w && gy >= 0 && gy < sb.h);
-        var yolMu = (gy === sb.h + 1 || gy === sb.h + 2);
+        var yolMu = (gy >= sb.h + 1 && gy <= sb.h + 2 + (SIM.yolEk ? SIM.yolEk(sb) : 0));
         var sv0 = (SIM.girisSeviye ? SIM.girisSeviye(sb) : 1);
         var yan = sv0;                               /* her seviye bir karo daha yanlara */
         var onluk = (gy === sb.h && gx >= -yan && gx < sb.w + yan);
@@ -1099,8 +1100,14 @@ const IZO = {
     this.yonOku(cikisX + kapiEn / 2, onY + 0.45, -1, '#f0b429', o);    /* dışarı */
 
     /* --- kapı direkleri + tabelalar --- */
-    this.kapiDiregi(girisX - 0.22, onY + 0.95, 'GİRİŞ', '#2f9e5e', I);
-    this.kapiDiregi(cikisX + kapiEn + 0.12, onY + 0.95, 'ÇIKIŞ', '#d9843a', I);
+    /* köşede tabela varsa levha onunla üst üste binmesin */
+    var kosede = function (x) {
+      var L = sb.disTotemler || [];
+      for (var q = 0; q < L.length; q++) if (L[q].x === x && L[q].y === sb.h) return true;
+      return false;
+    };
+    if (!kosede(-1)) this.kapiDiregi(girisX - 0.22, onY + 0.95, 'GİRİŞ', '#2f9e5e', I);
+    if (!kosede(sb.w)) this.kapiDiregi(cikisX + kapiEn + 0.12, onY + 0.95, 'ÇIKIŞ', '#d9843a', I);
 
     /* --- otopark cepleri --- */
     var cepler = this.otoparkYerleri(sb);
@@ -1172,7 +1179,7 @@ const IZO = {
   zeminAnahtar: function (sb, I) {
     var b = 0;
     for (var i = 0; i < sb.beton.length; i++) if (sb.beton[i]) b += (i + 1) * 7;
-    return [sb.lok, sb.w, sb.h, b, sb.giris || 1, D.binalar(sb).length, D.s.sezonIdx, Math.round(I * 12)].join('|');
+    return [sb.lok, sb.w, sb.h, b, sb.giris || 1, sb.yol || 1, (sb.disTotemler || []).map(function (t) { return t.x + '.' + t.y; }).join('_'), D.binalar(sb).length, D.s.sezonIdx, Math.round(I * 12)].join('|');
   },
 
   zeminHazirla: function (sb, I) {
@@ -1347,8 +1354,10 @@ const IZO = {
 
   yolCizgileri: function (sb) {
     var c = this.cz, I = this.isik();
-    var ust = sb.h + 1, alt = sb.h + 3;          /* asfalt bandı */
-    var orta = sb.h + 2;                          /* refüj ekseni */
+    var ek = (SIM.yolEk ? SIM.yolEk(sb) : 0);
+    var ust = sb.h + 1, alt = sb.h + 3 + ek;     /* asfalt bandı */
+    var orta = sb.h + 2 + ek / 2;                 /* refüj ekseni */
+    var yari = 1 + ek / 2, serit = 2 + ek;        /* yön başına genişlik ve şerit sayısı */
 
     /* kenar beyaz sürekli çizgiler */
     function cizgi(yv, renk, kalin, kesik) {
@@ -1365,8 +1374,10 @@ const IZO = {
     var beyaz = this.ton('#e8edf2', I);
     cizgi(ust + 0.06, beyaz, 1.4, false);         /* dış kenar (istasyon tarafı) */
     cizgi(alt - 0.06, beyaz, 1.4, false);         /* dış kenar (karşı taraf) */
-    cizgi(ust + 0.58, beyaz, 1.2, true);          /* şerit ayracı - yakın yön */
-    cizgi(orta + 0.62, beyaz, 1.2, true);         /* şerit ayracı - uzak yön */
+    for (var sr = 1; sr < serit; sr++) {
+      cizgi(ust + 0.08 + (yari - 0.22) * sr / serit, beyaz, 1.2, true);      /* yakın yön şerit ayraçları */
+      cizgi(orta + 0.14 + (yari - 0.22) * sr / serit, beyaz, 1.2, true);     /* uzak yön şerit ayraçları */
+    }
 
     /* refüj: iki sarı çizgi arası beton ada + yeşillik */
     this.kutu(-14, orta - 0.12, 0, sb.w + 29, 0.24, 2.5, '#c9d0d8');

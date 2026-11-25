@@ -1732,13 +1732,37 @@
     return a;
   };
 
+  /* geçen trafiğin şeritleri (istasyon kenarındaki ilk şerit giriş-çıkışa ayrılmıştır) */
+  Z.trafikSeritleri = function (sb) {
+    var ek = SIM.yolEk ? SIM.yolEk(sb) : 0, n = 2 + ek, yari = 1 + ek / 2;
+    var ust = sb.h + 1, orta = sb.h + 2 + ek / 2, yakin = [], uzak = [], k;
+    for (k = 1; k < n; k++) yakin.push(ust + 0.08 + (yari - 0.22) * (k + 0.5) / n);
+    for (k = 0; k < n; k++) uzak.push(orta + 0.14 + (yari - 0.22) * (k + 0.5) / n);
+    return { yakin: yakin, uzak: uzak };
+  };
+
   var eskiTrafik = Z.cevreTrafigi;
   Z.cevreTrafigi = function (sb, dt) {
     var once = this.arabalar.length;
     eskiTrafik.call(this, sb, dt);
+    var ekT = SIM.yolEk ? SIM.yolEk(sb) : 0;
+    if (ekT && this.arabalar.length === once && Math.random() < dt * 0.7) {
+      var gecen = 0;
+      for (var g = 0; g < once; g++) if (!this.arabalar[g].mid) gecen++;
+      if (gecen >= 5 && gecen < 5 + ekT * 3) {
+        var saga = Math.random() < 0.5;
+        this.arabalar.push({
+          mid: null, cesit: Math.random() < 0.12 ? 'minibus' : 'oto', gx: saga ? -6 : sb.w + 6, gy: sb.h + 1.72,
+          renk: ['#d64545', '#3f7fd0', '#e0a92e', '#4aa96c', '#8a8f99', '#2f3b52', '#c96a2c', '#f0f2f5'][Math.floor(Math.random() * 8)],
+          yol: [{ gx: saga ? sb.w + 6.5 : -6.5, gy: sb.h + 1.72 }], durum: 'gecis', hiz: 2.4 + Math.random() * 1.3, sil: false
+        });
+      }
+    }
     if (this.arabalar.length > once) {
       var y = this.arabalar[this.arabalar.length - 1];
       y.aci = y.yol[0].gx > y.gx ? 0 : Math.PI;
+      var sl = this.trafikSeritleri(sb), secim = y.aci === 0 ? sl.yakin : sl.uzak;
+      y.gy = y.yol[0].gy = secim[Math.floor(Math.random() * secim.length)];
       for (var i = 0; i < once; i++) {
         var b = this.arabalar[i];
         if (Math.abs(b.gy - y.gy) < 0.3 && Math.abs(b.gx - y.gx) < 2.2) { this.arabalar.pop(); break; }
@@ -1754,7 +1778,8 @@
       var ar = this.arabalar[c0];
       if (!ar.mid || ar._cikis || (ar.durum !== 'gidiyor' && ar.durum !== 'parkta')) continue;
       ar._cikis = true;
-      var cikisYolu = [{ gx: kp.cikis, gy: kp.seritY }, { gx: kp.cikis, gy: kp.agizY }, { gx: kp.cikis, gy: sb.h + 1.72 }, { gx: sb.w + 7, gy: sb.h + 1.72 }];
+      /* çıkan araç trafiği beklemez: kapının sağındaki katılma şeridinden yola girer */
+      var cikisYolu = [{ gx: kp.cikis, gy: kp.seritY }, { gx: kp.cikis, gy: kp.agizY }, { gx: kp.cikis + 0.5, gy: kp.yolY }, { gx: sb.w + 7, gy: kp.yolY }];
       var on = [];
       var cepte = false;
       if (ar.hedefPompa !== null && ar.hedefPompa !== undefined) {
@@ -1766,7 +1791,7 @@
       }
       if (!cepte) {
         if (ar.gy >= sb.h + 0.9) {                       /* yoldan vazgeçti: akışa katıl */
-          ar.yol = [{ gx: ar.gx + 1.1, gy: sb.h + 1.72 }, { gx: sb.w + 7, gy: sb.h + 1.72 }];
+          ar.yol = [{ gx: ar.gx + 1.1, gy: kp.yolY }, { gx: sb.w + 7, gy: kp.yolY }];
           continue;
         }
         on = [{ gx: Math.min(kp.cikis, ar.gx + 0.5), gy: kp.seritY }];
@@ -2115,11 +2140,14 @@
         var sx0 = y.gx + (pompa ? 0.1 : 0.2), sx1 = y.gx + (pompa ? 0.9 : 0.8);
         var sy0 = y.gy + (pompa ? 0.1 : 0.2), sy1 = y.gy + (pompa ? 0.7 : 0.8);
         var e = 0.12;
-        if (y0 >= sy1 - e || x0 >= sx1 - e) { if (y.d > enAz) enAz = y.d; }        /* araç önde */
-        else if (y1 <= sy0 + e || x1 <= sx0 + e) { if (y.d < enCok) enCok = y.d; } /* araç arkada */
+        var aOn = (y0 >= sy1 - e || x0 >= sx1 - e), yOn = (sy0 >= y1 - e || sx0 >= x1 - e);
+        if (aOn && !yOn) { if (y.d > enAz) enAz = y.d; }            /* araç önde */
+        else if (yOn && !aOn) { if (y.d < enCok) enCok = y.d; }     /* araç arkada */
+        /* ikisi birden doğruysa çaprazdadırlar: ekranda üst üste gelmezler, sıra serbest */
       }
-      if (o.d <= enAz) o.d = enAz + 0.01;
-      if (o.d >= enCok && enCok > enAz + 0.02) o.d = enCok - 0.01;
+      if (enCok <= enAz) o.d = enCok - 0.01;              /* çelişkide önündeki yapının arkasında kal */
+      else if (o.d <= enAz) o.d = enAz + 0.01;
+      else if (o.d >= enCok) o.d = enCok - 0.01;
     }
     /* insanlar da aynı kural: önündeki yapının arkasında kalsın */
     for (i = 0; i < liste.length; i++) {
@@ -2130,7 +2158,7 @@
         if (Math.abs(yb.gx + 0.5 - p.gx) > 1.3 || Math.abs(yb.gy + 0.5 - p.gy) > 1.3) continue;
         var on = p.gy >= yb.gy + 0.68 || p.gx >= yb.gx + 0.78;
         var arka = p.gy <= yb.gy + 0.22 || p.gx <= yb.gx + 0.22;
-        if (on && p.d <= yb.d) p.d = yb.d + 0.02;
+        if (on && !arka && p.d <= yb.d) p.d = yb.d + 0.02;
         else if (!on && arka && p.d >= yb.d) p.d = yb.d - 0.02;
       }
     }

@@ -262,7 +262,7 @@ const SIM = {
       if (sb.program.sadakat) k *= 1.12;
       if (sb.program.premium) k *= 0.96;
     }
-    k *= this.girisKat(sb);
+    k *= this.girisKat(sb) * this.yolKat(sb);
     return k * 2.2 * pompa;
   },
 
@@ -1574,6 +1574,26 @@ const SIM = {
     UI.bildir('🛣️ Giriş genişletildi', 'Seviye ' + sb.giris + ' · araçlar daha hızlı giriyor, kuyruk azalıyor.', 'iyi');
     return true;
   },
+  /* ---- yol genişletme: giriş-çıkış 3. seviyeden sonra açılır ---- */
+  yolSeviye: function (sb) { return kisitla(sb.yol || 1, 1, 3); },
+  yolEk: function (sb) { return this.yolSeviye(sb) - 1; },
+  yolKat: function (sb) { return 1 + (this.yolSeviye(sb) - 1) * 0.14; },
+  yolBedeli: function (sb) {
+    return Math.round(650000 * Math.pow(2.6, this.yolSeviye(sb) - 1) * (1 + D.lok(sb).trafik * 0.3));
+  },
+  yolYukselt: function (sb) {
+    var sv = this.yolSeviye(sb);
+    if (sv >= 3) { UI.bildir('Maksimum', 'Yol en geniş hâlinde.', 'uyari'); return false; }
+    if (this.girisSeviye(sb) < 3) { UI.bildir('Kilitli', 'Önce giriş-çıkış düzenini 3. seviyeye çıkar.', 'kotu'); return false; }
+    var f = this.yolBedeli(sb);
+    if (!D.harca(f)) return false;
+    sb.yol = sv + 1;
+    D.xpEkle(400);
+    if (window.IZO) { IZO.susle(sb); IZO._zAnahtar = ''; }
+    UI.bildir('🛣️ Yol genişletildi', 'Yön başına ' + (2 + sb.yol - 1) + ' şerit · trafik ve müşteri arttı.', 'iyi');
+    return true;
+  },
+
   /* giriş düzeninin müşteri akışına etkisi */
   girisKat: function (sb) { return 1 + (this.girisSeviye(sb) - 1) * 0.09; },
 

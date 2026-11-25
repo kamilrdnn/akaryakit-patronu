@@ -639,6 +639,16 @@ const UI = {
       else h += '<div class="not">En geniş düzene ulaştın.</div>';
       h += '</div>';
 
+      /* yol genişletme */
+      var ysv = SIM.yolSeviye(sb);
+      h += '<div class="kart"><div class="baslik">🛤️ Ana yol · yön başına ' + (1 + ysv) + ' şerit</div>';
+      h += '<div class="not">Yol genişledikçe önünden daha çok araç geçer, istasyona giren müşteri artar.</div>';
+      h += '<div class="kv"><span>Trafik ve müşteri</span><b class="yesilY">+%' + say((SIM.yolKat(sb) - 1) * 100, 0) + '</b></div>';
+      if (ysv >= 3) h += '<div class="not">Yol en geniş hâlinde.</div>';
+      else if (gsv < 3) h += '<div class="not">🔒 Giriş / çıkış düzeni 3. seviyeye gelince açılır.</div>';
+      else h += '<button class="btn genis" style="margin-top:9px" onclick="UI.yolYukselt()">⬆ Yolu genişlet · ' + tl(SIM.yolBedeli(sb)) + '</button>';
+      h += '</div>';
+
       h += '<div class="kart"><div class="baslik">Kurulu pompalar</div>';
       var po = D.pompalar(sb);
       if (!po.length) h += '<div class="bos">Henüz pompa yok.</div>';
@@ -778,6 +788,7 @@ const UI = {
   },
 
   girisYukselt: function () { if (SIM.girisYukselt(D.sube())) this.panelYenile(); },
+  yolYukselt: function () { if (SIM.yolYukselt(D.sube())) this.panelYenile(); },
 
   duzenleOnay: function () {
     var sb = D.sube();
