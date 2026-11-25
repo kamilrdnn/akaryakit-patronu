@@ -77,8 +77,8 @@ jobs:
           APP_VERSION_NAME: ${{ steps.surum.outputs.ad }}
         run: |
           chmod +x ./gradlew 2>/dev/null || true
-          if [ -f ./gradlew ]; then ./gradlew :app:assembleRelease --no-daemon
-          else gradle :app:assembleRelease --no-daemon; fi
+          if [ -f ./gradlew ]; then ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon
+          else gradle :app:assembleRelease :app:bundleRelease --no-daemon; fi
 
       - name: APK'yı adlandır
         id: apk
@@ -89,6 +89,12 @@ jobs:
           cp "$APK" "cikti/$AD"
           echo "ad=$AD" >> "$GITHUB_OUTPUT"
           echo "boyut=$(stat -c%s "cikti/$AD")" >> "$GITHUB_OUTPUT"
+          AAB=$(find app/build/outputs/bundle -name '*.aab' | head -1 || true)
+          if [ -n "$AAB" ]; then
+            AAD="AkaryakitPatronu-${{ steps.surum.outputs.ad }}.aab"
+            cp "$AAB" "cikti/$AAD"
+            echo "aab=$AAD" >> "$GITHUB_OUTPUT"
+          fi
           ls -l cikti
 
       - name: Sürümü yayınla
@@ -101,6 +107,9 @@ jobs:
             --title "Akaryakıt Patronu v${{ steps.surum.outputs.ad }}" \
             --notes "$NOT" \
             "cikti/${{ steps.apk.outputs.ad }}"
+          if [ -n "${{ steps.apk.outputs.aab }}" ]; then
+            gh release upload "v${{ steps.surum.outputs.ad }}" "cikti/${{ steps.apk.outputs.aab }}" --repo "$GITHUB_REPOSITORY" --clobber || true
+          fi
 
       - name: update.json yaz (oyun içi güncelleme)
         run: |
@@ -124,5 +133,7 @@ jobs:
       - name: APK'yı iş çıktısı olarak sakla
         uses: actions/upload-artifact@v4
         with:
-          name: akaryakit-apk-${{ steps.surum.outputs.ad }}
-          path: cikti/*.apk
+          name: akaryakit-paket-${{ steps.surum.outputs.ad }}
+          path: |
+            cikti/*.apk
+            cikti/*.aab
