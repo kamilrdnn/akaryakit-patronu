@@ -812,9 +812,44 @@ const UI = {
   /* =========================================================
      FİYAT
      ========================================================= */
+  /* karşı istasyon kartı: durumu, fiyatı, pazar payı */
+  rakipHtml: function (sb) {
+    var r = SIM.rakipKur(sb);
+    var pay = SIM.pazarPayi(sb);
+    var oran = SIM.rakipFiyatOrani(sb);
+    var cekim = SIM.rakipCekim(sb);
+    var olay = SIM.rakipOlayi(sb);
+    var h = '<div class="kart"><div class="baslik">⚔️ Karşı istasyon · ' + r.ad + '</div>';
+
+    if (r.savas > 0) {
+      h += '<div class="not" style="color:var(--kirmizi)">Fiyat savaşı sürüyor: %' + Math.round(r.indirim * 100) +
+           ' indirim yaptı, ' + r.savas + ' gün daha dayanacak. Ucuz kaldığın her gün onu yıpratır.</div>';
+    } else if (olay) {
+      h += '<div class="not">' + olay.emoji + ' ' + olay.ad + ' — ' + olay.aciklama +
+           ' (' + r.olay.kalan + ' gün)</div>';
+    } else {
+      h += '<div class="not">Yolun karşısındaki istasyon. Fiyatını kırarsan karşılık verir; pahalı kalırsan müşteriyi toplar.</div>';
+    }
+
+    /* pazar payı çubuğu */
+    h += '<div class="payCubuk"><i style="width:' + pay + '%"></i>';
+    h += '<span class="paySen">Sen %' + pay + '</span><span class="payO">' + (100 - pay) + '% ' + r.ad.split(' ')[0] + '</span></div>';
+
+    h += '<div class="kv"><span>Fiyatın rakibe göre</span><b class="' + (oran < 0.995 ? 'yesilY' : oran > 1.005 ? 'kirmiziY' : '') + '">' +
+         (oran >= 1 ? '+' : '') + say((oran - 1) * 100, 1) + '%</b></div>';
+    h += '<div class="kv"><span>Rakibin müşterine etkisi</span><b class="' + (cekim >= 1 ? 'yesilY' : 'kirmiziY') + '">' +
+         (cekim >= 1 ? '+' : '') + Math.round((cekim - 1) * 100) + '%</b></div>';
+    if (r.kazanilanSavas) h += '<div class="kv"><span>Kazandığın fiyat savaşı</span><b>' + r.kazanilanSavas + '</b></div>';
+    h += '<div class="btngrup" style="margin-top:10px">';
+    h += '<button class="btn kucuk ikincil" onclick="UI.fiyatOtomatik(-0.03)">Rakibin %3 altına in</button>';
+    h += '</div></div>';
+    return h;
+  },
+
   fiyatHtml: function () {
     var sb = D.sube(), s = D.s;
-    var h = this.programHtml(sb);
+    var h = this.rakipHtml(sb);
+    h += this.programHtml(sb);
     h += '<div class="kart"><div class="baslik">Pompa fiyatların</div>';
     h += '<div class="not">Rakibin altına inersen trafik artar, marjın düşer. Üstüne çıkarsan müşteri azalır ama her litre daha çok kâr bırakır.</div>';
     VERI.yakitSira.forEach(function (y) {

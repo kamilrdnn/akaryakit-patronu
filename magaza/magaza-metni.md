@@ -25,6 +25,11 @@ sürükleyip taşı.
 Belediye otobüs filosu, okul servisleri, kargo merkezi, taksi durağı, şantiye.
 Konvoylar belirlenen saatlerde geliyor; hacim garantili, iskonto senden.
 
+⚔️ KARŞI İSTASYON
+Yolun karşısında bir rakibin var. Fiyatını kırarsan karşılık verir, fiyat savaşı
+başlar; ucuz kaldığın her gün onu yıpratırsın. Pahalı kalırsan müşteriyi o toplar.
+Pazar payını ekrandan takip edersin.
+
 💳 İŞLETMEYİ YÖNET
 Banka kredisi, sadakat kartı, katkılı yakıt, yıkama aboneliği, günlük görevler,
 sözleşmeler, muhasebe ekranı ve ciro grafiği.
@@ -82,7 +87,8 @@ Hepsi `magaza/` altında, `test/` içindeki betiklerle oyunun kendisinden üreti
 | `ekran-4.png` | 1080×1920 | Muhasebe ve ciro grafiği | `node ekran.js` |
 | `ekran-5.png` | 1080×1920 | Mini oyun — oto yıkama | `node ekran.js` |
 | `ekran-6.png` | 1080×1920 | İstasyon — gece neonları | `node ekran.js` |
+| `ekran-7.png` | 1080×1920 | Fiyat ekranı — karşı istasyon ve fiyat savaşı | `node ekran.js` |
 
 `ekran.js` gerçek oyunu başsız Chromium'da (Playwright) açar, hazır bir kayıt
 yükler ve ekranları çeker; sayfada JS hatası çıkarsa hata koduyla durur.
-Play Console'a yüklerken telefon ekran görüntüsü olarak 6 dosyayı da verebilirsin.
+Play Console'a yüklerken telefon ekran görüntüsü olarak 7 dosyayı da verebilirsin.

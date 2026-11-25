@@ -93,9 +93,11 @@ const SIM = {
     });
 
     /* --- rakip fiyatı --- */
+    var rInd = this.rakipIndirim(sb);
     VERI.yakitSira.forEach(function (y) {
       var hedef = s.toptan[y] * (y === 'ev' ? 1.85 : 1.17);
       if (SIM.olayVar('savas')) hedef *= 0.94;
+      hedef *= (1 - rInd);
       sb.rakip[y] = +(sb.rakip[y] + (hedef - sb.rakip[y]) * 0.25).toFixed(2);
     });
 
@@ -129,6 +131,7 @@ const SIM = {
     s.para -= (maas + kira);
     s.ist.bugunGider += maas + kira;
 
+    s.subeler.forEach(function (sbr) { SIM.rakipGunSonu(sbr); });
     this.kredileriIsle();
     this.sozlesmeleriIsle();
     this.filolariIsle();
@@ -253,6 +256,7 @@ const SIM = {
     if (this.olayVar('hava')) k *= 0.7;
     if (this.olayVar('savas')) k *= 0.78;
     if (sb.kesinti && !D.gucYeterli(sb)) k *= 0.5;
+    k *= this.rakipCekim(sb);
     if (sb.program) {
       if (sb.program.sadakat) k *= 1.12;
       if (sb.program.premium) k *= 0.96;
@@ -1897,6 +1901,112 @@ const SIM = {
     }
     if (!liste.length) liste.push({ baslik: 'Darboğaz yok', metin: 'İstasyon sorunsuz çalışıyor. Büyümeye bakabilirsin.', sekme: 'insa', dugme: 'Yatırım yap' });
     return liste;
+  },
+
+  /* =========================================================
+     KARŞI İSTASYON (rakip) ve FİYAT SAVAŞI
+     ========================================================= */
+  /* kayıttan gelen eski şubelerde de rakip olsun */
+  rakipKur: function (sb) {
+    if (!sb.rakipIst) {
+      sb.rakipIst = { ad: secRast(VERI.rakip.adlar), guc: 1, agresif: 0.6, indirim: 0, savas: 0, olay: null, pay: 50, kazanilanSavas: 0 };
+    }
+    return sb.rakipIst;
+  },
+
+  /* rakibin o anki ek indirimi (fiyat savaşında büyür) */
+  rakipIndirim: function (sb) {
+    var r = this.rakipKur(sb);
+    return kisitla(r.indirim || 0, 0, VERI.rakip.savasTavan);
+  },
+
+  /* rakibin olayı varsa tanımını ver */
+  rakipOlayi: function (sb) {
+    var r = this.rakipKur(sb);
+    if (!r.olay) return null;
+    for (var i = 0; i < VERI.rakip.olaylar.length; i++) {
+      if (VERI.rakip.olaylar[i].id === r.olay.id) return VERI.rakip.olaylar[i];
+    }
+    return null;
+  },
+
+  /* rakibin müşteri akışına etkisi: gücü yüksekse seninki azalır */
+  rakipCekim: function (sb) {
+    var r = this.rakipKur(sb);
+    var guc = kisitla(r.guc, VERI.rakip.gucSinir[0], VERI.rakip.gucSinir[1]);
+    return kisitla(1 + (1 - guc) * 0.42, 0.78, 1.22);
+  },
+
+  /* ortalama fiyat oranın: 1'in altı rakipten ucuzsun demek */
+  rakipFiyatOrani: function (sb) {
+    var top = 0, n = 0;
+    VERI.yakitSira.forEach(function (y) {
+      if (y === 'ev' || !sb.rakip[y] || !sb.fiyat[y]) return;
+      top += sb.fiyat[y] / sb.rakip[y]; n++;
+    });
+    return n ? top / n : 1;
+  },
+
+  /* pazar payın (%) — çekim gücünüzün oranı */
+  pazarPayi: function (sb) {
+    var r = this.rakipKur(sb);
+    var benim = Math.max(0.05, (1 + this.binaCekim(sb)) * this.fiyatKat(sb) * (0.6 + sb.memnuniyet / 160));
+    var onun = Math.max(0.05, kisitla(r.guc, VERI.rakip.gucSinir[0], VERI.rakip.gucSinir[1]) * 1.35);
+    return Math.round(kisitla((benim / (benim + onun)) * 100, 3, 97));
+  },
+
+  /* günlük rakip davranışı: olaylar, fiyat savaşı, güç dengesi */
+  rakipGunSonu: function (sb) {
+    if (sb.devredildi) return;
+    var r = this.rakipKur(sb);
+    var tan = VERI.rakip;
+    var aktif = (sb === D.sube());
+
+    /* --- süren olay --- */
+    if (r.olay) {
+      r.olay.kalan--;
+      if (r.olay.kalan <= 0) r.olay = null;
+    } else if (Math.random() < 0.18) {
+      var o = secRast(tan.olaylar);
+      r.olay = { id: o.id, kalan: rastgeleTam(o.sure[0], o.sure[1]) };
+      r.guc = kisitla(r.guc + o.guc, tan.gucSinir[0], tan.gucSinir[1]);
+      if (aktif) UI.bildir(o.emoji + ' ' + o.ad, o.aciklama, o.guc < 0 ? 'iyi' : 'uyari');
+    }
+
+    /* --- fiyat savaşı --- */
+    var oran = this.rakipFiyatOrani(sb);
+    if (r.savas > 0) {
+      r.savas--;
+      /* rakip her gün biraz daha yorulur; sen de ucuz kaldıkça onu zorlarsın */
+      var yipranma = oran < 1 ? 0.07 : -0.04;
+      r.guc = kisitla(r.guc - yipranma, tan.gucSinir[0], tan.gucSinir[1]);
+      if (r.savas === 0) {
+        r.indirim = 0;
+        if (oran < 1) {
+          r.kazanilanSavas = (r.kazanilanSavas || 0) + 1;
+          r.guc = kisitla(r.guc - 0.08, tan.gucSinir[0], tan.gucSinir[1]);
+          if (aktif) UI.bildir('🏁 Fiyat savaşı bitti', r.ad + ' eski fiyatına döndü; müşterinin bir kısmı sende kaldı.', 'iyi');
+        } else {
+          r.guc = kisitla(r.guc + 0.06, tan.gucSinir[0], tan.gucSinir[1]);
+          if (aktif) UI.bildir('🏁 Fiyat savaşı bitti', r.ad + ' kazançlı çıktı; pahalı kaldığın günlerde müşteri ona gitti.', 'kotu');
+        }
+      }
+    } else if (oran < tan.kiskirtmaEsigi && Math.random() < 0.35 + r.agresif * 0.4) {
+      /* onun altına indin: karşılık veriyor */
+      r.savas = rastgeleTam(tan.savasGun[0], tan.savasGun[1]);
+      r.indirim = kisitla(rastgele(tan.savasAdim[0], tan.savasAdim[1]) * (0.6 + r.agresif), 0, tan.savasTavan);
+      if (aktif) {
+        UI.bildir('⚔️ ' + r.ad + ' fiyat kırdı',
+          'Ucuzladığını gördü, %' + Math.round(r.indirim * 100) + ' indirim yaptı. ' + r.savas + ' gün sürecek.', 'kotu');
+      }
+    } else {
+      /* savaş yok: güç yavaşça 1'e döner, pahalıysan rakip güçlenir */
+      var cek = (oran > 1.04 ? 0.05 : oran < 0.99 ? -0.04 : 0);
+      r.guc = kisitla(r.guc + (1 - r.guc) * 0.08 + cek, tan.gucSinir[0], tan.gucSinir[1]);
+      if (r.indirim > 0) r.indirim = Math.max(0, r.indirim - 0.02);
+    }
+
+    r.pay = this.pazarPayi(sb);
   },
 
   /* =========================================================

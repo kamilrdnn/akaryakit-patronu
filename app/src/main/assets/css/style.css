@@ -680,3 +680,13 @@ input[type=range]{width:100%}
 .gorev .ust{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .gorev .ad{font-weight:700;font-size:13.5px}
 .gorev .say{font-size:12px;color:var(--sol);font-variant-numeric:tabular-nums}
+
+/* karşı istasyon: pazar payı çubuğu */
+.payCubuk{position:relative;height:26px;border-radius:13px;overflow:hidden;margin:10px 0 6px;
+  background:rgba(240,82,82,.22)}
+.payCubuk i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#2f9e63,#3ec47a);
+  transition:width .35s ease}
+.payCubuk span{position:absolute;top:0;line-height:26px;font-size:11.5px;font-weight:800;
+  color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);white-space:nowrap}
+.payCubuk .paySen{left:9px}
+.payCubuk .payO{right:9px;opacity:.9}

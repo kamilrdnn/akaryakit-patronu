@@ -146,6 +146,15 @@ async function main() {
   await bekle(700);
   await cek('ekran-6.png', 'istasyon · gece');
 
+  /* --- 7: fiyat ekranı ve karşı istasyon --- */
+  await sayfa.evaluate(() => {
+    D.s.saat = 14; D.s.dakika = 5;
+    var sb = D.sube(), r = SIM.rakipKur(sb);
+    r.savas = 4; r.indirim = 0.07; r.kazanilanSavas = 2; r.olay = null;
+    UI.sekmeGec('fiyat');
+  });
+  await cek('ekran-7.png', 'fiyat · karşı istasyon');
+
   await tarayici.close();
   sun.close();
 

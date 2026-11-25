@@ -422,8 +422,110 @@ sb.tank.dizel.dolu = 400;
 kontrol(SIM.jeneratorDoldur(sb, 5), 'jeneratör deposu doldurulmalı');
 kontrol(!D.binalar(sb, 'jenerator')[0].b.calismiyor, 'dolunca tekrar çalışmalı');
 
+/* ======================= TEST 13: rakip istasyon ve fiyat savaşı ======================= */
+console.log('TEST 13 — rakip istasyon ve fiyat savaşı');
+D.yeni();
+D.s.para = 5000000;
+{
+  const sbr = D.sube();
+  const r = SIM.rakipKur(sbr);
+  kontrol(!!r.ad, 'rakip istasyonun adı olmalı');
+  kontrol(r.guc === 1 && r.savas === 0 && r.indirim === 0, 'rakip dengeli başlamalı');
+
+  /* eski kayıtta rakip yoksa onarılmalı */
+  delete sbr.rakipIst;
+  kontrol(!!SIM.rakipKur(sbr).ad, 'eski kayıtta rakip kurulmalı');
+
+  /* fiyat oranı */
+  VERI.yakitSira.forEach(y => { sbr.rakip[y] = 50; sbr.fiyat[y] = 50; });
+  kontrol(Math.abs(SIM.rakipFiyatOrani(sbr) - 1) < 0.001, 'aynı fiyatta oran 1 olmalı');
+  VERI.yakitSira.forEach(y => { sbr.fiyat[y] = 45; });
+  kontrol(SIM.rakipFiyatOrani(sbr) < 0.95, 'ucuzken oran 1 altına inmeli');
+
+  /* güç müşteri akışını etkilemeli */
+  sbr.rakipIst.guc = 1.45;
+  const guclu = SIM.rakipCekim(sbr);
+  sbr.rakipIst.guc = 0.55;
+  const zayif = SIM.rakipCekim(sbr);
+  kontrol(zayif > 1 && guclu < 1, 'zayıf rakip trafiği artırmalı, güçlü rakip azaltmalı');
+  kontrol(zayif <= 1.22 && guclu >= 0.78, 'rakip etkisi sınırlar içinde kalmalı');
+  sbr.rakipIst.guc = 1;
+
+  /* pazar payı 0-100 arasında ve rakip güçlenince düşmeli */
+  const payDengeli = SIM.pazarPayi(sbr);
+  sbr.rakipIst.guc = 1.45;
+  const payZor = SIM.pazarPayi(sbr);
+  kontrol(payDengeli > 0 && payDengeli < 100, 'pazar payı yüzde olmalı: ' + payDengeli);
+  kontrol(payZor < payDengeli, 'rakip güçlenince payın düşmeli');
+  sbr.rakipIst.guc = 1;
+
+  /* kışkırtma: ucuz kalırsan rakip er geç fiyat savaşı açar */
+  let savasBasladi = 0, deneme = 0;
+  while (!savasBasladi && deneme < 200) {
+    deneme++;
+    sbr.rakipIst.savas = 0; sbr.rakipIst.indirim = 0;
+    VERI.yakitSira.forEach(y => { sbr.rakip[y] = 50; sbr.fiyat[y] = 45; });
+    SIM.rakipGunSonu(sbr);
+    if (sbr.rakipIst.savas > 0) savasBasladi = 1;
+  }
+  kontrol(savasBasladi === 1, 'ucuz kalınca rakip fiyat savaşı açmalı (' + deneme + ' denemede)');
+  kontrol(sbr.rakipIst.indirim > 0 && sbr.rakipIst.indirim <= VERI.rakip.savasTavan, 'savaş indirimi tavanı aşmamalı');
+
+  /* savaş sırasında ucuz kalırsan rakip yıpranır ve sonunda biter */
+  const gucOnce = sbr.rakipIst.guc;
+  let bitti = false, bitisIndirimi = -1;
+  for (let g = 0; g < 12 && !bitti; g++) {
+    VERI.yakitSira.forEach(y => { sbr.fiyat[y] = 45; });
+    SIM.rakipGunSonu(sbr);
+    if (sbr.rakipIst.savas === 0) { bitti = true; bitisIndirimi = sbr.rakipIst.indirim; }
+  }
+  kontrol(bitti, 'fiyat savaşı en geç 12 günde bitmeli');
+  kontrol(bitisIndirimi === 0, 'savaş bitince indirim kalkmalı: ' + bitisIndirimi);
+  kontrol(sbr.rakipIst.guc < gucOnce, 'ucuz kalınca rakip güç kaybetmeli');
+  kontrol(sbr.rakipIst.kazanilanSavas >= 1, 'kazanılan savaş sayılmalı');
+
+  /* pahalı kalırsan rakip güçlenir */
+  sbr.rakipIst.guc = 1; sbr.rakipIst.savas = 0; sbr.rakipIst.indirim = 0; sbr.rakipIst.olay = null;
+  VERI.yakitSira.forEach(y => { sbr.rakip[y] = 50; sbr.fiyat[y] = 58; });
+  for (let g = 0; g < 6; g++) { sbr.rakipIst.olay = null; SIM.rakipGunSonu(sbr); }
+  kontrol(sbr.rakipIst.guc > 1, 'pahalı kalınca rakip güçlenmeli: ' + sbr.rakipIst.guc.toFixed(2));
+
+  /* güç her durumda sınırda kalmalı, pay güncellenmeli */
+  for (let g = 0; g < 400; g++) SIM.rakipGunSonu(sbr);
+  kontrol(sbr.rakipIst.guc >= VERI.rakip.gucSinir[0] - 1e-9 && sbr.rakipIst.guc <= VERI.rakip.gucSinir[1] + 1e-9,
+    'rakip gücü sınırları aşmamalı: ' + sbr.rakipIst.guc);
+  kontrol(sbr.rakipIst.pay >= 0 && sbr.rakipIst.pay <= 100, 'pazar payı kaydedilmeli');
+  sayiMi(sbr.rakipIst.guc, 'rakip gücü');
+
+  /* rakip indirimi pompa fiyatına yansımalı */
+  sbr.rakipIst.indirim = 0.1;
+  const indirimli = SIM.rakipIndirim(sbr);
+  kontrol(Math.abs(indirimli - 0.1) < 1e-9, 'rakip indirimi okunmalı');
+  sbr.rakipIst.indirim = 0.9;
+  kontrol(SIM.rakipIndirim(sbr) === VERI.rakip.savasTavan, 'indirim tavanda kırpılmalı');
+  sbr.rakipIst.indirim = 0;
+
+  /* devredilen şubede rakip işlenmemeli */
+  sbr.devredildi = true;
+  const payEski = sbr.rakipIst.pay;
+  sbr.rakipIst.pay = -1;
+  SIM.rakipGunSonu(sbr);
+  kontrol(sbr.rakipIst.pay === -1, 'devredilen şubede rakip işlenmemeli');
+  sbr.rakipIst.pay = payEski;
+  sbr.devredildi = false;
+
+  /* rakip olayı tanımı bulunabilmeli */
+  sbr.rakipIst.olay = { id: 'kuru', kalan: 2 };
+  const ol = SIM.rakipOlayi(sbr);
+  kontrol(ol && ol.id === 'kuru' && ol.guc < 0, 'rakip olayı tanımı okunmalı');
+  sbr.rakipIst.olay = { id: 'yokbole', kalan: 2 };
+  kontrol(SIM.rakipOlayi(sbr) === null, 'tanımsız olay null dönmeli');
+  sbr.rakipIst.olay = null;
+  kontrol(SIM.rakipOlayi(sbr) === null, 'olay yoksa null dönmeli');
+}
+
 /* ======================= SONUÇ ======================= */
 console.log('');
-if (hata === 0) console.log('✅ TÜM TESTLER GEÇTİ (12 başlık)');
+if (hata === 0) console.log('✅ TÜM TESTLER GEÇTİ (13 başlık)');
 else console.log('❌ ' + hata + ' HATA VAR');
 process.exit(hata ? 1 : 0);

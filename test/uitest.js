@@ -387,6 +387,33 @@ calistir('fiyatOtomatik', () => UI.fiyatOtomatik(-0.02));
 kontrol(D.sube().fiyat.benzin < D.sube().rakip.benzin, 'rakip altı fiyat uygulanmalı');
 const rangeler = w.document.querySelectorAll('input[type=range]');
 kontrol(rangeler.length === 4, '4 yakıt için kaydırıcı olmalı, var: ' + rangeler.length);
+/* --- karşı istasyon kartı --- */
+{
+  const sbr = D.sube(), r = SIM.rakipKur(sbr);
+  UI.sekmeGec('fiyat');
+  let govde = w.document.getElementById('govde').innerHTML;
+  kontrol(govde.indexOf(r.ad) >= 0, 'fiyat ekranında rakibin adı görünmeli');
+  kontrol(govde.indexOf('payCubuk') >= 0, 'pazar payı çubuğu çizilmeli');
+  /* savaş hâli */
+  r.savas = 4; r.indirim = 0.08; r.olay = null;
+  calistir('rakip savaş kartı', () => UI.sekmeGec('fiyat'));
+  govde = w.document.getElementById('govde').innerHTML;
+  kontrol(govde.indexOf('Fiyat savaşı sürüyor') >= 0, 'savaşta uyarı yazısı çıkmalı');
+  /* olay hâli */
+  r.savas = 0; r.indirim = 0; r.olay = { id: 'kuru', kalan: 2 };
+  calistir('rakip olay kartı', () => UI.sekmeGec('fiyat'));
+  govde = w.document.getElementById('govde').innerHTML;
+  kontrol(govde.indexOf('Rakibin tankı boş') >= 0, 'rakip olayı kartta görünmeli');
+  /* kazanılmış savaş sayacı */
+  r.olay = null; r.kazanilanSavas = 2;
+  calistir('rakip kazanç kartı', () => UI.sekmeGec('fiyat'));
+  govde = w.document.getElementById('govde').innerHTML;
+  kontrol(govde.indexOf('Kazandığın fiyat savaşı') >= 0, 'kazanılan savaş sayısı görünmeli');
+  r.kazanilanSavas = 0;
+  /* "rakibin %3 altına in" düğmesi gerçekten indirmeli */
+  calistir('rakip altı düğmesi', () => UI.fiyatOtomatik(-0.03));
+  kontrol(sbr.fiyat.dizel < sbr.rakip.dizel, 'düğme fiyatı rakibin altına çekmeli');
+}
 UI.sekmeGec('siparis');
 const tankOnce = D.sube().tank.benzin.dolu;
 calistir('siparis', () => UI.siparis('benzin', 1000));

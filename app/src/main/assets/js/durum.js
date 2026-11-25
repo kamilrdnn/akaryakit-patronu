@@ -132,7 +132,18 @@ const D = {
       puanToplam: 0,
       devredildi: false,
       kesinti: false,
-      sebekeBorc: 0
+      sebekeBorc: 0,
+      /* yolun karşısındaki rakip istasyon */
+      rakipIst: {
+        ad: secRast(VERI.rakip.adlar),
+        guc: 1,                 /* 0.55–1.45 · yüksekse müşteriyi o çeker */
+        agresif: +rastgele(0.3, 0.9).toFixed(2),
+        indirim: 0,             /* fiyat savaşında uyguladığı ek indirim */
+        savas: 0,               /* savaşın kalan günü */
+        olay: null,             /* { id, kalan } */
+        pay: 50,                /* son hesaplanan pazar payın (%) */
+        kazanilanSavas: 0
+      }
     };
     if (ilkMi) {
       /* başlangıç düzeni: pompalar yola bakan şeritte, aralarında boşlukla */
@@ -370,6 +381,13 @@ const D = {
       if (!sb.siparis) sb.siparis = [];
       if (!sb.personel) sb.personel = [];
       if (!sb.rakip) sb.rakip = JSON.parse(JSON.stringify(sb.fiyat));
+      if (!sb.rakipIst) {
+        sb.rakipIst = { ad: secRast(VERI.rakip.adlar), guc: 1, agresif: 0.6, indirim: 0, savas: 0, olay: null, pay: 50, kazanilanSavas: 0 };
+      }
+      if (typeof sb.rakipIst.guc !== 'number') sb.rakipIst.guc = 1;
+      if (typeof sb.rakipIst.indirim !== 'number') sb.rakipIst.indirim = 0;
+      if (typeof sb.rakipIst.savas !== 'number') sb.rakipIst.savas = 0;
+      if (typeof sb.rakipIst.pay !== 'number') sb.rakipIst.pay = 50;
       if (typeof sb.temizlik !== 'number') sb.temizlik = 100;
       if (typeof sb.memnuniyet !== 'number') sb.memnuniyet = 80;
       if (typeof sb.devredildi !== 'boolean') sb.devredildi = false;

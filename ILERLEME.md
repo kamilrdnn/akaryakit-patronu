@@ -27,6 +27,14 @@ Bu dosya, oturum kesilirse yeni oturumun kaldığı yerden devam edebilmesi içi
 - Hava olayları: kar ve yağmur tanecikleri
 - Çevre trafiğinde otobüs/tır/taksi/minibüs çeşitliliği
 
+## Son turda eklenenler (4)
+- Karşı istasyon: her şubenin adı olan bir rakibi var (`sb.rakipIst`)
+- Fiyat savaşı: rakibin altına inersen karşılık verir, indirimi büyür; ucuz kaldığın
+  her gün yıpranır, savaşı kazanınca müşterinin bir kısmı sende kalır
+- Rakip olayları: yenileme, tank boşalması, grev, kampanya, denetim cezası, market
+- Pazar payı çubuğu ve rakip kartı fiyat ekranında (`UI.rakipHtml`)
+- `ekran-7.png`: fiyat ekranı mağaza görseli
+
 ## Son turda eklenenler (3)
 - Gölgeler: yinelenen kutu/gölge tanımları temizlendi, sprite yumuşatıldı,
   gölge artık güneşin saatine göre yön değiştiriyor ve gece siliklesiyor
@@ -49,5 +57,5 @@ Bu dosya, oturum kesilirse yeni oturumun kaldığı yerden devam edebilmesi içi
 - CI artık AAB de üretiyor; magaza/ altında gizlilik ve mağaza metni
 
 ## Sıradaki işler
-1. **Oynanış**: rakip istasyon olayları, fiyat savaşı, tanker filosu yönetimi
+1. **Oynanış**: tanker filosu yönetimi (kendi tankerini al, siparişi kendin taşı)
 2. **Denge**: 60 günlük bot simülasyonunu yeni programlarla yeniden ölç

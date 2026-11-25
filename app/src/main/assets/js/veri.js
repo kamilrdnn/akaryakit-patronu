@@ -140,6 +140,31 @@ const VERI = {
 
 
 
+  /* ---------------- karşı istasyon ----------------
+     Her şubenin yolun karşısında bir rakibi vardır: fiyat kırar, kampanya yapar,
+     bazen de başı derde girer. Oyuncu ona doğrudan dokunamaz, fiyatla ve
+     hizmetle karşılık verir. */
+  rakip: {
+    adlar: ['Yıldırım Petrol', 'Dost Akaryakıt', 'Şahin Oil', 'Mavi Petrol', 'Kardeşler Akaryakıt',
+            'Anadolu Petrol', 'Hız Petrol', 'Çınar Akaryakıt', 'Deniz Petrol', 'Ulu Petrol'],
+    /* savaş: rakip fiyat kırdığında kaç gün sürer, indirimi ne kadar büyür */
+    savasGun: [3, 7],
+    savasAdim: [0.025, 0.055],
+    savasTavan: 0.14,
+    /* oyuncu rakibin bu oranın altına inerse rakip kızar */
+    kiskirtmaEsigi: 0.97,
+    /* rakibin gücü: 1 dengeli, düşükse müşteri sana kayar */
+    gucSinir: [0.55, 1.45],
+    olaylar: [
+      { id:'yenileme', ad:'Rakip istasyon yenilendi', emoji:'🏗️', sure:[4, 8],  guc: 0.12,  aciklama:'Karşı istasyon pompalarını yeniledi; bir süre daha çok müşteri çekecek.' },
+      { id:'kuru',     ad:'Rakibin tankı boş',        emoji:'🪣', sure:[1, 2],  guc: -0.22, aciklama:'Karşıda tanker gecikti, dizel bitti. Trafik sana kayıyor.' },
+      { id:'grev',     ad:'Rakipte personel sorunu',  emoji:'🚧', sure:[2, 4],  guc: -0.14, aciklama:'Karşı istasyonda kuyruk uzadı; müşteri bize geliyor.' },
+      { id:'kampanya', ad:'Rakip kampanya başlattı',  emoji:'🎟️', sure:[3, 6],  guc: 0.15,  aciklama:'Karşı istasyon hediye çeki dağıtıyor.' },
+      { id:'ceza',     ad:'Rakibe denetim cezası',    emoji:'📋', sure:[2, 5],  guc: -0.18, aciklama:'Karşı istasyon ceza yedi, itibarı sarsıldı.' },
+      { id:'market',   ad:'Rakip market açtı',        emoji:'🏪', sure:[5, 10], guc: 0.14,  aciklama:'Karşı istasyona market geldi; yol üstü müşterisini paylaşıyorsunuz.' }
+    ]
+  },
+
   /* ---------------- tedarikçiler ---------------- */
   tedarikciler: {
     toptanci: { ad: 'Toptancı Depo',    emoji: '🏚️', carpan: 0.92, sure: 1.9, aciklama: '%8 ucuz ama tanker geç gelir.' },
