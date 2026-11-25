@@ -1,7 +1,7 @@
 {
-  "versionCode": 143,
-  "versionName": "1.2.37",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.37/AkaryakitPatronu-1.2.37.apk",
-  "size": 3343357,
-  "notes": "Güncelleme bildirimi: yarım saatte bir denetim, deneme bildirimi ve izin kısayolları"
+  "versionCode": 144,
+  "versionName": "1.2.38",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.38/AkaryakitPatronu-1.2.38.apk",
+  "size": 3344617,
+  "notes": "Etkinlikler: gerçek saate göre 2 saatte bir değişir, tamamlanınca karttan kalkar"
 }
