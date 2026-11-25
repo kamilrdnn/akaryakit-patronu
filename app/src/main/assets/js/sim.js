@@ -434,6 +434,10 @@ const SIM = {
       if (!m) { p.mesgul = null; continue; }
       if (m.durum === 'servis') continue;   // oyuncu elle dolduruyor
 
+      /* gerçekçi akış: araç yanaşır, kapak açılır, tabanca takılır */
+      if (m.hazirlik === undefined) m.hazirlik = rastgele(1.6, 3.2) * (1.4 - pompaci.beceri / 180);
+      if (m.hazirlik > 0) { m.hazirlik -= dk; continue; }
+
       /* saniyede akış; 1 oyun dakikası = 6 saniye iş */
       var akis = D.akis(p) * (0.75 + pompaci.beceri / 400) * (m.yakit === p.yakit ? 1 : 0.70);
       var saniye = 2.5 * dk;
@@ -447,7 +451,9 @@ const SIM = {
       if (m.yakit !== 'ev') sb.tank[m.yakit].dolu -= verebilir;
 
       if (m.verilen >= hedefNokta - 0.05 || verebilir <= 0.0001 || hedefeKalan <= 0.05) {
-        this.satisTamamla(sb, m, false);
+        if (m.odeme === undefined) m.odeme = rastgele(0.8, 2.0);   /* tabanca yerine, ödeme */
+        m.odeme -= dk;
+        if (m.odeme <= 0) this.satisTamamla(sb, m, false);
       }
     }
   },

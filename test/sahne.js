@@ -201,6 +201,36 @@ D.s.tabela = { ad: 'PETROL', renk: 'turuncu', sekil: 'klasik', logo: '⛽', fiya
 IZO.ciz();
 fs.writeFileSync(path.join(__dirname, 'sahne-tabela.png'), tuval.toBuffer('image/png'));
 
+/* araçlar kapıdan girip kapıdan çıkmalı, hemen yok olmamalı */
+{
+  const kp = IZO.kapilar(sb);
+  kontrol(kp.giris < kp.cikis, 'giriş kapısı çıkıştan solda olmalı');
+  const yeniM = sb.kuyruk.filter(m => m.pompa !== null)[0];
+  if (yeniM) {
+    const taze = IZO.arabaYap(sb, yeniM, 0);
+    kontrol(taze.yol.length >= 5, 'araç kapıdan geçen çok adımlı yol izlemeli: ' + taze.yol.length);
+    kontrol(Math.abs(taze.yol[0].gx - kp.giris) < 0.01, 'ilk durak giriş kapısı olmalı');
+  }
+  const arac = IZO.arabalar.filter(a => a.mid)[0];
+  if (arac) {
+    /* müşteri kuyruktan çıkınca araç bekleyip çıkış kapısına yönelmeli */
+    const mid = arac.mid;
+    sb.kuyruk = sb.kuyruk.filter(m => m.id !== mid);
+    IZO.musteriArabalari(sb);
+    kontrol(arac.durum === 'gidiyor', 'araç gidiyor durumuna geçmeli');
+    kontrol(arac.bekle > 0, 'ödeme molası olmalı');
+    const sonNokta = arac.yol[arac.yol.length - 1];
+    kontrol(sonNokta.gx > sb.w, 'araç sahadan çıkmalı');
+    /* mola bitmeden hareket etmemeli */
+    const x0 = arac.gx, y0 = arac.gy;
+    IZO.arabaIlerlet(arac, 0.1);
+    kontrol(arac.gx === x0 && arac.gy === y0, 'mola sırasında araç beklemeli');
+    arac.bekle = 0;
+    IZO.arabaIlerlet(arac, 0.2);
+    kontrol(arac.gx !== x0 || arac.gy !== y0, 'mola bitince araç hareket etmeli');
+  }
+}
+
 console.log('SAHNE TEST 5 — tek pompalı yeni şube ve boş arsa');
 D.yeni();
 IZO._sahneAnahtar = '';

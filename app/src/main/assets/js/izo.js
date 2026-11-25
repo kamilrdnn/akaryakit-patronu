@@ -441,6 +441,20 @@ const IZO = {
     }
   },
 
+  /* giriş/çıkış kapılarının orta noktaları */
+  kapilar: function (sb) {
+    var sv = (SIM.girisSeviye ? SIM.girisSeviye(sb) : 1);
+    var kapiEn = 0.9 + (sv - 1) * 0.45;
+    var girisX = 0.25, cikisX = sb.w - 0.25 - kapiEn;
+    return {
+      giris: girisX + kapiEn / 2,
+      cikis: cikisX + kapiEn / 2,
+      yolY: sb.h + 1.35,          /* yolun bizim şeridimiz */
+      agizY: sb.h + 0.95,         /* kapı ağzı */
+      seritY: sb.h + 0.35         /* apron manevra şeridi */
+    };
+  },
+
   /* müşterilere araç eşle */
   musteriArabalari: function (sb) {
     var mevcut = {};
@@ -458,8 +472,16 @@ const IZO = {
       /* pompaya atandıysa hedefi güncelle */
       if (m.pompa !== null && a.hedefPompa !== m.pompa) {
         a.hedefPompa = m.pompa;
+        var kp = this.kapilar(sb);
         var px = m.pompa % sb.w, py = Math.floor(m.pompa / sb.w);
-        a.yol = [{ gx: px + 0.5, gy: sb.h + 1.5 }, { gx: px + 0.5, gy: py + 1.35 }, { gx: px + 0.5, gy: py + 0.72 }];
+        a.yol = [
+          { gx: kp.giris, gy: kp.yolY },        /* kapı önüne yanaş */
+          { gx: kp.giris, gy: kp.agizY },       /* kapıdan gir */
+          { gx: kp.giris, gy: kp.seritY },      /* apron şeridi */
+          { gx: px + 0.5, gy: kp.seritY },      /* pompanın hizasına gel */
+          { gx: px + 0.5, gy: py + 1.15 },
+          { gx: px + 0.5, gy: py + 0.74 }       /* pompaya yanaş */
+        ];
         a.durum = 'geliyor';
       }
     }
@@ -470,9 +492,18 @@ const IZO = {
       var varMi = false;
       for (var q = 0; q < sb.kuyruk.length; q++) if (sb.kuyruk[q].id === ar.mid) varMi = true;
       if (!varMi && ar.durum !== 'gidiyor') {
+        var kp2 = this.kapilar(sb);
         ar.durum = 'gidiyor';
-        ar.yol = [{ gx: ar.gx, gy: sb.h + 1.3 }, { gx: sb.w + 5, gy: sb.h + 1.3 }];
-        ar.hiz = 2.4;
+        /* ödeme ve hazırlık molası: hemen fırlayıp gitmesin */
+        ar.bekle = 2.2 + Math.random() * 3.2;
+        ar.yol = [
+          { gx: ar.gx, gy: kp2.seritY },        /* geri gelip şeride çık */
+          { gx: kp2.cikis, gy: kp2.seritY },    /* çıkış hizasına git */
+          { gx: kp2.cikis, gy: kp2.agizY },     /* kapıdan çık */
+          { gx: kp2.cikis, gy: sb.h + 1.72 },   /* yolun sağ şeridine katıl */
+          { gx: sb.w + 6, gy: sb.h + 1.72 }
+        ];
+        ar.hiz = 1.5;
       }
     }
   },
@@ -481,20 +512,31 @@ const IZO = {
     var renkler = ['#d64545', '#3f7fd0', '#e0a92e', '#4aa96c', '#8a8f99', '#2f3b52', '#c96a2c', '#8e5fc0'];
     var r = renkler[Math.floor(Math.random() * renkler.length)];
     var buyuk = (m.arac === 'Tır' || m.arac === 'Otobüs');
-    var baslangic = { gx: -4.5, gy: sb.h + 1.5 };
+    var kp = this.kapilar(sb);
+    var baslangic = { gx: -5.5, gy: kp.yolY };
     var yol;
     if (m.pompa !== null) {
       var px = m.pompa % sb.w, py = Math.floor(m.pompa / sb.w);
-      yol = [{ gx: px + 0.5, gy: sb.h + 1.5 }, { gx: px + 0.5, gy: py + 1.35 }, { gx: px + 0.5, gy: py + 0.72 }];
+      yol = [
+        { gx: kp.giris, gy: kp.yolY },
+        { gx: kp.giris, gy: kp.agizY },
+        { gx: kp.giris, gy: kp.seritY },
+        { gx: px + 0.5, gy: kp.seritY },
+        { gx: px + 0.5, gy: py + 1.15 },
+        { gx: px + 0.5, gy: py + 0.74 }
+      ];
     } else {
-      /* sırada bekleyenler girişte kuyruk olur */
-      yol = [{ gx: -0.6 - sira * 1.5, gy: sb.h + 0.4 }];
+      /* sırada bekleyenler kapı önünde kuyruk olur */
+      yol = [
+        { gx: kp.giris, gy: kp.yolY },
+        { gx: kp.giris - 0.3 - sira * 1.25, gy: kp.yolY - 0.18 }
+      ];
     }
     return {
       mid: m.id, gx: baslangic.gx, gy: baslangic.gy, aci: 0,
       renk: r, buyuk: buyuk, tip: m.arac,
-      yol: yol, durum: 'geliyor', hiz: buyuk ? 1.5 : 2.1,
-      hedefPompa: m.pompa, sil: false
+      yol: yol, durum: 'geliyor', hiz: buyuk ? 1.15 : 1.5,
+      hedefPompa: m.pompa, sil: false, bekle: 0
     };
   },
 
@@ -524,6 +566,11 @@ const IZO = {
   },
 
   arabaIlerlet: function (a, dt) {
+    if (a.bekle && a.bekle > 0) {           /* ödeme / mola */
+      a.bekle -= dt;
+      a.fren = true;
+      return;
+    }
     if (!a.yol || !a.yol.length) {
       if (a.durum === 'gidiyor') a.sil = true;
       return;
@@ -1064,6 +1111,7 @@ const IZO = {
           this.isaretler.push({ tip: 'bekleyen', gx: gx + 0.5, gy: gy + 0.5, m: m, balon: this._balonSayisi <= 2, i: i });
         }
         this.hortumCiz(gx, gy, p, m);
+        this.dolumGostergesi(gx, gy, m);
       }
     }
     /* gece aydınlatması */
@@ -1215,6 +1263,41 @@ const IZO = {
         poly: [{ x: x0 - 2 * o, y: y0 - 2 * o }, { x: x0 + W + 2 * o, y: y0 - 2 * o },
                { x: x0 + W + 2 * o, y: y0 + H + 2 * o }, { x: x0 - 2 * o, y: y0 + H + 2 * o }]
       });
+    }
+  },
+
+  /* dolum ilerlemesi: pompanın üstünde ince çubuk */
+  dolumGostergesi: function (gx, gy, m) {
+    if (!m || m.hedef <= 0) return;
+    var o = this.kam.olcek;
+    if (o < 0.5) return;
+    var c = this.cz;
+    var oran = kisitla(m.verilen / m.hedef, 0, 1);
+    var hazir = (m.hazirlik !== undefined && m.hazirlik > 0);
+    var p = this.ekran(gx + 0.5, gy + 0.32, 38);
+    var w = 26 * o, hh = 4.4 * o;
+    /* zemin */
+    c.fillStyle = 'rgba(10,16,26,.72)';
+    this.yuvarlakKutu(p.x - w / 2, p.y - hh / 2, w, hh, hh / 2);
+    c.fill();
+    if (hazir) {
+      /* hazırlık: kayan şerit */
+      var t = (Date.now() / 420) % 1;
+      c.fillStyle = 'rgba(240,180,41,.9)';
+      this.yuvarlakKutu(p.x - w / 2 + t * (w - w * 0.3), p.y - hh / 2, w * 0.3, hh, hh / 2);
+      c.fill();
+    } else {
+      c.fillStyle = VERI.yakitlar[m.yakit].renk;
+      if (oran > 0.01) {
+        this.yuvarlakKutu(p.x - w / 2, p.y - hh / 2, w * oran, hh, hh / 2);
+        c.fill();
+      }
+      if (o > 0.7) {
+        c.font = 'bold ' + Math.round(6.5 * o) + 'px sans-serif';
+        c.textAlign = 'center';
+        c.fillStyle = '#e9eef3';
+        c.fillText(say(m.verilen, 0) + '/' + say(m.hedef, 0), p.x, p.y - hh);
+      }
     }
   },
 
