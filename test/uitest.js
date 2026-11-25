@@ -489,7 +489,7 @@ kontrol(D.s.gun === 1 && D.s.subeler.length === 1, 'sıfırlama yeni oyun başla
 
 console.log('UI TEST 9b — mini oyunlar, filo, taşıma, jeneratör');
 {
-  const sbm = D.sube();
+  let sbm = D.sube();
   D.s.para = 90000000; D.s.seviye = 20;
   for (let i = 0; i < sbm.beton.length; i++) sbm.beton[i] = true;
 
@@ -570,7 +570,31 @@ console.log('UI TEST 9b — mini oyunlar, filo, taşıma, jeneratör');
   kontrol(w.document.getElementById('modalIc').innerHTML.indexOf('yakıt deposu') > 0, 'jeneratör deposu kartta görünmeli');
   calistir('modal kapat', () => UI.modalKapat());
 
+  /* --- yedekleme --- */
+  D.s.para = 1234567;
+  calistir('yedek al', () => UI.yedekAl());
+  const yedekKod = w.document.getElementById('yedekMetin') ? w.document.getElementById('yedekMetin').value : '';
+  kontrol(yedekKod.length > 50, 'yedek kodu üretilmeli');
+  calistir('modal kapat', () => UI.modalKapat());
+  D.s.para = 1;
+  calistir('yedek ekranı', () => UI.yedekYukleEkrani());
+  const giris = w.document.getElementById('yedekGiris');
+  if (giris) { giris.value = yedekKod; calistir('yedek yükle', () => UI.yedekYukle()); }
+  kontrol(D.s.para === 1234567, 'yedekten kasa geri gelmeli');
+  const sbm2 = D.sube();
+
+  /* --- rehber --- */
+  D.s.rehber = { adim: 0, kapali: false };
+  D.s.ist.elleServis = 5;
+  calistir('rehber kontrol', () => UI.rehberKontrol());
+  kontrol(D.s.rehber.adim === 1, 'rehber ilk adımı tamamlanmalı');
+  kontrol(UI.rehberHtml().indexOf('rehber') > 0, 'rehber şeridi çizilmeli');
+  calistir('rehber kapat', () => UI.rehberKapat());
+  kontrol(D.s.rehber.kapali === true, 'rehber kapatılabilmeli');
+  D.s.rehber.kapali = false;
+
   /* --- pazarlama programları --- */
+  sbm = D.sube();
   D.s.seviye = 20; D.s.para = 90000000;
   calistir('sadakat aç', () => SIM.programAc(sbm, 'sadakat'));
   kontrol(sbm.program.sadakat === true, 'sadakat programı açılmalı');

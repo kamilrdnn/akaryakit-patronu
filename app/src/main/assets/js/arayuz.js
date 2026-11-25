@@ -130,6 +130,7 @@ const UI = {
   /* canlı yenileme: kaydırma konumu korunur */
   tikCiz: function () {
     if (!D.s) return;
+    this.rehberKontrol();
     this.ustCiz();
     if (this.modalAcik || SERVIS.acik) return;
     if (this.sekme === 'istasyon') {
@@ -264,6 +265,8 @@ const UI = {
     if (this.tasinan !== null && this.tasinan !== undefined) {
       h += '<div class="tasimaSerit tik"><span>📦 Yeni yerini seç — boş betona dokun</span>';
       h += '<button onclick="UI.tasimaIptal()">İptal</button></div>';
+    } else {
+      h += this.rehberHtml();
     }
     if (sb.devredildi) {
       h += '<div class="yakitKart tik" style="justify-content:center">Bu şube devredildi — Şubeler\'den başka şubeye geç.</div>';
@@ -1500,6 +1503,9 @@ const UI = {
     h += '<button class="anahtar' + (sesAcik ? ' acik' : '') + '" onclick="UI.sesDegis()"><i></i></button></div>';
     h += '<div class="anahtarSatir"><div><div class="ad">💨 LPG güvenlik adımı</div><div class="alt">LPG dolumunda motor/yolcu kontrolü sorulur</div></div>';
     h += '<button class="anahtar' + (lpgG ? ' acik' : '') + '" onclick="UI.lpgGuvenlikDegis()"><i></i></button></div>';
+    var sbA = D.sube();
+    h += '<div class="anahtarSatir"><div><div class="ad">🌙 Gece kapat (00:00–05:00)</div><div class="alt">Gece müşteri gelmez; elektrik gideri ve kaçak riski düşer</div></div>';
+    h += '<button class="anahtar' + (sbA.gece ? ' acik' : '') + '" onclick="UI.geceDegis()"><i></i></button></div>';
     h += '</div>';
 
     h += '<div class="kart"><div class="baslik">Oyun hızı</div>';
@@ -1515,6 +1521,8 @@ const UI = {
     h += '<button class="btn kucuk ikincil" onclick="D.kaydet()&&UI.bildir(\'Kaydedildi\',\'\',\'iyi\')">💾 Kaydet</button>';
     h += '<button class="btn kucuk ikincil" onclick="UI.guncellemeKontrol()">⬇ Güncelleme denetle</button>';
     h += '<button class="btn kucuk ikincil" onclick="UI.sifirlaOnay()">🗑 Sıfırla</button>';
+    h += '<button class="btn kucuk ikincil" onclick="UI.yedekAl()">📤 Yedek al</button>';
+    h += '<button class="btn kucuk ikincil" onclick="UI.yedekYukleEkrani()">📥 Yedek yükle</button>';
     h += '</div>';
     h += '<div class="not">Sürüm <b id="surumYazi">—</b> · Oyun tamamen çevrimdışı çalışır; internet yalnızca güncelleme denetiminde kullanılır.</div>';
     h += '</div>';
@@ -1583,6 +1591,120 @@ const UI = {
     this.bildir('Yeni oyun', 'Kasaba istasyonunda yeniden başladın.', 'iyi');
   },
 
+  /* =========================================================
+     İLK OYUN REHBERİ
+     ========================================================= */
+  rehberAdimlari: [
+    { ad: 'Müşteriyi karşıla', metin: 'Pompada araç belirince üstüne dokun, sonra “KENDİM DOLDUR”a bas.',
+      tamam: function () { return D.s.ist.elleServis >= 1; } },
+    { ad: 'Tam isabet tuttur', metin: 'İstenen miktara en yakın noktada bırak; tam tutturursan bahşiş alırsın.',
+      tamam: function () { return D.s.ist.tamIsabet >= 1; } },
+    { ad: 'Yakıt siparişi ver', metin: 'Yelpaze menüden 🚚 Sipariş’e gir, azalan tankı doldur.',
+      tamam: function () { var sb = D.sube(); return sb.siparis.length > 0 || D.s.ist.siparis >= 1; } },
+    { ad: 'Pompacı işe al', metin: 'Personel panelinden ya da pompa kartından pompacı al; o da senin yerine doldursun.',
+      tamam: function () { return SIM.personelSayisi(D.sube(), 'pompaci') >= 1; } },
+    { ad: 'Yeni pompa kur', metin: 'İnşaat panelinden ikinci bir pompa ekle; aynı anda iki araca hizmet ver.',
+      tamam: function () { return D.pompalar(D.sube()).length >= 3; } },
+    { ad: 'Market aç', metin: 'İnşaat → Tesisler’den market kur, rafları doldur, ek gelir başlasın.',
+      tamam: function () { return D.binaSayisi(D.sube(), 'market') >= 1; } }
+  ],
+
+  rehberHtml: function () {
+    var r = D.s.rehber;
+    if (!r || r.kapali || r.adim >= this.rehberAdimlari.length) return '';
+    var a = this.rehberAdimlari[r.adim];
+    var h = '<div class="rehber tik">';
+    h += '<div class="rhUst"><span class="rhSayi">' + (r.adim + 1) + '/' + this.rehberAdimlari.length + '</span>';
+    h += '<span class="rhAd">' + a.ad + '</span>';
+    h += '<button class="rhKapat" onclick="UI.rehberKapat()">✕</button></div>';
+    h += '<div class="rhMetin">' + a.metin + '</div>';
+    h += '</div>';
+    return h;
+  },
+
+  rehberKontrol: function () {
+    var r = D.s.rehber;
+    if (!r || r.kapali || r.adim >= this.rehberAdimlari.length) return;
+    var a = this.rehberAdimlari[r.adim];
+    var tamam = false;
+    try { tamam = a.tamam(); } catch (e) { tamam = false; }
+    if (!tamam) return;
+    r.adim++;
+    if (window.SES) SES.cal('basari');
+    if (r.adim >= this.rehberAdimlari.length) {
+      var odul = 60000;
+      D.s.para += odul;
+      D.xpEkle(400);
+      this.bildir('🎓 Rehber tamamlandı', 'Temel işleyişi öğrendin · +' + tl(odul), 'iyi');
+    } else {
+      this.bildir('✔ ' + a.ad, 'Sıradaki: ' + this.rehberAdimlari[r.adim].ad, 'iyi');
+    }
+    D.kaydet();
+  },
+
+  rehberKapat: function () {
+    D.s.rehber.kapali = true;
+    D.kaydet();
+    this.ciz();
+  },
+
+  /* =========================================================
+     KAYIT YEDEKLEME
+     ========================================================= */
+  yedekAl: function () {
+    var metin = '';
+    try { metin = JSON.stringify(D.s); } catch (e) { this.bildir('Yedek alınamadı', '', 'kotu'); return; }
+    var kod = '';
+    try { kod = btoa(unescape(encodeURIComponent(metin))); } catch (e) { kod = metin; }
+    var h = '<div class="not">Aşağıdaki kodu kopyalayıp bir yere kaydet. Telefonu değiştirsen bile bu kodla kaldığın yerden devam edersin.</div>';
+    h += '<textarea class="yedekKutu" id="yedekMetin" readonly>' + kod + '</textarea>';
+    h += '<div class="kv"><span>Gün</span><b>' + D.s.gun + '</b></div>';
+    h += '<div class="kv"><span>Kasa</span><b>' + tl(D.s.para) + '</b></div>';
+    h += '<div class="kv"><span>Boyut</span><b>' + say(kod.length / 1024, 1) + ' KB</b></div>';
+    h += '<button class="btn genis" style="margin-top:10px" onclick="UI.yedekKopyala()">📋 Kopyala</button>';
+    this.modal('Yedek kodu', h);
+  },
+
+  yedekKopyala: function () {
+    var el = document.getElementById('yedekMetin');
+    if (!el) return;
+    try {
+      el.select();
+      el.setSelectionRange(0, 999999);
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(el.value);
+      else document.execCommand('copy');
+      this.bildir('Kopyalandı', 'Yedek kodu panoya alındı.', 'iyi');
+    } catch (e) { this.bildir('Kopyalanamadı', 'Kodu elle seçip kopyala.', 'uyari'); }
+  },
+
+  yedekYukleEkrani: function () {
+    var h = '<div class="not">Daha önce aldığın yedek kodunu yapıştır. Mevcut kaydın silinir, yerine bu gelir.</div>';
+    h += '<textarea class="yedekKutu" id="yedekGiris" placeholder="Yedek kodunu buraya yapıştır"></textarea>';
+    h += '<button class="btn genis" style="margin-top:10px" onclick="UI.yedekYukle()">📥 Yedeği yükle</button>';
+    this.modal('Yedekten dön', h);
+  },
+
+  yedekYukle: function () {
+    var el = document.getElementById('yedekGiris');
+    if (!el || !el.value.trim()) { this.bildir('Kod boş', 'Önce yedek kodunu yapıştır.', 'kotu'); return; }
+    var ham = el.value.trim(), nesne = null;
+    try {
+      var coz = ham.charAt(0) === '{' ? ham : decodeURIComponent(escape(atob(ham)));
+      nesne = JSON.parse(coz);
+    } catch (e) { nesne = null; }
+    if (!nesne || !nesne.subeler || !nesne.subeler.length) {
+      this.bildir('Geçersiz yedek', 'Kod okunamadı veya bozuk.', 'kotu');
+      return;
+    }
+    D.s = nesne;
+    try { D.onar(); } catch (e) {}
+    D.kaydet();
+    this.modalKapat();
+    this.sekmeGec('istasyon');
+    try { IZO.susle(D.sube()); IZO._zAnahtar = ''; IZO.kameraSifirla(); } catch (e) {}
+    this.bildir('Yedek yüklendi', 'Gün ' + D.s.gun + ' · ' + tl(D.s.para), 'iyi');
+  },
+
   cevrimdisiModal: function (cd) {
     var saat = Math.floor(cd.saat);
     var dk = Math.round((cd.saat - saat) * 60);
@@ -1619,6 +1741,13 @@ const UI = {
     D.s.ayar.ses = D.s.ayar.ses === false;
     if (window.SES) { SES.uyandir(); SES.ayar(D.s.ayar.ses !== false); SES.cal('buton'); }
     D.kaydet();
+    this.panelYenile();
+  },
+  geceDegis: function () {
+    var sb = D.sube();
+    sb.gece = !sb.gece;
+    D.kaydet();
+    this.bildir(sb.gece ? '🌙 Gece kapanış açık' : '🌞 24 saat açık', sb.gece ? 'Gece 00:00–05:00 arası müşteri alınmaz.' : 'İstasyon tüm gün hizmet verir.', 'iyi');
     this.panelYenile();
   },
   lpgGuvenlikDegis: function () {

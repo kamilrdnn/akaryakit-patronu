@@ -622,6 +622,9 @@ const IZO = {
       else this.uyariIsareti(ii.gx, ii.gy, ii.z, ii.renk, '!');
     }
 
+    /* gece kapalı uyarısı */
+    if (SIM.geceKapali && SIM.geceKapali(sb)) this.kapaliTabela(sb);
+
     /* hava olayları */
     this.havaCiz();
 
@@ -740,6 +743,23 @@ const IZO = {
       c.ellipse(p.x, p.y, r * 1.5, r, 0, 0, Math.PI * 2);
       c.fill();
     }
+  },
+
+  kapaliTabela: function (sb) {
+    var c = this.cz;
+    var p = this.ekran((sb.w - 1) / 2, (sb.h - 1) / 2, 70);
+    var o = this.kam.olcek;
+    var w = 86 * o, h = 26 * o;
+    c.fillStyle = 'rgba(12,18,30,.88)';
+    this.yuvarlakKutu(p.x - w / 2, p.y - h / 2, w, h, 9 * o);
+    c.fill();
+    c.strokeStyle = 'rgba(240,82,82,.75)';
+    c.lineWidth = Math.max(1, 1.6 * o);
+    c.stroke();
+    c.fillStyle = '#f7a8a8';
+    c.font = 'bold ' + Math.round(11 * o) + 'px sans-serif';
+    c.textAlign = 'center';
+    c.fillText('🌙 KAPALI', p.x, p.y + 4 * o);
   },
 
   /* yağmur / kar tanecikleri — ekran uzayında, ucuz */

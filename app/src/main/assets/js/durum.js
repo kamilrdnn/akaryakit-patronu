@@ -63,6 +63,7 @@ const D = {
       krediNotu: 55,
       sozlesmeler: [],
       sozlesmeTeklif: [],
+      rehber: { adim: 0, kapali: false },
       filolar: [],
       filoTeklif: [],
       gorevler: [],
@@ -327,6 +328,7 @@ const D = {
     if (!s.sozlesmeTeklif) s.sozlesmeTeklif = [];
     if (!s.filolar) s.filolar = [];
     if (!s.filoTeklif) s.filoTeklif = [];
+    if (!s.rehber) s.rehber = { adim: 99, kapali: true };
     for (var pi = 0; pi < s.subeler.length; pi++) {
       var psb = s.subeler[pi];
       if (!psb.program) psb.program = { sadakat: false, premium: false, yikamaAbone: false };

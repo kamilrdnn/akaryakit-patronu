@@ -37,6 +37,7 @@ const SIM = {
     var sebeke = Math.max(0, tuk - ure);
     if (sb.kesinti) sebeke = 0;
     var bedel = sebeke * VERI.sebekeFiyat;
+    if (this.geceKapali(sb)) bedel *= 0.35;         /* kapalıyken tüketim düşer */
     if (bedel > 0) { s.para -= bedel; s.ist.bugunGider += bedel; }
 
     /* --- jeneratör dizel tüketimi --- */
@@ -229,6 +230,13 @@ const SIM = {
   },
 
   /* beklenen saatlik müşteri */
+  /* gece kapatma: 00:00–05:00 arası istasyon kapalı */
+  geceKapali: function (sb) {
+    if (!sb.gece) return false;
+    var sa = D.s.saat;
+    return sa >= 0 && sa < 5;
+  },
+
   saatlikMusteri: function (sb) {
     var lok = D.lok(sb);
     var pompa = 0, po = D.pompalar(sb);
@@ -253,6 +261,7 @@ const SIM = {
 
   musteriUret: function (sb) {
     if (sb.devredildi) return;
+    if (this.geceKapali(sb)) return;
     var po = D.pompalar(sb);
     var calisan = 0;
     for (var ci = 0; ci < po.length; ci++) if (!po[ci].p.arizali) calisan++;
@@ -991,6 +1000,7 @@ const SIM = {
     var sure = D.s.rafineri.aktif ? rastgeleTam(8, 25) : Math.round(rastgeleTam(45, 150) * ted.sure);
     if (sure < 4) sure = 4;
     sb.siparis.push({ id: id(), yakit: yakit, miktar: miktar, kalan: sure, birim: birim });
+    D.s.ist.siparis = (D.s.ist.siparis || 0) + 1;
     UI.bildir('Sipariş verildi', say(miktar, 0) + ' L ' + VERI.yakitlar[yakit].ad + ' · ' + tl(tutar + nakliye) + ' · ' + sure + ' dk', 'iyi');
     return true;
   },
