@@ -209,23 +209,30 @@ const VERI = {
 
   /* ---------------- müşteri şikayetleri ---------------- */
   sikayetTipleri: {
-    bekleme:   { ad: 'Uzun kuyruk',        emoji: '⏱️', metin: 'Sıra çok uzundu, beklemeden gittim.',           etki: 2.5, cozum: 'Pompa ekle ya da pompacı al', sekme: 'insa' },
-    kirli:     { ad: 'Kirli istasyon',     emoji: '🧹', metin: 'İstasyon çok kirliydi, bir daha uğramam.',       etki: 2.0, cozum: 'Temizlik yap', sekme: 'personel' },
-    stokYok:   { ad: 'Yakıt yok',          emoji: '🚫', metin: 'İstediğim yakıt tükenmişti.',                    etki: 3.0, cozum: 'Tank siparişi ver', sekme: 'siparis' },
-    pahali:    { ad: 'Fiyat yüksek',       emoji: '💸', metin: 'Rakipten pahalıydı, yarım depo aldım.',          etki: 1.5, cozum: 'Fiyatı gözden geçir', sekme: 'fiyat' },
-    ariza:     { ad: 'Arızalı pompa',      emoji: '🔧', metin: 'Pompa bozuktu, zaman kaybettim.',                etki: 2.8, cozum: 'Bakım/tamir yaptır', sekme: 'insa' },
-    tasma:     { ad: 'Yakıt taştı',        emoji: '💧', metin: 'Deponun ağzından taştı, aracım kirlendi.',        etki: 3.5, cozum: 'Dolumda hedefe dikkat et', sekme: 'daha' },
-    yanlis:    { ad: 'Yanlış yakıt',       emoji: '❌', metin: 'Aracıma yanlış yakıt verdiniz!',                  etki: 6.0, cozum: 'Tabancayı doğru seç', sekme: 'daha' },
-    wcYok:     { ad: 'Tuvalet yok',        emoji: '🚻', metin: 'Tuvalet yoktu, mola veremedim.',                 etki: 1.2, cozum: 'WC kur', sekme: 'insa' },
-    marketYok: { ad: 'Market boş',         emoji: '🛒', metin: 'Marketin rafları boştu.',                        etki: 1.4, cozum: 'Market stoğu al', sekme: 'market' },
-    karanlik:  { ad: 'Aydınlatma yok',     emoji: '💡', metin: 'Gece istasyon karanlıktı, güvensiz hissettim.',  etki: 1.6, cozum: 'Elektrik kesintisini çöz', sekme: 'insa' }
+    bekleme:   { ad: 'Uzun kuyruk',        emoji: '⏱️', metin: 'Sıra çok uzundu, beklemeden gittim.', metinler: ['Sıra çok uzundu, beklemeden gittim.', 'On dakika bekledim, sıra bir araç bile ilerlemedi.', 'Kuyruk yola taşmıştı, girmeye bile uğraşmadım.', 'İşe geç kalıyordum, bu sırayı bekleyemezdim.', 'Tek pompa çalışıyor gibiydi, vazgeçtim.', 'Pompacı yetişemiyordu, başka istasyona gittim.'],           etki: 2.5, cozum: 'Pompa ekle ya da pompacı al', sekme: 'insa' },
+    kirli:     { ad: 'Kirli istasyon',     emoji: '🧹', metin: 'İstasyon çok kirliydi, bir daha uğramam.', metinler: ['İstasyon çok kirliydi, bir daha uğramam.', 'Yerler yağ içindeydi, ayakkabım battı.', 'Çöp kutuları taşmıştı, hoş bir görüntü değildi.', 'Pompa tabancası yapış yapıştı.', 'Ortalık dağınıktı; biraz özen lütfen.', 'Cam silecek suyu bile kirliydi.'],       etki: 2.0, cozum: 'Temizlik yap', sekme: 'personel' },
+    stokYok:   { ad: 'Yakıt yok',          emoji: '🚫', metin: 'İstediğim yakıt tükenmişti.', metinler: ['İstediğim yakıt tükenmişti.', 'Buraya kadar geldim, yakıt yokmuş!', 'Tank boşmuş, eli boş döndüm.', 'Yakıt bitmiş, tabelada da yazmıyordu.', 'Depom boşalmak üzereydi, burada da yakıt çıkmadı.'],                    etki: 3.0, cozum: 'Tank siparişi ver', sekme: 'siparis' },
+    pahali:    { ad: 'Fiyat yüksek',       emoji: '💸', metin: 'Rakipten pahalıydı, yarım depo aldım.', metinler: ['Rakipten pahalıydı, yarım depo aldım.', 'Karşıdaki istasyon litrede daha ucuz.', 'Fiyatlar tuzlu, bu sefer az aldım.', 'Bu fiyata fulleyemem, idare edecek kadar aldım.', 'Tabeladaki fiyatı görünce depoyu doldurmaktan vazgeçtim.', 'Her gün buradan alıyordum ama fiyat arttı.'],          etki: 1.5, cozum: 'Fiyatı gözden geçir', sekme: 'fiyat' },
+    ariza:     { ad: 'Arızalı pompa',      emoji: '🔧', metin: 'Pompa bozuktu, zaman kaybettim.', metinler: ['Pompa bozuktu, zaman kaybettim.', 'Tabanca sürekli attı, doğru düzgün dolduramadım.', 'Pompa ekranı çalışmıyordu.', 'Yanaştığım pompa arızalıymış, başka pompaya geçmek zorunda kaldım.', 'Pompa yarıda durdu, baştan başladık.'],                etki: 2.8, cozum: 'Bakım/tamir yaptır', sekme: 'insa' },
+    tasma:     { ad: 'Yakıt taştı',        emoji: '💧', metin: 'Deponun ağzından taştı, aracım kirlendi.', metinler: ['Deponun ağzından taştı, aracım kirlendi.', 'Yakıt taştı, kaportam leke oldu.', 'İstediğimden fazla doldurdunuz, yere döküldü.', 'Tabancayı zamanında çekmediler, benzin aktı.', 'Üstüm başım yakıt koktu, dikkat edin biraz.', 'Taşan yakıtın parasını da ben ödedim!'],        etki: 3.5, cozum: 'Dolumda hedefe dikkat et', sekme: 'daha' },
+    yanlis:    { ad: 'Yanlış yakıt',       emoji: '❌', metin: 'Aracıma yanlış yakıt verdiniz!', metinler: ['Aracıma yanlış yakıt verdiniz!', 'Dizel araca benzin mi konur?', 'Yanlış tabanca takılmış, motorum zarar görebilir.', 'Yakıt türünü sormadan doldurdunuz!'],                  etki: 6.0, cozum: 'Tabancayı doğru seç', sekme: 'daha' },
+    wcYok:     { ad: 'Tuvalet yok',        emoji: '🚻', metin: 'Tuvalet yoktu, mola veremedim.', metinler: ['Tuvalet yoktu, mola veremedim.', 'Uzun yoldan geliyorum, tuvalet bulamadım.', 'Çocuklarla durduk ama tuvalet yokmuş.', 'Bir istasyonda tuvalet olmaması şaşırtıcı.'],                 etki: 1.2, cozum: 'WC kur', sekme: 'insa' },
+    marketYok: { ad: 'Market boş',         emoji: '🛒', metin: 'Marketin rafları boştu.', metinler: ['Marketin rafları boştu.', 'Su almak istedim, o bile yoktu.', 'Market var ama içinde bir şey yok.', 'Kahve alacaktım, makine boştu.'],                        etki: 1.4, cozum: 'Market stoğu al', sekme: 'market' },
+    karanlik:  { ad: 'Aydınlatma yok',     emoji: '💡', metin: 'Gece istasyon karanlıktı, güvensiz hissettim.', metinler: ['Gece istasyon karanlıktı, güvensiz hissettim.', 'Işıklar yanmıyordu, kapalı sandım.', 'Karanlıkta pompayı zor buldum.', 'Aydınlatma yok, gece girmeye çekindim.'],  etki: 1.6, cozum: 'Elektrik kesintisini çöz', sekme: 'insa' }
   },
   ovguTipleri: [
     { emoji: '⭐', metin: 'Tam istediğim kadar doldurdunuz, teşekkürler!' },
+    { emoji: '⭐', metin: 'Kuruşu kuruşuna doldurdunuz, elinize sağlık.' },
     { emoji: '😊', metin: 'Hızlı ve temiz hizmet, yine geleceğim.' },
+    { emoji: '😊', metin: 'Beş dakikada işim bitti, harika.' },
     { emoji: '👏', metin: 'Pompacı çok ilgiliydi.' },
-    { emoji: '💚', metin: 'Market ve tuvalet tertemizdi.' },
-    { emoji: '🏆', metin: 'Bölgenin en iyi istasyonu burası.' }
+    { emoji: '👏', metin: 'Camımı da sildiler, güler yüzlü ekip.' },
+    { emoji: '💚', metin: 'İstasyon tertemizdi.' },
+    { emoji: '💚', metin: 'Fiyatlar makul, hizmet iyi.' },
+    { emoji: '🏆', metin: 'Bölgenin en iyi istasyonu burası.' },
+    { emoji: '🏆', metin: 'Artık hep buradan alacağım.' },
+    { emoji: '🙌', metin: 'Hiç sıra beklemedim, teşekkürler.' },
+    { emoji: '👍', metin: 'Yol üstünde böyle düzgün bir yer bulmak güzel.' }
   ],
 
   /* ---------------- marka / tabela tasarımı ---------------- */

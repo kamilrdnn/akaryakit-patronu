@@ -1257,7 +1257,7 @@ const SIM = {
     if (!t) return;
     if (!sb.sikayetler) { sb.sikayetler = []; sb.ovguler = []; sb.sikayetSayac = {}; }
     var kayit = {
-      id: id(), tip: tip, emoji: t.emoji, baslik: t.ad, metin: t.metin,
+      id: id(), tip: tip, emoji: t.emoji, baslik: t.ad, metin: this.yorumSec(t.metinler || [t.metin], sb.sikayetler),
       arac: m ? (m.emoji + ' ' + m.arac) : '🚗 Müşteri',
       gun: D.s.gun, saat: ikiHane(D.s.saat) + ':' + ikiHane(D.s.dk),
       okundu: false
@@ -1274,9 +1274,21 @@ const SIM = {
     D.s.ist.sikayet = (D.s.ist.sikayet || 0) + 1;
   },
 
+  /* son yorumlarda geçmeyen bir cümle seç: liste hep aynı satırla dolmasın */
+  yorumSec: function (liste, gecmis) {
+    var son = {};
+    for (var i = 0; i < Math.min(6, (gecmis || []).length); i++) son[gecmis[i].metin] = true;
+    var aday = [];
+    for (var k = 0; k < liste.length; k++) if (!son[liste[k]]) aday.push(liste[k]);
+    return secRast(aday.length ? aday : liste);
+  },
+
   ovgu: function (sb, m) {
     if (!sb.ovguler) sb.ovguler = [];
+    var sonlar = {};
+    for (var q = 0; q < Math.min(4, sb.ovguler.length); q++) sonlar[sb.ovguler[q].metin] = true;
     var o = secRast(VERI.ovguTipleri);
+    for (var d2 = 0; d2 < 6 && sonlar[o.metin]; d2++) o = secRast(VERI.ovguTipleri);
     sb.ovguler.unshift({
       id: id(), emoji: o.emoji, metin: o.metin,
       arac: m ? (m.emoji + ' ' + m.arac) : '🚗 Müşteri',

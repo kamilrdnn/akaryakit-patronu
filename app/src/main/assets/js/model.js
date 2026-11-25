@@ -1292,7 +1292,7 @@
     else if (a.tip === 'Traktör') cesit = 'traktor';
     return cesit;
   };
-  var ARAC_UZ = { oto: 0.76, taksi: 0.78, minibus: 0.9, traktor: 0.66, motor: 0.4, tir: 1.56, otobus: 1.42 };
+  var ARAC_UZ = { oto: 0.76, taksi: 0.78, minibus: 0.86, traktor: 0.66, motor: 0.4, tir: 1.1, otobus: 0.98 };
 
   /** aracı (cx,cy) merkezinde, aci yönünde çizer */
   Z.aracModel = function (cesit, renk, cx, cy, aci) {
@@ -1313,16 +1313,16 @@
       ekle(0, 0.3, 0.08, 0.035, 3, 3.6, renk);
       ekle(-0.04, 0.14, 0.09, 0.04, 6.6, 1.6, '#23282f');
     } else if (cesit === 'tir') {
-      L = 1.56; W = 0.44;
-      [0.56, -0.2, -0.36, -0.62].forEach(function (x) { teker(x, W / 2 - 0.035, 0.17, 0.07); teker(x, -W / 2 + 0.035, 0.17, 0.07); });
-      ekle(-0.2, 1.1, W - 0.06, 0.03, 3, 2, '#3b424c', { duz: true });
-      ekle(-0.24, 1.04, W, 0.035, 5, 15.5, '#f1f3f5');
-      ekle(-0.24, 1.045, W + 0.005, 0.035, 9, 2.4, renk, { duz: true, ustsuz: true });
-      ekle(0.57, 0.36, W - 0.02, 0.07, 2.4, 7.2, renk);
-      ekle(0.585, 0.3, W - 0.06, 0.06, 9.6, 5, cam, { duz: true });
-      ekle(0.57, 0.33, W - 0.03, 0.07, 14.6, 1.8, renk);
+      L = 1.1; W = 0.42;
+      [0.39, -0.13, -0.26, -0.44].forEach(function (x) { teker(x, W / 2 - 0.035, 0.16, 0.07); teker(x, -W / 2 + 0.035, 0.16, 0.07); });
+      ekle(-0.13, 0.78, W - 0.06, 0.03, 3, 2, '#3b424c', { duz: true });
+      ekle(-0.17, 0.72, W, 0.035, 5, 15.5, '#f1f3f5');
+      ekle(-0.17, 0.725, W + 0.005, 0.035, 9, 2.4, renk, { duz: true, ustsuz: true });
+      ekle(0.39, 0.3, W - 0.02, 0.07, 2.4, 7.2, renk);
+      ekle(0.4, 0.25, W - 0.06, 0.06, 9.6, 5, cam, { duz: true });
+      ekle(0.39, 0.28, W - 0.03, 0.07, 14.6, 1.8, renk);
     } else if (cesit === 'otobus' || cesit === 'minibus') {
-      L = cesit === 'otobus' ? 1.42 : 0.9; W = cesit === 'otobus' ? 0.44 : 0.4;
+      L = cesit === 'otobus' ? 0.98 : 0.86; W = cesit === 'otobus' ? 0.42 : 0.4;
       var gh = cesit === 'otobus' ? 7 : 6.5, ch = cesit === 'otobus' ? 6.5 : 5.5;
       var tk = L / 2 - 0.2;
       teker(tk, W / 2 - 0.03, 0.16, 0.065); teker(tk, -W / 2 + 0.03, 0.16, 0.065);
@@ -1368,12 +1368,12 @@
         c.fillStyle = rk; c.beginPath(); c.arc(e.x, e.y, r * o, 0, 6.3); c.fill();
         return e;
       };
-      var onX = cesit === 'tir' ? 0.75 : L / 2;
+      var onX = cesit === 'tir' ? 0.54 : L / 2;
       if (onGor) {
         var f1 = nokta(onX - 0.005, W * 0.3, gece ? '#fff6c8' : '#fdf3c4', 1.25), f2 = nokta(onX - 0.005, -W * 0.3, gece ? '#fff6c8' : '#fdf3c4', 1.25);
         if (gece) { this.hale(f1.x, f1.y, 9 * o, '255,240,180', 0.5); this.hale(f2.x, f2.y, 9 * o, '255,240,180', 0.5); }
       }
-      if (arkaGor) { nokta(-(cesit === 'tir' ? 0.76 : L / 2) + 0.005, W * 0.3, '#e23b3b', 1.1); nokta(-(cesit === 'tir' ? 0.76 : L / 2) + 0.005, -W * 0.3, '#e23b3b', 1.1); }
+      if (arkaGor) { nokta(-(cesit === 'tir' ? 0.53 : L / 2) + 0.005, W * 0.3, '#e23b3b', 1.1); nokta(-(cesit === 'tir' ? 0.53 : L / 2) + 0.005, -W * 0.3, '#e23b3b', 1.1); }
     } else if (cesit === 'motor') {
       /* sürücü */
       var s = nk(-0.02, 0), e1 = this.ekran(s.gx, s.gy, 8), e2 = this.ekran(s.gx, s.gy, 15.5);
@@ -2069,6 +2069,55 @@
         a.gx = hx; a.gy = hy; a.yol = []; a.aci = Math.PI; a.durum = 'park';
         m.yolda = false; a._atama = 0;
       } else m.yolda = true;
+    }
+  };
+})();
+
+
+/* =========================================================
+   BÖLÜM 6 — derinlik sırası: araçlar yapıların üstünden görünmesin
+   Araç, kutusu yapının önünde kalıyorsa sonra; arkasında kalıyorsa önce çizilir.
+   ========================================================= */
+(function () {
+  var Z = IZO;
+  var UZ = { oto: 0.76, taksi: 0.78, minibus: 0.86, traktor: 0.66, motor: 0.4, tir: 1.1, otobus: 0.98 };
+  Z.derinlikDuzelt = function (sb, liste) {
+    var yapilar = [], i, k;
+    for (i = 0; i < liste.length; i++) if (liste[i].tur === 'yapi') yapilar.push(liste[i]);
+    if (!yapilar.length) return;
+    for (i = 0; i < liste.length; i++) {
+      var o = liste[i];
+      if (o.tur !== 'araba') continue;
+      var a = o.a, L = (UZ[this.aracCesit(a)] || 0.76) / 2, W = 0.2;
+      var ca = Math.abs(Math.cos(a.aci || 0)), sa = Math.abs(Math.sin(a.aci || 0));
+      var hx = ca * L + sa * W, hy = sa * L + ca * W;
+      var x0 = a.gx - hx, x1 = a.gx + hx, y0 = a.gy - hy, y1 = a.gy + hy;
+      var enAz = -1e9, enCok = 1e9;
+      for (k = 0; k < yapilar.length; k++) {
+        var y = yapilar[k];
+        if (y.gx > x1 + 1.2 || y.gx + 1 < x0 - 1.2 || y.gy > y1 + 1.2 || y.gy + 1 < y0 - 1.2) continue;
+        var pompa = sb.yapi[y.i].t === 'pompa';
+        var sx0 = y.gx + (pompa ? 0.1 : 0.2), sx1 = y.gx + (pompa ? 0.9 : 0.8);
+        var sy0 = y.gy + (pompa ? 0.1 : 0.2), sy1 = y.gy + (pompa ? 0.7 : 0.8);
+        var e = 0.12;
+        if (y0 >= sy1 - e || x0 >= sx1 - e) { if (y.d > enAz) enAz = y.d; }        /* araç önde */
+        else if (y1 <= sy0 + e || x1 <= sx0 + e) { if (y.d < enCok) enCok = y.d; } /* araç arkada */
+      }
+      if (o.d <= enAz) o.d = enAz + 0.01;
+      if (o.d >= enCok && enCok > enAz + 0.02) o.d = enCok - 0.01;
+    }
+    /* insanlar da aynı kural: önündeki yapının arkasında kalsın */
+    for (i = 0; i < liste.length; i++) {
+      var p = liste[i];
+      if (p.tur !== 'insan' && p.tur !== 'yaya') continue;
+      for (k = 0; k < yapilar.length; k++) {
+        var yb = yapilar[k];
+        if (Math.abs(yb.gx + 0.5 - p.gx) > 1.3 || Math.abs(yb.gy + 0.5 - p.gy) > 1.3) continue;
+        var on = p.gy >= yb.gy + 0.68 || p.gx >= yb.gx + 0.78;
+        var arka = p.gy <= yb.gy + 0.22 || p.gx <= yb.gx + 0.22;
+        if (on && p.d <= yb.d) p.d = yb.d + 0.02;
+        else if (!on && arka && p.d >= yb.d) p.d = yb.d - 0.02;
+      }
     }
   };
 })();

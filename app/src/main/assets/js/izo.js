@@ -962,7 +962,8 @@ const IZO = {
     for (var i = 0; i < sb.yapi.length; i++) {
       if (!sb.yapi[i]) continue;
       var x = i % sb.w, y = Math.floor(i / sb.w);
-      liste.push({ d: x + y, tur: 'yapi', i: i, gx: x, gy: y });
+      /* derinlik anahtarı: yapının oturduğu alanın ortası (köşesi değil) */
+      liste.push({ d: x + y + (sb.yapi[i].t === 'pompa' ? 0.89 : 1), tur: 'yapi', i: i, gx: x, gy: y });
     }
     /* görüş penceresi: dışarıdaki süsler hiç çizilmesin (kasmayı önler) */
     var pay = 2.5;
@@ -970,7 +971,7 @@ const IZO = {
       var su = this.susler[s2];
       if (su.gx + (su.w || 1) < minGX - pay || su.gx > maxGX + pay) continue;
       if (su.gy + (su.h || 1) < minGY - pay || su.gy > maxGY + pay) continue;
-      liste.push({ d: su.gx + su.gy, tur: 'sus', s: su, gx: su.gx, gy: su.gy });
+      liste.push({ d: su.gx + su.gy + ((su.w || 1) + (su.h || 1)) / 2, tur: 'sus', s: su, gx: su.gx, gy: su.gy });
     }
     for (var pr = 0; pr < (this.personeller || []).length; pr++) {
       var pp = this.personeller[pr];
@@ -985,6 +986,7 @@ const IZO = {
       if (ar.gx < minGX - pay || ar.gx > maxGX + pay || ar.gy < minGY - pay || ar.gy > maxGY + pay) continue;
       liste.push({ d: ar.gx + ar.gy, tur: 'araba', a: ar, gx: ar.gx, gy: ar.gy });
     }
+    if (this.derinlikDuzelt) this.derinlikDuzelt(sb, liste);
     liste.sort(function (p, q) { return p.d - q.d; });
 
     for (var n = 0; n < liste.length; n++) {
