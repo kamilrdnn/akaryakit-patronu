@@ -1,7 +1,7 @@
 {
-  "versionCode": 128,
-  "versionName": "1.2.22",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.22/AkaryakitPatronu-1.2.22.apk",
-  "size": 3298113,
-  "notes": "Giriş menüsü: Yeni oyun düğmesi çalışıyor"
+  "versionCode": 130,
+  "versionName": "1.2.24",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.24/AkaryakitPatronu-1.2.24.apk",
+  "size": 3321849,
+  "notes": "Grafik yenileme: yuvarlak hatlı araç, bina, pompa, insan ve ağaç modelleri; direksiyonlu sürüş fiziği"
 }
