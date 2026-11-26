@@ -1,7 +1,7 @@
 {
-  "versionCode": 148,
-  "versionName": "1.2.42",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.42/AkaryakitPatronu-1.2.42.apk",
-  "size": 3362577,
-  "notes": "Vardiyaya göre personel sınırı: pompa başına 2 pompacı, diğer kadrolar seviyeyle büyür; aynı pompada gündüz ve gece pompacısı"
+  "versionCode": 149,
+  "versionName": "1.2.43",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.43/AkaryakitPatronu-1.2.43.apk",
+  "size": 3363405,
+  "notes": "Vardiya personel ekranında: kişi başına üç düğme ve tek dokunuşla otomatik dağıtım"
 }
