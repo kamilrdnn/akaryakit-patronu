@@ -964,40 +964,27 @@ console.log('UI TEST 9c — ek sistemler');
     kontrol(vipm.pompa !== null && vipm.durum === 'pompada', 'VIP için pompa boşaltılıp ona verilmeli');
     kontrol(bekleyen.pompa === null, 'sıradaki normal müşteri VIP\'in önüne geçmemeli');
     sbe.kuyruk = []; po.forEach(q => { q.p.mesgul = null; }); }
-  /* yolun karşısındaki arsa */
-  { D.s.para = 5e9; D.s.seviye = 20; const n0 = D.s.subeler.length, lk = sbe.lok;
-    calistir('şubeler sayfası (karşı yaka kartı)', () => UI.sekmeGec('subeler'));
-    kontrol(w.document.getElementById('govde').innerHTML.indexOf('Yolun karşısı') > 0, 'karşı yaka kartı görünmeli');
-    kontrol(EK.karsiAc(lk) && D.s.subeler.length === n0 + 1 && EK.karsiVar(lk), 'karşı arsa alınıp şube açılabilmeli');
-    kontrol(!EK.karsiAc(lk), 'aynı lokasyonda ikinci karşı şube açılmamalı');
-    const ks = D.s.subeler[D.s.subeler.length - 1];
-    kontrol(D.lok(ks).ad.indexOf('Karşı Yaka') > 0 && D.lok(sbe).ad.indexOf('Karşı Yaka') < 0, 'karşı şubenin adı ayrı görünmeli');
-    kontrol(SIM.rakipCekim(ks) === 1.05 && SIM.rakipIndirim(ks) === 0, 'karşı şubede rakip olmamalı');
-    const a0 = ks.w * ks.h; kontrol(SIM.arsaGenislet(ks) && ks.w * ks.h > a0, 'karşı şubenin arsası büyüyebilmeli');
-    const eski = D.s.aktif;
-    /* aynı ekranda karşı yaka */
-    kontrol(EK.karsiEsi(sbe) && EK.karsiEsi(sbe).sb === ks && EK.karsiEsi(ks).sb === sbe, 'iki yaka birbirini bulmalı');
-    calistir('karşı yakalı sahne', () => { UI.sekmeGec('istasyon'); IZO._sahneAnahtar = null; IZO.guncelle(0.016); IZO.ciz(); IZO.ciz(); });
-    kontrol(IZO.vurus.some(v => v.i === -1000), 'karşı yaka sahnede çizilmeli ve dokunulabilmeli');
-    calistir('karşı yakaya dokun', () => UI.hucreTik(-1000));
-    kontrol(w.document.getElementById('modalIc').innerHTML.indexOf('şubesine geç') > 0, 'karşı yakaya dokununca geçiş penceresi açılmalı');
-    UI.modalKapat();
-    calistir('karşı şubeye geç', () => UI.subeGec(D.s.subeler.length - 1));
-    calistir('karşı şubede sahne', () => { UI.sekmeGec('istasyon'); IZO.guncelle(0.016); IZO.ciz(); });
-    calistir('karşı şubede fiyat', () => UI.sekmeGec('fiyat'));
-    calistir('karşı şubede gün sonu', () => SIM.gunSonu());
-    calistir('geri dön', () => UI.subeGec(eski));
-    D.s.subeler.pop(); D.s.aktif = eski; }
-  /* bakım sekmesi */
-  { D.s.para = 5e8; const ys = sbe.yapi.filter(Boolean); ys[0].arizali = true; ys[0].bakim = 20; ys[1].bakim = 50; sbe.temizlik = 30;
-    calistir('bakım sekmesi', () => { UI.sekmeGec('insa'); UI.altSekmeGec('insa', 'bakim'); });
-    const gv = w.document.getElementById('govde').innerHTML;
-    kontrol(gv.indexOf('Bakım ve tamir') > 0 && gv.indexOf('Arızaları onar') > 0 && gv.indexOf('Temizlet') > 0, 'bakım sekmesi arıza, toplu bakım ve temizliği göstermeli');
-    kontrol(EK.bakimRozet(sbe) >= 1, 'bakım sekmesi rozeti arızayı saymalı');
-    calistir('arızaları onar', () => EK.bakimTikla(0, true)); kontrol(!ys[0].arizali && ys[1].bakim === 50, 'yalnız arızalılar onarılmalı');
-    calistir('%60 altını yap', () => EK.bakimTikla(60, false)); kontrol(ys[1].bakim === 100, 'eşiğin altındakiler bakımdan geçmeli');
-    calistir('temizlet', () => EK.temizlikTikla()); kontrol(sbe.temizlik === 100, 'bakım sekmesinden temizlik yapılmalı');
-    UI.altSekmeGec('insa', 'istasyon'); }
+  /* kavşak: karşı yönden gelen araçlar */
+  { D.s.para = 5e9; D.s.seviye = 20; sbe.kavsak = 0; sbe.giris = 1;
+    kontrol(!EK.kavsakYukselt(sbe), 'giriş seviyesi yetmeden kavşak açılmamalı');
+    sbe.giris = 3; const ms0 = SIM.saatlikMusteri(sbe);
+    kontrol(EK.kavsakYukselt(sbe) && EK.kavsakSeviye(sbe) === 1, 'dönüş cebi açılabilmeli');
+    kontrol(!ms0 || SIM.saatlikMusteri(sbe) > ms0, 'kavşak müşteriyi artırmalı');
+    kontrol(EK.kavsakYukselt(sbe) && EK.kavsakSeviye(sbe) === 2 && !EK.kavsakYukselt(sbe), 'ışıklı kavşak son seviye olmalı');
+    calistir('inşaat (kavşak kartı)', () => { UI.sekmeGec('insa'); UI.altSekmeGec('insa', 'istasyon'); });
+    kontrol(w.document.getElementById('govde').innerHTML.indexOf('Kavşak') > 0, 'kavşak kartı görünmeli');
+    /* karşıdan gelen araç üretimi */
+    let karsidan = 0; const mm = { id: 'kx', arac: 'Otomobil', pompa: null, yakit: 'benzin' };
+    for (let q = 0; q < 60; q++) { const a = IZO.arabaYap(sbe, mm, 0); if (a.karsidan) { karsidan++; kontrol(a.gx > sbe.w && a.yol.length >= 3, 'karşıdan gelen araç sağdan başlamalı'); } }
+    kontrol(karsidan > 5 && karsidan < 55, 'araçların bir kısmı karşı yönden gelmeli: ' + karsidan);
+    calistir('kavşaklı sahne', () => { UI.sekmeGec('istasyon'); IZO.guncelle(0.016); IZO.ciz(); }); }
+  /* kaldırılan karşı yaka şubesi: iade edilip kapatılmalı */
+  { const n0 = D.s.subeler.length, p0 = D.s.para; const ks = D.yeniSube(sbe.lok, false); ks.karsi = true; ks.beton[0] = true;
+    ks.yapi[0] = { t: 'pompa', yakit: 'benzin', sv: 1, bakim: 100, mesgul: null, arizali: false }; D.s.subeler.push(ks);
+    D.s.filolar = [{ id: 'fk', ad: 'x', sube: D.s.subeler.length - 1, gun: 5, kalanGun: 5, gunlukL: 10, ceza: 0, yakit: 'dizel' }];
+    kontrol(EK.karsiTemizle() === 1 && D.s.subeler.length === n0 && D.s.para > p0, 'karşı yaka şubesi kapatılıp bedeli iade edilmeli');
+    kontrol(D.s.filolar[0].sube < D.s.subeler.length, 'kapatılan şubedeki anlaşma geçerli bir şubeye taşınmalı');
+    D.s.filolar = []; }
   /* genel müdür */
   { D.s.ek.gm = null; D.s.para = 5e8; D.s.seviye = 20;
     calistir('genel müdür sayfası (adaylar)', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'gm'); });

@@ -678,6 +678,9 @@ const UI = {
       else h += '<div class="not">En geniş düzene ulaştın.</div>';
       h += '</div>';
 
+      /* kavşak */
+      h += EK.kavsakKart(sb);
+
       /* yol genişletme */
       var ysv = SIM.yolSeviye(sb);
       h += '<div class="kart"><div class="baslik">🛤️ Ana yol · yön başına ' + (1 + ysv) + ' şerit</div>';

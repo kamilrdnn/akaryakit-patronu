@@ -1655,93 +1655,152 @@ try { EK.kur(); } catch (e) { }
 })();
 
 /* =========================================================
-   EK 6 — yolun karşısındaki arsa: aynı lokasyonda ikinci şube
-   Sahip olduğun her lokasyonda karşı yakadaki arsayı alıp orada da şube açarsın.
-   Karşı şube ayrı bir istasyondur: kendi arsası büyür, kendi kadrosu ve tankı olur;
-   Şubeler ekranından geçilir. Karşısında rakip yoktur, çünkü karşısı sensin.
+   EK 6 — KAVŞAK: karşı yönden gelen araçlar da istasyona girer
+   (Karşı yaka şubesi kaldırıldı; eski kayıtta varsa bedeli iade edilip kapatılır.)
    ========================================================= */
 (function () {
   var E = EK;
 
-  /* karşı şubenin adı ayrı görünsün */
-  var lokOnbellek = {};
-  var eskiLok = D.lok;
-  D.lok = function (sb) {
-    var l = eskiLok.apply(this, arguments);
-    var hedef = sb || (this.s ? this.sube() : null);
-    if (!hedef || !hedef.karsi) return l;
-    if (!lokOnbellek[l.id]) { var k = Object.create(l); k.ad = l.ad + ' · Karşı Yaka'; lokOnbellek[l.id] = k; }
-    return lokOnbellek[l.id];
+  /* ---- kaldırılan özelliğin temizliği: karşı yaka şubesi varsa parası geri verilir ---- */
+  E.karsiTemizle = function () {
+    var s = D.s, L = s.subeler, silindi = 0;
+    for (var i = L.length - 1; i >= 0; i--) {
+      if (!L[i].karsi) continue;
+      var sb = L[i], iade = 0, tan = null;
+      for (var q = 0; q < VERI.lokasyonlar.length; q++) if (VERI.lokasyonlar[q].id === sb.lok) tan = VERI.lokasyonlar[q];
+      if (tan) iade += Math.round((tan.fiyat * 0.7 + 700000 * tan.trafik) / 10000) * 10000;
+      D.pompalar(sb).forEach(function (o) { iade += VERI.pompa.fiyat[o.p.yakit] * o.p.sv; });
+      D.binalar(sb).forEach(function (o) { iade += VERI.binalar[o.b.t].fiyat * o.b.sv; });
+      s.para += iade;
+      L.splice(i, 1);
+      /* şube sırasına bağlı kayıtları kaydır */
+      if (s.aktif === i) s.aktif = 0; else if (s.aktif > i) s.aktif--;
+      [s.filolar, s.sozlesmeler].forEach(function (lst) {
+        (lst || []).forEach(function (a) { if (a.sube === i) a.sube = s.aktif; else if (a.sube > i) a.sube--; });
+      });
+      if (s.ek && s.ek.zam) { if (s.ek.zam.sube === i) s.ek.zam = null; else if (s.ek.zam.sube > i) s.ek.zam.sube--; }
+      silindi++;
+      UI.bildir('🛣️ Karşı yaka kaldırıldı', 'Bu özellik yerini kavşağa bıraktı. Ödediğin ' + tl(iade) + ' kasana iade edildi.', 'uyari');
+    }
+    if (silindi && typeof IZO !== 'undefined') { IZO._sahneAnahtar = null; IZO._zAnahtar = ''; }
+    return silindi;
   };
 
-  E.karsiVar = function (lokId) {
-    for (var i = 0; i < D.s.subeler.length; i++) if (D.s.subeler[i].lok === lokId && D.s.subeler[i].karsi) return true;
-    return false;
+  /* ---- kavşak ---- */
+  E.kavsakAdlar = ['Yok', 'Dönüş cebi', 'Işıklı kavşak'];
+  E.kavsakSeviye = function (sb) { return kisitla(sb.kavsak || 0, 0, 2); };
+  E.kavsakKat = function (sb) { return [1, 1.22, 1.4][E.kavsakSeviye(sb)]; };
+  E.kavsakPay = function (sb) { return [0, 0.3, 0.42][E.kavsakSeviye(sb)]; };          /* karşı yönden gelen araç oranı */
+  E.kavsakBedeli = function (sb) {
+    return Math.round([900000, 2400000][E.kavsakSeviye(sb)] * (0.6 + D.lok(sb).trafik * 0.4) / 10000) * 10000;
   };
-  E.karsiTanim = function (lokId) {
-    for (var i = 0; i < VERI.lokasyonlar.length; i++) if (VERI.lokasyonlar[i].id === lokId) return VERI.lokasyonlar[i];
-    return null;
-  };
-  E.karsiBedeli = function (lokId) {
-    var l = E.karsiTanim(lokId);
-    return l ? Math.round((l.fiyat * 0.7 + 700000 * l.trafik) / 10000) * 10000 : 0;
-  };
-  E.karsiSeviye = function (lokId) { var l = E.karsiTanim(lokId); return l ? l.seviyeSart + 2 : 99; };
-  E.karsiAc = function (lokId) {
-    var l = E.karsiTanim(lokId), sahip = false;
-    if (!l || E.karsiVar(lokId)) return false;
-    for (var i = 0; i < D.s.subeler.length; i++) if (D.s.subeler[i].lok === lokId && !D.s.subeler[i].karsi && !D.s.subeler[i].devredildi) sahip = true;
-    if (!sahip) { UI.bildir('Önce bu yakayı al', 'Karşı arsayı almak için o lokasyonda şuben olmalı.', 'kotu'); return false; }
-    if (D.s.seviye < E.karsiSeviye(lokId)) { UI.bildir('Seviye yetersiz', l.ad + ' karşı yakası için seviye ' + E.karsiSeviye(lokId) + ' gerekiyor.', 'kotu'); return false; }
-    if (!D.harca(E.karsiBedeli(lokId))) return false;
-    var sb = D.yeniSube(lokId, false);
-    sb.karsi = true;
-    sb.ad = l.ad + ' · Karşı Yaka';
-    sb.beton[0] = true; sb.beton[1] = true;
-    sb.yapi[0] = { t: 'pompa', yakit: lokId === 'otoyol' ? 'dizel' : 'benzin', sv: 1, bakim: 100, mesgul: null, arizali: false };
-    sb.rakipIst = { ad: 'Kendi şuben', guc: 1, agresif: 0, indirim: 0, savas: 0, olay: null, pay: 50, kazanilanSavas: 0, yok: true };
-    D.s.subeler.push(sb);
-    D.xpEkle(700);
-    UI.bildir('🛣️ Karşı yaka senin!', l.ad + ' yolunun karşısındaki arsa alındı. Şubeler ekranından geçip kurmaya başla.', 'iyi');
+  E.kavsakSart = function (sb) { return E.kavsakSeviye(sb) === 0 ? 2 : 3; };              /* gereken giriş-çıkış seviyesi */
+  E.kavsakYukselt = function (sb) {
+    var sv = E.kavsakSeviye(sb);
+    if (sv >= 2) { UI.bildir('Maksimum', 'Kavşak en gelişmiş hâlinde.', 'uyari'); return false; }
+    if (SIM.girisSeviye(sb) < E.kavsakSart(sb)) { UI.bildir('Kilitli', 'Önce giriş-çıkış düzenini ' + E.kavsakSart(sb) + '. seviyeye çıkar.', 'kotu'); return false; }
+    if (!D.harca(E.kavsakBedeli(sb))) return false;
+    sb.kavsak = sv + 1;
+    D.xpEkle(450);
+    UI.bildir('🔀 ' + E.kavsakAdlar[sb.kavsak], 'Karşı şeritten gelen araçlar artık istasyona dönebiliyor · müşteri +%' + Math.round((E.kavsakKat(sb) - 1) * 100), 'iyi');
     return true;
   };
-  E.karsiKart = function () {
-    var h = '<div class="kart"><div class="baslik">🛣️ Yolun karşısı</div>';
-    h += '<div class="not">Şuben olan her lokasyonda yolun karşısındaki arsayı da alabilirsin. Orası ayrı bir şubedir: arsasını büyütür, pompa ve tesis kurarsın; karşı yönden gelen araçlar oraya girer. Karşında rakip olmaz.</div>';
-    var say0 = 0;
-    for (var i = 0; i < VERI.lokasyonlar.length; i++) {
-      var l = VERI.lokasyonlar[i], sahip = false;
-      for (var j = 0; j < D.s.subeler.length; j++) if (D.s.subeler[j].lok === l.id && !D.s.subeler[j].karsi && !D.s.subeler[j].devredildi) sahip = true;
-      if (!sahip) continue;
-      say0++;
-      var varMi = E.karsiVar(l.id), kilit = D.s.seviye < E.karsiSeviye(l.id);
-      h += '<div class="satir"><div class="sol"><div class="ikon">' + l.emoji + '</div><div><div class="ad">' + l.ad + ' · Karşı Yaka</div>';
-      h += '<div class="alt">' + (varMi ? '<span class="yesilY">senin</span>' : (kilit ? '<span class="kirmiziY">Sv ' + E.karsiSeviye(l.id) + ' gerekli</span>' : 'arsa ' + l.w + '×' + l.h + '\'e kadar büyür')) + '</div></div></div>';
-      if (!varMi) h += '<button class="btn minik"' + (kilit || D.s.para < E.karsiBedeli(l.id) ? ' style="opacity:.45"' : '') + ' onclick="EK.karsiTikla(\'' + l.id + '\')">Al<br><span class="mini">' + tl(E.karsiBedeli(l.id)) + '</span></button>';
-      else h += '<span class="etiket iyi">✓</span>';
-      h += '</div>';
-    }
-    if (!say0) h += '<div class="bos">Önce bir şuben olmalı.</div>';
+  E.kavsakKart = function (sb) {
+    var sv = E.kavsakSeviye(sb);
+    var h = '<div class="kart"><div class="baslik">🔀 Kavşak · ' + E.kavsakAdlar[sv] + '</div>';
+    h += '<div class="not">Kavşak yoksa yalnızca senin şeridinden gelen araçlar girer. Dönüş cebi açılınca karşı yönden gelenler refüjü geçip istasyona döner; ışıklı kavşak bunu daha da kolaylaştırır.</div>';
+    h += '<div class="kv"><span>Karşı yönden gelen müşteri</span><b class="' + (sv ? 'yesilY' : '') + '">' + (sv ? '+%' + Math.round((E.kavsakKat(sb) - 1) * 100) : 'giremiyor') + '</b></div>';
+    if (sv >= 2) h += '<div class="not">Kavşak en gelişmiş hâlinde.</div>';
+    else if (SIM.girisSeviye(sb) < E.kavsakSart(sb)) h += '<div class="not">🔒 Giriş / çıkış düzeni ' + E.kavsakSart(sb) + '. seviyeye gelince açılır.</div>';
+    else h += '<button class="btn genis" style="margin-top:9px" onclick="EK.kavsakTikla()">⬆ ' + E.kavsakAdlar[sv + 1] + ' yap · ' + tl(E.kavsakBedeli(sb)) + '</button>';
     return h + '</div>';
   };
-  E.karsiTikla = function (lokId) { if (E.karsiAc(lokId)) UI.panelYenile(); };
+  E.kavsakTikla = function () { if (E.kavsakYukselt(D.sube())) { try { IZO._zAnahtar = ''; } catch (e) { } UI.panelYenile(); } };
 
-  /* karşı şubede rakip yok */
-  function rakipYok(sb) { return !!(sb && sb.rakipIst && sb.rakipIst.yok); }
-  var r1 = SIM.rakipCekim;   SIM.rakipCekim = function (sb) { return rakipYok(sb) ? 1.05 : r1.apply(this, arguments); };
-  var r2 = SIM.rakipGunSonu; SIM.rakipGunSonu = function (sb) { if (rakipYok(sb)) return; return r2.apply(this, arguments); };
-  var r3 = SIM.rakipIndirim; SIM.rakipIndirim = function (sb) { return rakipYok(sb) ? 0 : r3.apply(this, arguments); };
-  if (typeof UI !== 'undefined') {
-    var u1 = UI.rakipHtml;
-    UI.rakipHtml = function (sb) {
-      if (rakipYok(sb)) return '<div class="kart"><div class="baslik">🛣️ Karşı yaka</div><div class="not">Yolun karşısındaki istasyon da senin; burada fiyat savaşı olmaz.</div></div>';
-      return u1.apply(this, arguments);
-    };
-    var u2 = UI.subelerHtml;
-    UI.subelerHtml = function () { return u2.apply(this, arguments) + E.karsiKart(); };
-  }
+  /* müşteri akışı */
+  var m1 = SIM.saatlikMusteri;
+  SIM.saatlikMusteri = function (sb) { var r = m1.call(this, sb); return r ? r * E.kavsakKat(sb) : r; };
+
+  /* bir kez: eski karşı yaka şubelerini kapat */
+  var d1 = SIM.dakika;
+  SIM.dakika = function () {
+    if (!E._karsiBakildi) { E._karsiBakildi = true; try { E.karsiTemizle(); } catch (x) { } }
+    return d1.apply(this, arguments);
+  };
+
+  if (typeof IZO === 'undefined' || !IZO.derinlikDuzelt) return;
+
+  /* karşı yönden gelen müşteri: uzak şeritten gelir, kavşaktan refüjü geçer */
+  var a1 = IZO.arabaYap;
+  IZO.arabaYap = function (sb, m) {
+    var a = a1.apply(this, arguments);
+    try {
+      if (a && !this._yerinde && a.yol && a.yol.length && E.kavsakSeviye(sb) && Math.random() < E.kavsakPay(sb)) {
+        var kp = this.kapilar(sb), sl = this.trafikSeritleri(sb);
+        var serit = sl.uzak[0];                                   /* refüje en yakın karşı şerit */
+        a.gx = sb.w + 6; a.gy = serit; a.aci = Math.PI;
+        var bas = [{ gx: kp.giris + 1.3, gy: serit }, { gx: kp.giris + 0.35, gy: (serit + kp.yolY) / 2 }];
+        /* özgün rota yoldan sola doğru başlıyorsa ilk noktayı kavşağa bağla */
+        a.yol = bas.concat(a.yol);
+        a.karsidan = true;
+      }
+    } catch (x) { }
+    return a;
+  };
+
+  /* refüjdeki açıklık, dönüş oku ve trafik ışığı */
+  var dd = IZO.derinlikDuzelt;
+  IZO.derinlikDuzelt = function (sb, liste) {
+    var sv = E.kavsakSeviye(sb);
+    if (sv) {
+      var self = this, kp = this.kapilar(sb), ek = SIM.yolEk ? SIM.yolEk(sb) : 0, orta = sb.h + 2 + ek / 2;
+      var x0 = kp.giris - 0.25, x1 = kp.giris + 1.75;
+      liste.push({
+        d: -1e6 + 1, tur: 'ozel', gx: kp.giris, gy: orta,
+        ciz: function () {
+          var I = self.isik(), c = self.cz, o = self.kam.olcek;
+          /* refüjü kes: asfalt yama */
+          self.cokgen([self.ekran(x0, orta - 0.2, 0), self.ekran(x1, orta - 0.2, 0), self.ekran(x1, orta + 0.2, 0), self.ekran(x0, orta + 0.2, 0)], self.ton('#3a3f47', I));
+          /* yaya geçidi gibi dur çizgileri */
+          c.strokeStyle = self.ton('#f2f4f6', I); c.lineWidth = Math.max(1, 1.6 * o);
+          var p1 = self.ekran(x1 + 0.02, orta + 0.22, 0.3), p2 = self.ekran(x1 + 0.02, orta + 0.9, 0.3);
+          c.beginPath(); c.moveTo(p1.x, p1.y); c.lineTo(p2.x, p2.y); c.stroke();
+          /* dönüş oku: uzak şeritten istasyona */
+          var a = self.ekran(x1 - 0.2, orta + 0.45, 0.3), b = self.ekran(x0 + 0.75, orta + 0.3, 0.3), d = self.ekran(x0 + 0.6, orta - 0.45, 0.3);
+          c.strokeStyle = self.ton('#ffd166', I); c.lineWidth = Math.max(1.4, 2.4 * o); c.lineCap = 'round'; c.lineJoin = 'round';
+          c.beginPath(); c.moveTo(a.x, a.y); c.quadraticCurveTo(b.x, b.y, d.x, d.y); c.stroke();
+          var u1 = self.ekran(x0 + 0.42, orta - 0.3, 0.3), u2 = self.ekran(x0 + 0.8, orta - 0.28, 0.3);
+          c.beginPath(); c.moveTo(u1.x, u1.y); c.lineTo(d.x, d.y); c.lineTo(u2.x, u2.y); c.stroke();
+          c.lineCap = 'butt'; c.lineJoin = 'miter';
+        }
+      });
+      if (sv >= 2) {
+        var tx = x1 + 0.1, ty = orta;
+        liste.push({
+          d: tx + ty + 0.3, tur: 'ozel', gx: tx, gy: ty,
+          ciz: function () {
+            var I = self.isik(), c = self.cz, o = self.kam.olcek;
+            var alt = self.ekran(tx, ty, 0), ust = self.ekran(tx, ty, 34);
+            self.golgeCiz(alt.x, alt.y, 4 * o, 2 * o, 0.3);
+            c.strokeStyle = self.ton('#59636f', I); c.lineWidth = Math.max(1.4, 2.4 * o); c.lineCap = 'round';
+            c.beginPath(); c.moveTo(alt.x, alt.y); c.lineTo(ust.x, ust.y); c.stroke(); c.lineCap = 'butt';
+            var kw = 5.5 * o, kh = 15 * o;
+            c.fillStyle = self.ton('#20262e', Math.max(I, 0.7));
+            self.yuvarlakKutu(ust.x - kw / 2, ust.y - kh, kw, kh, 1.6 * o); c.fill();
+            /* ışık 6 saniyede bir döner */
+            var faz = Math.floor(Date.now() / 2000) % 3;
+            var renk = ['#ff5a5a', '#ffd166', '#5fe08a'];
+            for (var k = 0; k < 3; k++) {
+              c.fillStyle = k === faz ? renk[k] : 'rgba(255,255,255,.14)';
+              c.beginPath(); c.arc(ust.x, ust.y - kh + (2.6 + k * 4.9) * o, 1.75 * o, 0, 6.3); c.fill();
+            }
+          }
+        });
+      }
+    }
+    return dd.call(this, sb, liste);
+  };
 })();
-
 
 /* =========================================================
    EK 7 — bakım ve tamir sekmesi (İnşaat → Bakım)
@@ -1821,108 +1880,3 @@ try { EK.kur(); } catch (e) { }
   E.temizlikTikla = function () { if (SIM.temizlikYap(D.sube())) { UI.bildir('Temizlik yapıldı', 'İstasyon pırıl pırıl.', 'iyi'); UI.panelYenile(); } };
 })();
 
-/* =========================================================
-   EK 8 — karşı yaka aynı ekranda
-   Aynı lokasyondaki öbür şuben yolun karşısında görünür: betonu, pompaları, binaları.
-   Hazır resimlerle basılır; liste 45 karede bir yenilenir, kare başına ek hesap çok küçüktür.
-   Dokununca o şubeye geçilir.
-   ========================================================= */
-(function () {
-  var E = EK;
-  if (typeof IZO === 'undefined' || !IZO.derinlikDuzelt) return;
-
-  E.karsiEsi = function (sb) {
-    var L = D.s.subeler;
-    for (var i = 0; i < L.length; i++) {
-      if (L[i] !== sb && L[i].lok === sb.lok && !L[i].devredildi && !!L[i].karsi !== !!sb.karsi) return { sb: L[i], idx: i };
-    }
-    return null;
-  };
-  E.karsiAlan = function (sb, d) {
-    var ek = SIM.yolEk ? SIM.yolEk(sb) : 0;
-    var yolSonu = sb.h + 3 + ek, y0 = yolSonu + 0.9;
-    return { yolSonu: yolSonu, y0: y0, x0: -0.35, x1: d.w + 0.35, y1: y0 + d.h + 0.3 };
-  };
-
-  var onbellek = { anahtar: '', kare: 0, ogeler: [] };
-  function ogeleriKur(Z, sb, es) {
-    var d = es.sb, A = E.karsiAlan(sb, d), L = [];
-    for (var i = 0; i < d.yapi.length; i++) {
-      var y = d.yapi[i];
-      if (!y) continue;
-      var gx = i % d.w, gy = A.y0 + (d.h - 1 - Math.floor(i / d.w));       /* ön sıra yola bakar */
-      (function (y, gx, gy) {
-        var pompa = y.t === 'pompa', kopya = pompa ? Object.create(y) : y;
-        if (pompa) kopya.mesgul = null;
-        L.push({
-          d: gx + gy + (pompa ? 0.89 : 1), tur: 'ozel', gx: gx, gy: gy,
-          ciz: function () {
-            var ev = this._vurusKapali; this._vurusKapali = true;
-            try { if (pompa) this.pompaCiz(d, -1, gx, gy, kopya); else this.binaCiz(d, -1, gx, gy, y); } catch (x) { }
-            this._vurusKapali = ev;
-          }
-        });
-      })(y, gx, gy);
-    }
-    /* zemin: en önce çizilir */
-    L.push({
-      d: -1e6, tur: 'ozel', gx: 0, gy: A.y0,
-      ciz: function () {
-        var I = this.isik(), c = this.cz;
-        var a = this.ekran(A.x0, A.yolSonu, 0), b = this.ekran(A.x1, A.yolSonu, 0), e = this.ekran(A.x1, A.y1, 0), f = this.ekran(A.x0, A.y1, 0);
-        this.cokgen([a, b, e, f], this.ton('#a9b0b9', I));
-        c.strokeStyle = this.ton('#dfe4ea', I); c.lineWidth = Math.max(1, 1.6 * this.kam.olcek);
-        c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(e.x, e.y); c.lineTo(f.x, f.y); c.lineTo(a.x, a.y); c.stroke();
-        if (!this._vurusKapali && this.vurus) this.vurus.push({ tip: 'hucre', i: -1000, poly: [a, b, e, f] });
-      }
-    });
-    /* tabela: en önde */
-    L.push({
-      d: 1e6, tur: 'ozel', gx: 0, gy: A.y1,
-      ciz: function () { this.levha(A.x0 + 0.5, A.y1 + 0.1, 16, (d.karsi ? 'KARŞI YAKA' : 'ANA ŞUBE') + ' · dokun', '#2f6fa8', '#fff', 6.5); }
-    });
-    return L;
-  }
-
-  var eskiD = IZO.derinlikDuzelt;
-  IZO.derinlikDuzelt = function (sb, liste) {
-    var es = null;
-    try { es = E.karsiEsi(sb); } catch (x) { }
-    if (es) {
-      var anh = D.s.aktif + ':' + es.idx + ':' + sb.w + 'x' + sb.h + ':' + es.sb.w + 'x' + es.sb.h + ':' + (sb.yol || 1);
-      if (onbellek.anahtar !== anh || ++onbellek.kare > 45) {
-        onbellek.anahtar = anh; onbellek.kare = 0;
-        onbellek.ogeler = ogeleriKur(this, sb, es);
-      }
-      /* o alana denk gelen ağaç, ev, direk çizilmesin */
-      var A = E.karsiAlan(sb, es.sb);
-      for (var i = liste.length - 1; i >= 0; i--) {
-        var o = liste[i];
-        if (o.tur !== 'sus') continue;
-        var s = o.s, w = s.w || 1, h = s.h || 1;
-        if (s.gx < A.x1 + 0.3 && s.gx + w > A.x0 - 0.3 && s.gy + h > A.yolSonu + 0.2 && s.gy < A.y1 + 0.3) liste.splice(i, 1);
-      }
-      for (var k = 0; k < onbellek.ogeler.length; k++) liste.push(onbellek.ogeler[k]);
-    }
-    return eskiD.call(this, sb, liste);
-  };
-
-  /* karşı yakaya dokunma */
-  if (typeof UI !== 'undefined') {
-    var h1 = UI.hucreTik;
-    UI.hucreTik = function (k) {
-      if (k === -1000) {
-        if (this.tasinan !== null && this.tasinan !== undefined) return;
-        var es = E.karsiEsi(D.sube());
-        if (!es) return;
-        var d = es.sb;
-        var h = '<div class="not">Yolun karşısındaki istasyonun. ' + D.pompalar(d).length + ' pompa, ' + D.binalar(d).length + ' tesis · arsa ' + d.w + '×' + d.h + '.</div>';
-        h += '<button class="btn genis" style="margin-top:10px" onclick="UI.modalKapat();UI.subeGec(' + es.idx + ')">🛣️ ' + D.lok(d).ad + ' şubesine geç</button>';
-        h += '<button class="btn ikincil genis" style="margin-top:8px" onclick="UI.modalKapat()">Kapat</button>';
-        this.modal(D.lok(d).ad, h);
-        return;
-      }
-      return h1.apply(this, arguments);
-    };
-  }
-})();
