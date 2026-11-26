@@ -669,3 +669,329 @@ var EK = (function () {
 
 if (typeof window !== 'undefined') window.EK = EK;
 try { EK.kur(); } catch (e) { }
+
+/* =========================================================
+   EK 2 — vardiya, oto kuaför, şarj parkı, bölge kapışması
+   Hiçbiri kare başına çalışmaz: dakikalık / günlük hesaplar ve hazır resimler.
+   ========================================================= */
+(function () {
+  var E = EK;
+
+  /* ---------------------------------------------------------
+     VARDİYA
+     tam: her saat çalışır, yorulur · gunduz 07–19 · gece 19–07 (daha az maaş)
+     --------------------------------------------------------- */
+  E.vardiyalar = {
+    tam:    { ad: 'Tam gün', emoji: '🔁', kat: 1.0,  not: 'Her saat çalışır; yorulur, morali daha düşük seyreder.' },
+    gunduz: { ad: 'Gündüz',  emoji: '☀️', kat: 0.72, not: '07:00–19:00 arası çalışır.' },
+    gece:   { ad: 'Gece',    emoji: '🌙', kat: 0.8,  not: '19:00–07:00 arası çalışır.' }
+  };
+  E.vardiyali = { pompaci: true, temizlik: true, teknisyen: true };       /* kasiyer ve müdür hep tam gün */
+  E.vardiya = function (p) { return (E.vardiyali[p.tip] && E.vardiyalar[p.vardiya]) ? p.vardiya : 'tam'; };
+  E.gorevde = function (p, saat) {
+    var v = E.vardiya(p);
+    if (v === 'tam') return true;
+    if (saat === undefined) saat = D.s.saat;
+    var gunduz = saat >= 7 && saat < 19;
+    return v === 'gunduz' ? gunduz : !gunduz;
+  };
+  E.gorevdekiler = function (sb) {
+    var r = [], degisti = false;
+    for (var i = 0; i < sb.personel.length; i++) { if (E.gorevde(sb.personel[i])) r.push(sb.personel[i]); else degisti = true; }
+    return degisti ? r : sb.personel;
+  };
+  E.vardiyaDegis = function (pid, v) {
+    var sb = D.sube();
+    if (!E.vardiyalar[v]) return false;
+    for (var i = 0; i < sb.personel.length; i++) if (sb.personel[i].id === pid) {
+      if (!E.vardiyali[sb.personel[i].tip]) return false;
+      sb.personel[i].vardiya = v;
+      return true;
+    }
+    return false;
+  };
+  E.vardiyaSirala = function (pid) {
+    var sb = D.sube(), sira = ['tam', 'gunduz', 'gece'];
+    for (var i = 0; i < sb.personel.length; i++) if (sb.personel[i].id === pid) {
+      var v = sira[(sira.indexOf(E.vardiya(sb.personel[i])) + 1) % 3];
+      if (E.vardiyaDegis(pid, v)) UI.panelYenile();
+    }
+  };
+  /* gün sonunda vardiya indirimi: çekirdek tam maaşı keser, fark geri yazılır */
+  E.vardiyaTasarrufu = function () {
+    var t = 0;
+    D.s.subeler.forEach(function (sb) {
+      if (sb.devredildi) return;
+      sb.personel.forEach(function (p) { t += p.maas / 30 * (1 - E.vardiyalar[E.vardiya(p)].kat); });
+    });
+    return t;
+  };
+  E.vardiyaKart = function () {
+    var sb = D.sube(), adet = 0, i;
+    for (i = 0; i < sb.personel.length; i++) if (E.vardiyali[sb.personel[i].tip]) adet++;
+    if (!adet) return '';
+    var saat = D.s.saat, gunduz = saat >= 7 && saat < 19;
+    var h = '<div class="kart"><div class="baslik">🕐 Vardiya · şu an ' + (gunduz ? 'gündüz' : 'gece') + '</div>';
+    h += '<div class="not">Gündüzcü %28, gececi %20 daha az maaş alır ama yalnızca kendi saatinde çalışır. Tam gün çalışan yorulur. Düğmeye bastıkça vardiya değişir.</div>';
+    for (i = 0; i < sb.personel.length; i++) {
+      var p = sb.personel[i];
+      if (!E.vardiyali[p.tip]) continue;
+      var v = E.vardiya(p), tan = E.vardiyalar[v], is = E.gorevde(p);
+      h += '<div class="satir"><div class="sol"><div class="ikon">' + VERI.personel[p.tip].emoji + '</div><div><div class="ad">' + p.ad + '</div>';
+      h += '<div class="alt">' + (is ? '<span class="yesilY">görevde</span>' : '<span class="sariY">izinde</span>') + ' · günlük ' + tl(p.maas / 30 * tan.kat) + '</div></div></div>';
+      h += '<button class="btn minik ikincil" onclick="EK.vardiyaSirala(\'' + p.id + '\')">' + tan.emoji + '<br><span class="mini">' + tan.ad + '</span></button></div>';
+    }
+    return h + '</div>';
+  };
+
+  /* ---------------------------------------------------------
+     YENİ TESİSLER
+     --------------------------------------------------------- */
+  E.yeniBinalar.kuafor = { ad: 'Oto Kuaför', emoji: '✨', fiyat: 540000, guc: 12, gelir: 300, cekim: 0.045, sv: 3, svFiyat: 380000, seviyeSart: 6, konfor: 3, aciklama: 'Pasta-cila ve detaylı iç temizlik. Az müşteri, yüksek ciro; lüks araç sahipleri bayılır.' };
+  E.yeniBinalar.sarjpark = { ad: 'Şarj Parkı', emoji: '🔌', fiyat: 720000, guc: 34, gelir: 0, cekim: 0.05, sv: 3, svFiyat: 480000, seviyeSart: 8, konfor: 4, aciklama: 'Güneş çatılı hızlı şarj alanı. Elektrikli araç sahipleri uzun kalır, şarj ve bekleme geliri bırakır.' };
+
+  var eskiBinaCiz = E.binaCiz;
+  E.binaCiz = function (t, sv, gx, gy) {
+    var c = this.cz, I = this.isik(), o = this.kam.olcek, gece = this.gece();
+    if (t === 'kuafor') {
+      this.dukkanModel(gx, gy, { govde: '#e8e4f2', cati: '#6a4fb0', kat: 1, garaj: true, yazi: 'KUAFÖR' });
+      /* kapı önünde cila kovası ve parıltı */
+      this.silindir(gx + 0.82, gy + 0.94, 0, 0.1, 6, '#f0b429');
+      var pr = this.ekran(gx + 0.36, gy + 0.92, 22);
+      c.fillStyle = 'rgba(255,255,255,.95)';
+      for (var k = 0; k < 3; k++) {
+        var px = pr.x + (k - 1) * 9 * o, py = pr.y - (k % 2) * 6 * o, r = (k === 1 ? 3.2 : 2.2) * o;
+        c.beginPath(); c.moveTo(px, py - r); c.lineTo(px + r * 0.3, py - r * 0.3); c.lineTo(px + r, py); c.lineTo(px + r * 0.3, py + r * 0.3);
+        c.lineTo(px, py + r); c.lineTo(px - r * 0.3, py + r * 0.3); c.lineTo(px - r, py); c.lineTo(px - r * 0.3, py - r * 0.3); c.closePath(); c.fill();
+      }
+      return;
+    }
+    if (t === 'sarjpark') {
+      this.golge(gx + 0.08, gy + 0.08, 0.9, 0.9, 0.3);
+      this.kutu(gx + 0.03, gy + 0.03, 0, 0.94, 0.94, 2, '#8f99a5');
+      /* park çizgileri */
+      c.strokeStyle = this.ton('#7fe0a8', I); c.lineWidth = Math.max(0.8, 1.3 * o);
+      for (var q = 0; q < 3; q++) {
+        var l1 = this.ekran(gx + 0.12 + q * 0.38, gy + 0.3, 2.2), l2 = this.ekran(gx + 0.12 + q * 0.38, gy + 0.92, 2.2);
+        c.beginPath(); c.moveTo(l1.x, l1.y); c.lineTo(l2.x, l2.y); c.stroke();
+      }
+      /* direkler ve güneş çatısı */
+      this.silindir(gx + 0.12, gy + 0.14, 2, 0.06, 40, '#e3e8ed');
+      this.silindir(gx + 0.82, gy + 0.14, 2, 0.06, 40, '#e3e8ed');
+      /* şarj üniteleri */
+      for (var u = 0; u < Math.min(3, 1 + sv); u++) {
+        var ux = gx + 0.2 + u * 0.24;
+        this.prizma(this.ayak(ux + 0.06, gy + 0.2, 0.12, 0.12, 0.035, 0, 2), 2, 17, '#f4f6f8');
+        this.prizma(this.ayak(ux + 0.06, gy + 0.2, 0.125, 0.125, 0.04, 0, 2), 19, 2.6, '#2fbf71');
+        this.cokgen(this.yuzDortgen('on', ux + 0.02, ux + 0.1, gy + 0.262, 11, 16), gece ? '#9ef0b5' : this.ton('#1d2a3d', I));
+      }
+      /* eğimli panel çatı */
+      var a1 = this.ekran(gx + 0.04, gy + 0.04, 47), a2 = this.ekran(gx + 0.96, gy + 0.04, 47), a3 = this.ekran(gx + 0.96, gy + 0.6, 40), a4 = this.ekran(gx + 0.04, gy + 0.6, 40);
+      var pg = c.createLinearGradient(a1.x, a1.y, a3.x, a3.y);
+      pg.addColorStop(0, this.ton('#2e5f9e', I)); pg.addColorStop(1, this.ton('#17325c', I));
+      this.cokgen([a1, a2, a3, a4], pg);
+      c.strokeStyle = 'rgba(190,220,255,.45)'; c.lineWidth = Math.max(0.5, 0.7 * o);
+      for (var z = 1; z < 6; z++) {
+        var u1 = this.ekran(gx + 0.04 + z * 0.153, gy + 0.04, 47), u2 = this.ekran(gx + 0.04 + z * 0.153, gy + 0.6, 40);
+        c.beginPath(); c.moveTo(u1.x, u1.y); c.lineTo(u2.x, u2.y); c.stroke();
+      }
+      this.cokgen([a4, a3, this.ekran(gx + 0.96, gy + 0.6, 37.5), this.ekran(gx + 0.04, gy + 0.6, 37.5)], this.ton('#2fbf71', I));
+      if (gece) { var hp = this.ekran(gx + 0.5, gy + 0.3, 30); this.hale(hp.x, hp.y, 30 * o, '160,255,200', 0.3); }
+      return;
+    }
+    return eskiBinaCiz.call(this, t, sv, gx, gy);
+  };
+
+  /* ---------------------------------------------------------
+     BÖLGE KAPIŞMASI
+     Sekiz ilçe; her birinde pazar payı sen ve üç rakip zincir arasında bölünür.
+     Payı %50'yi geçen bölge senindir: günlük gelir ve müşteri artışı getirir.
+     --------------------------------------------------------- */
+  E.bolgeAdlari = ['Merkez', 'Sanayi', 'Sahil', 'Yayla', 'Liman', 'Üniversite', 'Organize', 'Havalimanı'];
+  E.zincirTanim = [
+    { ad: 'Yıldız Petrol', renk: '#d64545' },
+    { ad: 'Mavi Enerji',   renk: '#3f7fd0' },
+    { ad: 'Anka Oil',      renk: '#e0a92e' }
+  ];
+  E.BENIM_RENK = '#2fbf71';
+  E.bolge = function () {
+    var e = E.d();
+    if (!e.bolge) {
+      var L = [];
+      for (var i = 0; i < E.bolgeAdlari.length; i++) {
+        var r = [rastgele(18, 34), rastgele(18, 34), rastgele(18, 34)];
+        var sen = i === 0 ? 14 : rastgele(2, 8), top = r[0] + r[1] + r[2];
+        for (var k = 0; k < 3; k++) r[k] = +(r[k] / top * (100 - sen)).toFixed(1);
+        L.push({ ad: E.bolgeAdlari[i], nufus: Math.round(rastgele(0.7, 1.6) * 10) / 10, sen: +sen.toFixed(1), r: r, bekle: 0 });
+      }
+      e.bolge = { liste: L, guc: [rastgele(0.9, 1.15), rastgele(0.9, 1.15), rastgele(0.9, 1.15)], saldiri: null };
+    }
+    return e.bolge;
+  };
+  E.bolgeNormalle = function (b) {
+    b.sen = kisitla(b.sen, 0, 96);
+    var top = b.r[0] + b.r[1] + b.r[2], kalan = 100 - b.sen;
+    if (top <= 0) { b.r = [kalan / 3, kalan / 3, kalan / 3]; return; }
+    for (var k = 0; k < 3; k++) b.r[k] = +(b.r[k] / top * kalan).toFixed(1);
+  };
+  E.bolgeLider = function (b) {
+    var en = -1, kim = 'sen', deger = b.sen;
+    for (var k = 0; k < 3; k++) if (b.r[k] > deger) { deger = b.r[k]; en = k; kim = k; }
+    return { kim: kim, pay: deger };
+  };
+  E.bolgeSenin = function (b) { return b.sen >= 50; };
+  E.bolgeSayisi = function () { var n = 0, L = E.bolge().liste; for (var i = 0; i < L.length; i++) if (E.bolgeSenin(L[i])) n++; return n; };
+  E.bolgeGunluk = function () {
+    var t = 0, L = E.bolge().liste;
+    for (var i = 0; i < L.length; i++) if (E.bolgeSenin(L[i])) t += 22000 * L[i].nufus * (L[i].sen / 60);
+    return Math.round(t);
+  };
+  E.bolgeCarpan = function () { return 1 + Math.min(8, E.bolgeSayisi()) * 0.015; };
+  E.reklamBedeli = function (b, buyuk) {
+    return Math.round((buyuk ? 520000 : 160000) * b.nufus * (1 + b.sen / 70) / 5000) * 5000;
+  };
+  E.bolgeReklam = function (idx, buyuk) {
+    var bg = E.bolge(), b = bg.liste[idx];
+    if (!b) return false;
+    if (D.s.seviye < 4) { UI.bildir('Kilitli', 'Bölge kapışması seviye 4\'te açılır.', 'kotu'); return false; }
+    if (b.bekle > 0) { UI.bildir('Bekle', 'Bu bölgede yeni kampanya için ' + b.bekle + ' gün beklemelisin.', 'uyari'); return false; }
+    if (!D.harca(E.reklamBedeli(b, buyuk))) return false;
+    var once = E.bolgeSenin(b);
+    var artis = (buyuk ? rastgele(14, 20) : rastgele(5, 8)) * (0.75 + D.s.marka / 200);
+    b.sen += artis;
+    b.bekle = buyuk ? 4 : 2;
+    E.bolgeNormalle(b);
+    E._bolgeCarpan = undefined;
+    if (!once && E.bolgeSenin(b)) { D.xpEkle(600); UI.bildir('🏴 ' + b.ad + ' senin!', 'Bölgenin yarısından fazlası artık senden alıyor. Günlük gelir ve müşteri artışı başladı.', 'iyi'); }
+    else UI.bildir('📣 Kampanya yapıldı', b.ad + ' bölgesinde payın %' + say(b.sen, 0) + ' oldu.', 'iyi');
+    return true;
+  };
+  E.bolgeGun = function () {
+    var bg = E.bolge(), L = bg.liste, i, k;
+    for (k = 0; k < 3; k++) bg.guc[k] = kisitla(bg.guc[k] + rastgele(-0.03, 0.03), 0.8, 1.25);
+    for (i = 0; i < L.length; i++) {
+      var b = L[i];
+      if (b.bekle > 0) b.bekle--;
+      var once = E.bolgeSenin(b);
+      /* marka güçlüyse payın yavaşça büyür, zayıfsa erir; rakipler kendi aralarında da yer değiştirir */
+      b.sen += (D.s.marka - 55) / 55 * 0.45 - (b.sen > 50 ? 0.35 : 0.12);
+      for (k = 0; k < 3; k++) b.r[k] = Math.max(1, b.r[k] * (1 + (bg.guc[k] - 1) * 0.06 + rastgele(-0.012, 0.012)));
+      E.bolgeNormalle(b);
+      if (once && !E.bolgeSenin(b)) UI.bildir('🏳️ ' + b.ad + ' elden gitti', 'Payın %50\'nin altına düştü. Kampanya yapıp geri alabilirsin.', 'kotu');
+    }
+    /* rakip saldırısı: bir zincir senin en güçlü olduğun bölgelerden birine yüklenir */
+    if (D.s.seviye >= 4 && Math.random() < 0.16) {
+      var aday = [];
+      for (i = 0; i < L.length; i++) if (L[i].sen > 20) aday.push(i);
+      if (aday.length) {
+        var hi = secRast(aday), z = rastgeleTam(0, 2), kayip = rastgele(4, 9);
+        L[hi].sen -= kayip; L[hi].r[z] += kayip;
+        E.bolgeNormalle(L[hi]);
+        UI.bildir('⚔️ ' + E.zincirTanim[z].ad + ' saldırdı', L[hi].ad + ' bölgesinde kampanya yaptı; payın %' + say(L[hi].sen, 0) + '\'e geriledi.', 'uyari');
+      }
+    }
+    E._bolgeCarpan = undefined;
+    var g = E.bolgeGunluk();
+    if (g > 0) { D.s.para += g; D.s.ist.bugunCiro += g; }
+    return g;
+  };
+  E.bolgeHtml = function () {
+    var bg = E.bolge(), L = bg.liste, i, k;
+    var h = '<div class="kart"><div class="baslik">🗺️ Bölge kapışması</div>';
+    if (D.s.seviye < 4) return h + '<div class="not">🔒 Seviye 4\'te açılır. Üç rakip zincirle sekiz bölgenin pazarı için yarışacaksın.</div></div>';
+    h += '<div class="not">Bir bölgede payın %50\'yi geçerse o bölge senindir: günlük gelir getirir ve bütün şubelerine müşteri artışı sağlar. Rakipler kampanya yapıp geri almaya çalışır.</div>';
+    /* harita: 4x2 karo, lider rengine boyanır */
+    h += '<div class="bolgeHarita">';
+    for (i = 0; i < L.length; i++) {
+      var ld = E.bolgeLider(L[i]);
+      var renk = ld.kim === 'sen' ? E.BENIM_RENK : E.zincirTanim[ld.kim].renk;
+      h += '<div class="bolgeKaro' + (E.bolgeSenin(L[i]) ? ' benim' : '') + '" style="background:' + renk + '"><b>' + L[i].ad + '</b><span>%' + Math.round(L[i].sen) + '</span></div>';
+    }
+    h += '</div>';
+    h += '<div class="kv" style="margin-top:8px"><span>Senin bölgelerin</span><b>' + E.bolgeSayisi() + ' / ' + L.length + '</b></div>';
+    h += '<div class="kv"><span>Günlük bölge geliri</span><b class="yesilY">' + tl(E.bolgeGunluk()) + '</b></div>';
+    h += '<div class="kv"><span>Müşteri artışı</span><b class="yesilY">+%' + say((E.bolgeCarpan() - 1) * 100, 1) + '</b></div>';
+    h += '<div class="lejant"><span><i style="background:' + E.BENIM_RENK + '"></i>Sen</span>';
+    for (k = 0; k < 3; k++) h += '<span><i style="background:' + E.zincirTanim[k].renk + '"></i>' + E.zincirTanim[k].ad + '</span>';
+    h += '</div></div>';
+
+    for (i = 0; i < L.length; i++) {
+      var b = L[i];
+      h += '<div class="kart"><div class="baslik">' + (E.bolgeSenin(b) ? '🏴 ' : '') + b.ad + ' · nüfus ×' + say(b.nufus, 1) + '</div>';
+      h += '<div class="bolgeCubuk"><i style="width:' + b.sen + '%;background:' + E.BENIM_RENK + '"></i>';
+      for (k = 0; k < 3; k++) h += '<i style="width:' + b.r[k] + '%;background:' + E.zincirTanim[k].renk + '"></i>';
+      h += '</div>';
+      h += '<div class="alt" style="margin-top:4px">Sen %' + say(b.sen, 0) + ' · hedef %50' + (b.bekle > 0 ? ' · ' + b.bekle + ' gün bekleme' : '') + '</div>';
+      h += '<div class="btngrup" style="margin-top:8px">';
+      h += '<button class="btn kucuk' + (b.bekle > 0 ? ' ikincil' : '') + '" onclick="EK.bolgeTikla(' + i + ',false)">📣 Reklam · ' + tl(E.reklamBedeli(b, false)) + '</button>';
+      h += '<button class="btn kucuk ikincil" onclick="EK.bolgeTikla(' + i + ',true)">🎪 Büyük kampanya · ' + tl(E.reklamBedeli(b, true)) + '</button>';
+      h += '</div></div>';
+    }
+    return h;
+  };
+  E.bolgeTikla = function (i, buyuk) { if (E.bolgeReklam(i, buyuk)) UI.panelYenile(); };
+
+  /* ---------------------------------------------------------
+     BAĞLANTI
+     --------------------------------------------------------- */
+  var k;
+  for (k in E.yeniBinalar) if (!VERI.binalar[k]) { VERI.binalar[k] = E.yeniBinalar[k]; VERI.binaSira.push(k); }
+
+  /* görevde olmayan personel o an yokmuş gibi: yalnızca hesap sırasında liste daraltılır */
+  function vardiyaIle(sb, fn) {
+    var tam = sb.personel, aktif = E.gorevdekiler(sb);
+    if (aktif === tam) return fn();
+    sb.personel = aktif;
+    try { return fn(); } finally { sb.personel = tam; }
+  }
+  var v1 = SIM.otoServis;
+  SIM.otoServis = function (sb) { var self = this, a = arguments; return vardiyaIle(sb, function () { return v1.apply(self, a); }); };
+  var v2 = SIM.saatBasi;
+  SIM.saatBasi = function () { var self = this, a = arguments, sb = D.sube(); return vardiyaIle(sb, function () { return v2.apply(self, a); }); };
+  if (typeof IZO !== 'undefined' && IZO.personelGuncelle) {
+    var v3 = IZO.personelGuncelle;
+    IZO.personelGuncelle = function (sb) { var self = this, a = arguments; return vardiyaIle(sb, function () { return v3.apply(self, a); }); };
+  }
+
+  /* müşteri akışı: bölge üstünlüğü (çarpan gün içinde sabit, bir kez hesaplanır) */
+  var m1 = SIM.saatlikMusteri;
+  SIM.saatlikMusteri = function (sb) {
+    var r = m1.call(this, sb);
+    if (!r || !D.s.ek || !D.s.ek.bolge) return r;
+    if (E._bolgeCarpan === undefined) E._bolgeCarpan = E.bolgeCarpan();
+    return r * E._bolgeCarpan;
+  };
+
+  /* şarj parkı: elektrikli araç ek gelir bırakır */
+  var t1 = SIM.ekTesisGeliri;
+  SIM.ekTesisGeliri = function (sb, m) {
+    var r = t1.apply(this, arguments);
+    if (m && m.arac === 'Elektrikli') {
+      var sp = D.binalar(sb, 'sarjpark');
+      for (var i = 0; i < sp.length; i++) if (!sp[i].b.arizali) r += 240 * (1 + 0.35 * (sp[i].b.sv - 1)) * rastgele(0.8, 1.5);
+    }
+    if (m && m.arac === 'Lüks Araç' && D.binaSayisi(sb, 'kuafor') && Math.random() < 0.35) r += 420 * rastgele(0.8, 1.4);
+    return r;
+  };
+
+  /* gün sonu: vardiya tasarrufu, tam gün yorgunluğu, bölge */
+  var g1 = SIM.gunSonu;
+  SIM.gunSonu = function () {
+    try {
+      var tas = E.vardiyaTasarrufu();
+      if (tas > 0) { D.s.para += tas; D.s.ist.bugunGider -= tas; }
+      D.s.subeler.forEach(function (sb) {
+        if (sb.devredildi) return;
+        sb.personel.forEach(function (p) { if (E.vardiyali[p.tip] && E.vardiya(p) === 'tam' && typeof p.moral === 'number') p.moral = kisitla(p.moral - 1.5, 0, 100); });
+      });
+      if (D.s.seviye >= 4 || (D.s.ek && D.s.ek.bolge)) E.bolgeGun();
+    } catch (x) { }
+    return g1.apply(this, arguments);
+  };
+
+  /* arayüz */
+  if (typeof UI !== 'undefined') {
+    var p1 = UI.personelHtml;
+    UI.personelHtml = function () { return p1.apply(this, arguments) + E.vardiyaKart(); };
+  }
+})();

@@ -859,6 +859,36 @@ console.log('UI TEST 9c — ek sistemler');
     kontrol(yer >= 0 && SIM.binaKur(sbe, yer, t), t + ' kurulabilmeli');
   });
   calistir('yeni tesislerle sahne', () => { UI.sekmeGec('istasyon'); IZO.ciz(); });
+  /* vardiya */
+  { sbe.personel = []; const g1 = SIM.adayUret('pompaci'), g2 = SIM.adayUret('pompaci'), ks = SIM.adayUret('kasiyer'); sbe.personel.push(g1, g2, ks);
+    kontrol(EK.vardiyaDegis(g1.id, 'gunduz') && EK.vardiyaDegis(g2.id, 'gece'), 'vardiya atanabilmeli');
+    kontrol(!EK.vardiyaDegis(ks.id, 'gece'), 'kasiyere vardiya atanmamalı');
+    D.s.saat = 12; kontrol(EK.gorevde(g1) && !EK.gorevde(g2) && EK.gorevdekiler(sbe).length === 2, 'gündüz yalnız gündüzcü çalışmalı');
+    D.s.saat = 23; kontrol(!EK.gorevde(g1) && EK.gorevde(g2), 'gece yalnız gececi çalışmalı');
+    kontrol(EK.vardiyaTasarrufu() > 0, 'vardiya maaş tasarrufu sağlamalı');
+    calistir('personel sayfası (vardiya kartı)', () => UI.sekmeGec('personel'));
+    kontrol(w.document.getElementById('govde').innerHTML.indexOf('Vardiya') > 0, 'vardiya kartı görünmeli');
+    calistir('vardiya düğmesi', () => EK.vardiyaSirala(g1.id));
+    calistir('oto servis (vardiyalı)', () => SIM.otoServis(sbe, 1));
+    kontrol(sbe.personel.length === 3, 'hesap sonrası personel listesi eksilmemeli');
+    D.s.saat = 13; }
+  /* bölge kapışması */
+  { D.s.ek.bolge = undefined; const bg = EK.bolge();
+    kontrol(bg.liste.length === 8 && bg.liste.every(b => Math.abs(b.sen + b.r[0] + b.r[1] + b.r[2] - 100) < 0.5), 'bölge payları 100 etmeli');
+    let tur = 0; while (!EK.bolgeSenin(bg.liste[1]) && tur++ < 20) { bg.liste[1].bekle = 0; EK.bolgeReklam(1, true); }
+    kontrol(EK.bolgeSenin(bg.liste[1]) && EK.bolgeSayisi() >= 1 && EK.bolgeGunluk() > 0 && EK.bolgeCarpan() > 1, 'kampanyayla bölge alınabilmeli');
+    bg.liste[2].bekle = 3; kontrol(!EK.bolgeReklam(2, false), 'bekleme süresinde kampanya yapılamamalı');
+    for (let g = 0; g < 40; g++) EK.bolgeGun();
+    kontrol(bg.liste.every(b => b.sen >= 0 && b.sen <= 100 && Math.abs(b.sen + b.r[0] + b.r[1] + b.r[2] - 100) < 0.5), '40 gün sonra paylar tutarlı kalmalı');
+    calistir('bölge sayfası', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'bolge'); });
+    kontrol(w.document.getElementById('govde').innerHTML.indexOf('bolgeHarita') > 0, 'bölge haritası görünmeli'); }
+  /* yeni tesisler 2 */
+  ['kuafor', 'sarjpark'].forEach(t => {
+    const yer = SIM.yerAc(sbe, 'bina');
+    kontrol(!!VERI.binalar[t] && yer >= 0 && SIM.binaKur(sbe, yer, t), t + ' kurulabilmeli');
+  });
+  kontrol(SIM.ekTesisGeliri(sbe, { arac: 'Elektrikli', bahsis: 1 }) > 0, 'şarj parkı elektrikli araçtan gelir getirmeli');
+  calistir('yeni tesislerle sahne 2', () => { UI.sekmeGec('istasyon'); IZO.ciz(); });
   /* gün sonu bütün ekleriyle çalışmalı */
   calistir('gün sonu', () => SIM.gunSonu());
   /* fotoğraf modu */
