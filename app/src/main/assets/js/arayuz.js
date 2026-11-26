@@ -642,10 +642,12 @@ const UI = {
     var sb = D.sube(), lok = D.lok(sb), s2 = D.s;
     var h = this.cipSerit('insa', [
       ['istasyon', '⛽ Pompa'], ['tesisler', '🏪 Tesis'],
-      ['enerji', '⚡ Enerji'], ['arsa', '🧱 Arsa'], ['yapilar', '📋 Yapılarım']
+      ['enerji', '⚡ Enerji'], ['arsa', '🧱 Arsa'], ['yapilar', '📋 Yapılarım'],
+      ['bakim', '🛠️ Bakım', EK.bakimRozet(sb) || '']
     ]);
     var k = this.altSekme.insa || 'istasyon';
     if (k === 'yapilar') return h + this.yapilarHtml(sb);
+    if (k === 'bakim') return h + EK.bakimHtml(sb);
     var bosHucre = this.bosHucreSayisi(sb);
 
     if (k === 'istasyon') {

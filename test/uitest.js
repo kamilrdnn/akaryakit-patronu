@@ -975,12 +975,29 @@ console.log('UI TEST 9c — ek sistemler');
     kontrol(SIM.rakipCekim(ks) === 1.05 && SIM.rakipIndirim(ks) === 0, 'karşı şubede rakip olmamalı');
     const a0 = ks.w * ks.h; kontrol(SIM.arsaGenislet(ks) && ks.w * ks.h > a0, 'karşı şubenin arsası büyüyebilmeli');
     const eski = D.s.aktif;
+    /* aynı ekranda karşı yaka */
+    kontrol(EK.karsiEsi(sbe) && EK.karsiEsi(sbe).sb === ks && EK.karsiEsi(ks).sb === sbe, 'iki yaka birbirini bulmalı');
+    calistir('karşı yakalı sahne', () => { UI.sekmeGec('istasyon'); IZO._sahneAnahtar = null; IZO.guncelle(0.016); IZO.ciz(); IZO.ciz(); });
+    kontrol(IZO.vurus.some(v => v.i === -1000), 'karşı yaka sahnede çizilmeli ve dokunulabilmeli');
+    calistir('karşı yakaya dokun', () => UI.hucreTik(-1000));
+    kontrol(w.document.getElementById('modalIc').innerHTML.indexOf('şubesine geç') > 0, 'karşı yakaya dokununca geçiş penceresi açılmalı');
+    UI.modalKapat();
     calistir('karşı şubeye geç', () => UI.subeGec(D.s.subeler.length - 1));
     calistir('karşı şubede sahne', () => { UI.sekmeGec('istasyon'); IZO.guncelle(0.016); IZO.ciz(); });
     calistir('karşı şubede fiyat', () => UI.sekmeGec('fiyat'));
     calistir('karşı şubede gün sonu', () => SIM.gunSonu());
     calistir('geri dön', () => UI.subeGec(eski));
     D.s.subeler.pop(); D.s.aktif = eski; }
+  /* bakım sekmesi */
+  { D.s.para = 5e8; const ys = sbe.yapi.filter(Boolean); ys[0].arizali = true; ys[0].bakim = 20; ys[1].bakim = 50; sbe.temizlik = 30;
+    calistir('bakım sekmesi', () => { UI.sekmeGec('insa'); UI.altSekmeGec('insa', 'bakim'); });
+    const gv = w.document.getElementById('govde').innerHTML;
+    kontrol(gv.indexOf('Bakım ve tamir') > 0 && gv.indexOf('Arızaları onar') > 0 && gv.indexOf('Temizlet') > 0, 'bakım sekmesi arıza, toplu bakım ve temizliği göstermeli');
+    kontrol(EK.bakimRozet(sbe) >= 1, 'bakım sekmesi rozeti arızayı saymalı');
+    calistir('arızaları onar', () => EK.bakimTikla(0, true)); kontrol(!ys[0].arizali && ys[1].bakim === 50, 'yalnız arızalılar onarılmalı');
+    calistir('%60 altını yap', () => EK.bakimTikla(60, false)); kontrol(ys[1].bakim === 100, 'eşiğin altındakiler bakımdan geçmeli');
+    calistir('temizlet', () => EK.temizlikTikla()); kontrol(sbe.temizlik === 100, 'bakım sekmesinden temizlik yapılmalı');
+    UI.altSekmeGec('insa', 'istasyon'); }
   /* genel müdür */
   { D.s.ek.gm = null; D.s.para = 5e8; D.s.seviye = 20;
     calistir('genel müdür sayfası (adaylar)', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'gm'); });
@@ -1000,6 +1017,10 @@ console.log('UI TEST 9c — ek sistemler');
     const pg = D.s.para; EK.gm().rezerv = 1e12; sbe.temizlik = 10; EK.gmSaat();
     kontrol(sbe.temizlik === 10 && D.s.para === pg, 'rezervin altına inecekse harcama yapmamalı');
     EK.gm().rezerv = 500000;
+    /* jeneratör yakıtı */
+    { let jy = D.binalar(sbe, 'jenerator')[0]; if (!jy) { const yer = SIM.yerAc(sbe, 'bina'); SIM.binaKur(sbe, yer, 'jenerator'); jy = D.binalar(sbe, 'jenerator')[0]; }
+      if (jy) { jy.b.depo = 0; jy.b.calismiyor = true; sbe.tank.dizel.dolu = 6000; EK.gmSaat();
+        kontrol(jy.b.depo > 0 && !jy.b.calismiyor && sbe.tank.dizel.dolu < 6000, 'genel müdür jeneratörü doldurmalı'); } }
     /* taşma: eğitim ve otomatik kesme */
     { const zayif = sbe.personel.filter(p => p.tip === 'pompaci').sort((a, b) => a.beceri - b.beceri)[0]; zayif.beceri = 40; sbe.otoKesme = false; sbe._tasmaSay = 0;
       for (let q = 0; q < 6; q++) SIM.sikayet(sbe, 'tasma', null);

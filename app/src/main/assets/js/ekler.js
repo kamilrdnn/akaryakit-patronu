@@ -1089,6 +1089,7 @@ try { EK.kur(); } catch (e) { }
     ['bakim',   '🛠️ Arıza ve temizliği takip etsin',      'Arızayı tamir ettirir, istasyon kirlenince temizletir.'],
     ['yakit',   '⛽ Yakıt siparişini versin',             'Tank %20\'nin altına düşünce sipariş verir.'],
     ['tasma',   '💧 Yakıt taşmasını önlesin',            'Taşma şikâyeti gelince pompacıları eğitir; sürerse otomatik kesmeli tabanca taktırır.'],
+    ['jenerator', '🔋 Jeneratör yakıtını takip etsin',   'Jeneratör deposu %35\'in altına inince dizel tankından doldurur.'],
     ['market',  '🛒 Marketle ilgilensin',                 'Raflar azalınca stok alır, kasiyer yoksa işe alır.'],
     ['fazla',   '✂️ Fazla personeli çıkarsın',            'Görev verilemeyen pompacıyı tazminatıyla işten çıkarır.']
   ];
@@ -1096,7 +1097,7 @@ try { EK.kur(); } catch (e) { }
 
   E.gm = function () {
     var g = E.d().gm || null;
-    if (g && g.ayar) { if (g.ayar.tasma === undefined) g.ayar.tasma = true; if (g.ayar.market === undefined) g.ayar.market = true; }
+    if (g && g.ayar) { if (g.ayar.tasma === undefined) g.ayar.tasma = true; if (g.ayar.market === undefined) g.ayar.market = true; if (g.ayar.jenerator === undefined) g.ayar.jenerator = true; }
     return g;
   };
 
@@ -1184,7 +1185,7 @@ try { EK.kur(); } catch (e) { }
     if (!D.harca(aday.maas)) return false;                       /* bir aylık peşin */
     E.d().gm = {
       ad: aday.ad, beceri: aday.beceri, maas: aday.maas, gun: D.s.gun, rezerv: 500000,
-      ayar: { alim: true, gorev: true, vardiya: true, moral: true, sikayet: true, bakim: true, yakit: true, tasma: true, market: true, fazla: false },
+      ayar: { alim: true, gorev: true, vardiya: true, moral: true, sikayet: true, bakim: true, yakit: true, tasma: true, market: true, jenerator: true, fazla: false },
       rapor: [], sayac: {}, oneri: {}
     };
     E._gmAdaylar = null;
@@ -1301,6 +1302,26 @@ try { EK.kur(); } catch (e) { }
       if (g.ayar.fazla && bos.length && hak > 0) {
         var f = bos.pop(), taz = Math.round(f.maas * 0.8);
         if (E.gmOde(taz)) { sb.personel.splice(sb.personel.indexOf(f), 1); hak--; E.gmYaz('✂️ ' + ad + ': görev verilemeyen ' + f.ad + ' işten çıkarıldı (tazminat ' + tl(taz) + ').'); }
+      }
+
+      /* jeneratör yakıtı: depo azalınca dizel tankından aktar (iş hakkı harcamaz) */
+      if (g.ayar.jenerator) {
+        var jl = D.binalar(sb, 'jenerator'), aktarilan = 0, kac = 0;
+        for (i = 0; i < jl.length; i++) {
+          var jb = jl[i].b, jkap = SIM.jeneratorKap(jb);
+          if (typeof jb.depo !== 'number') jb.depo = 0;
+          if (jb.depo > jkap * 0.35) continue;
+          var al = Math.min(jkap - jb.depo, sb.tank.dizel.dolu);
+          if (al < 5) continue;
+          sb.tank.dizel.dolu -= al; jb.depo += al; jb.uyarildi = false; jb.calismiyor = false;
+          aktarilan += al; kac++;
+        }
+        if (kac) E.gmYaz('🔋 ' + ad + ': ' + kac + ' jeneratöre ' + say(aktarilan, 0) + ' L dizel dolduruldu.');
+        else if (jl.length && sb.tank.dizel.dolu < 5) {
+          var bos = false;
+          for (i = 0; i < jl.length; i++) if ((jl[i].b.depo || 0) <= SIM.jeneratorKap(jl[i].b) * 0.35) bos = true;
+          if (bos && g.oneri[sb.lok + ':jen'] !== D.s.gun) { g.oneri[sb.lok + ':jen'] = D.s.gun; E.gmYaz('💡 ' + ad + ': jeneratör deposu azaldı ama dizel tankı boş; önce dizel gelmeli.'); }
+        }
       }
 
       /* taşma ve market */
@@ -1718,5 +1739,190 @@ try { EK.kur(); } catch (e) { }
     };
     var u2 = UI.subelerHtml;
     UI.subelerHtml = function () { return u2.apply(this, arguments) + E.karsiKart(); };
+  }
+})();
+
+
+/* =========================================================
+   EK 7 — bakım ve tamir sekmesi (İnşaat → Bakım)
+   ========================================================= */
+(function () {
+  var E = EK;
+  E.bakimListe = function (sb) {
+    var L = [];
+    for (var i = 0; i < sb.yapi.length; i++) {
+      var y = sb.yapi[i];
+      if (!y) continue;
+      L.push({ i: i, y: y, bedel: SIM.bakimBedeli(y), ad: y.t === 'pompa' ? VERI.yakitlar[y.yakit].ad + ' Pompası' : VERI.binalar[y.t].ad, emoji: y.t === 'pompa' ? VERI.yakitlar[y.yakit].emoji : VERI.binalar[y.t].emoji });
+    }
+    /* arızalılar en üstte, sonra bakımı en düşük olan */
+    L.sort(function (a, b) { return (b.y.arizali ? 1 : 0) - (a.y.arizali ? 1 : 0) || a.y.bakim - b.y.bakim; });
+    return L;
+  };
+  E.bakimRozet = function (sb) { var n = 0; for (var i = 0; i < sb.yapi.length; i++) if (sb.yapi[i] && (sb.yapi[i].arizali || sb.yapi[i].bakim < 40)) n++; return n; };
+  E.temizlikBedeli = function (sb) { return Math.round(2500 + (100 - sb.temizlik) * 220); };
+  /* esik: bakımı bu yüzdenin altındakileri onar; yalnizAriza: sadece bozuklar */
+  E.topluBakim = function (sb, esik, yalnizAriza) {
+    var L = E.bakimListe(sb), n = 0, harcanan = 0;
+    for (var i = 0; i < L.length; i++) {
+      var o = L[i];
+      if (yalnizAriza ? !o.y.arizali : !(o.y.arizali || o.y.bakim < esik)) continue;
+      if (D.s.para < o.bedel) continue;
+      D.s.para -= o.bedel; D.s.ist.bugunGider += o.bedel; harcanan += o.bedel;
+      o.y.bakim = 100; o.y.arizali = false; n++;
+      if (sb.bugun) sb.bugun.bakim++;
+    }
+    if (n) { D.xpEkle(20 * n); UI.bildir('🛠️ Bakım tamam', n + ' yapı elden geçti · ' + tl(harcanan), 'iyi'); }
+    else UI.bildir('Yapılacak iş yok', yalnizAriza ? 'Arızalı yapı yok ya da para yetmiyor.' : 'Bu eşiğin altında yapı yok ya da para yetmiyor.', 'uyari');
+    return n;
+  };
+  E.topluBedel = function (sb, esik, yalnizAriza) {
+    var L = E.bakimListe(sb), t = 0, n = 0;
+    for (var i = 0; i < L.length; i++) if (yalnizAriza ? L[i].y.arizali : (L[i].y.arizali || L[i].y.bakim < esik)) { t += L[i].bedel; n++; }
+    return { tutar: t, adet: n };
+  };
+  E.bakimHtml = function (sb) {
+    var L = E.bakimListe(sb), i;
+    var ariza = E.topluBedel(sb, 0, true), dusuk = E.topluBedel(sb, 60, false), hepsi = E.topluBedel(sb, 99.5, false);
+    var h = '<div class="kart"><div class="baslik">🛠️ Bakım ve tamir</div>';
+    h += '<div class="kv"><span>Ortalama bakım</span><b>%' + Math.round(D.bakimOrt(sb)) + '</b></div>';
+    h += '<div class="kv"><span>Arızalı</span><b class="' + (ariza.adet ? 'kirmiziY' : 'yesilY') + '">' + ariza.adet + '</b></div>';
+    h += '<div class="kv"><span>Teknisyen</span><b>' + SIM.personelSayisi(sb, 'teknisyen') + (SIM.personelSayisi(sb, 'teknisyen') ? ' · bakımı kendiliğinden yapar' : ' · yok') + '</b></div>';
+    h += '<div class="btngrup" style="margin-top:9px;flex-wrap:wrap">';
+    if (ariza.adet) h += '<button class="btn kucuk" onclick="EK.bakimTikla(0,true)">🔩 Arızaları onar · ' + tl(ariza.tutar) + '</button>';
+    if (dusuk.adet) h += '<button class="btn kucuk ikincil" onclick="EK.bakimTikla(60,false)">%60 altını yap (' + dusuk.adet + ') · ' + tl(dusuk.tutar) + '</button>';
+    if (hepsi.adet) h += '<button class="btn kucuk ikincil" onclick="EK.bakimTikla(99.5,false)">Hepsini yenile (' + hepsi.adet + ') · ' + tl(hepsi.tutar) + '</button>';
+    h += '</div>';
+    if (!hepsi.adet) h += '<div class="not">Bütün yapılar tam bakımlı.</div>';
+    h += '</div>';
+
+    h += '<div class="kart"><div class="baslik">🧹 Temizlik</div>';
+    h += '<div class="kv"><span>İstasyon temizliği</span><b>%' + Math.round(sb.temizlik) + '</b></div>';
+    h += '<div class="cubuk"><i style="width:' + sb.temizlik + '%;background:' + (sb.temizlik > 60 ? 'var(--yesil)' : sb.temizlik > 35 ? 'var(--sari)' : 'var(--kirmizi)') + '"></i></div>';
+    if (sb.temizlik < 99) h += '<button class="btn kucuk" style="margin-top:8px" onclick="EK.temizlikTikla()">🧹 Temizlet · ' + tl(E.temizlikBedeli(sb)) + '</button>';
+    else h += '<div class="not">Pırıl pırıl.</div>';
+    h += '</div>';
+
+    h += '<div class="kart"><div class="baslik">Yapılar · ' + L.length + '</div>';
+    if (!L.length) h += '<div class="bos">Henüz yapı yok.</div>';
+    for (i = 0; i < L.length; i++) {
+      var o = L[i], renk = o.y.arizali || o.y.bakim < 35 ? 'var(--kirmizi)' : (o.y.bakim < 65 ? 'var(--sari)' : 'var(--yesil)');
+      h += '<div class="satir"><div class="sol"><div class="ikon">' + o.emoji + '</div><div><div class="ad">' + o.ad + ' <span class="mini">sv' + o.y.sv + '</span></div>';
+      h += '<div class="alt">bakım %' + Math.round(o.y.bakim) + (o.y.arizali ? ' · <span class="kirmiziY">ARIZALI</span>' : '') + (o.y.calismiyor ? ' · <span class="kirmiziY">DURDU</span>' : '') + '</div>';
+      h += '<div class="cubuk" style="width:140px"><i style="width:' + o.y.bakim + '%;background:' + renk + '"></i></div></div></div>';
+      if (o.y.arizali || o.y.bakim < 99.5) h += '<button class="btn minik' + (o.y.arizali ? '' : ' ikincil') + '" onclick="EK.bakimTekTikla(' + o.i + ')">' + (o.y.arizali ? 'Tamir' : 'Bakım') + '<br><span class="mini">' + tl(o.bedel) + '</span></button>';
+      else h += '<span class="etiket iyi">✓</span>';
+      h += '</div>';
+    }
+    return h + '</div>';
+  };
+  E.bakimTikla = function (esik, yalnizAriza) { E.topluBakim(D.sube(), esik, yalnizAriza); UI.panelYenile(); };
+  E.bakimTekTikla = function (i) { if (SIM.bakimYap(D.sube(), i)) UI.panelYenile(); };
+  E.temizlikTikla = function () { if (SIM.temizlikYap(D.sube())) { UI.bildir('Temizlik yapıldı', 'İstasyon pırıl pırıl.', 'iyi'); UI.panelYenile(); } };
+})();
+
+/* =========================================================
+   EK 8 — karşı yaka aynı ekranda
+   Aynı lokasyondaki öbür şuben yolun karşısında görünür: betonu, pompaları, binaları.
+   Hazır resimlerle basılır; liste 45 karede bir yenilenir, kare başına ek hesap çok küçüktür.
+   Dokununca o şubeye geçilir.
+   ========================================================= */
+(function () {
+  var E = EK;
+  if (typeof IZO === 'undefined' || !IZO.derinlikDuzelt) return;
+
+  E.karsiEsi = function (sb) {
+    var L = D.s.subeler;
+    for (var i = 0; i < L.length; i++) {
+      if (L[i] !== sb && L[i].lok === sb.lok && !L[i].devredildi && !!L[i].karsi !== !!sb.karsi) return { sb: L[i], idx: i };
+    }
+    return null;
+  };
+  E.karsiAlan = function (sb, d) {
+    var ek = SIM.yolEk ? SIM.yolEk(sb) : 0;
+    var yolSonu = sb.h + 3 + ek, y0 = yolSonu + 0.9;
+    return { yolSonu: yolSonu, y0: y0, x0: -0.35, x1: d.w + 0.35, y1: y0 + d.h + 0.3 };
+  };
+
+  var onbellek = { anahtar: '', kare: 0, ogeler: [] };
+  function ogeleriKur(Z, sb, es) {
+    var d = es.sb, A = E.karsiAlan(sb, d), L = [];
+    for (var i = 0; i < d.yapi.length; i++) {
+      var y = d.yapi[i];
+      if (!y) continue;
+      var gx = i % d.w, gy = A.y0 + (d.h - 1 - Math.floor(i / d.w));       /* ön sıra yola bakar */
+      (function (y, gx, gy) {
+        var pompa = y.t === 'pompa', kopya = pompa ? Object.create(y) : y;
+        if (pompa) kopya.mesgul = null;
+        L.push({
+          d: gx + gy + (pompa ? 0.89 : 1), tur: 'ozel', gx: gx, gy: gy,
+          ciz: function () {
+            var ev = this._vurusKapali; this._vurusKapali = true;
+            try { if (pompa) this.pompaCiz(d, -1, gx, gy, kopya); else this.binaCiz(d, -1, gx, gy, y); } catch (x) { }
+            this._vurusKapali = ev;
+          }
+        });
+      })(y, gx, gy);
+    }
+    /* zemin: en önce çizilir */
+    L.push({
+      d: -1e6, tur: 'ozel', gx: 0, gy: A.y0,
+      ciz: function () {
+        var I = this.isik(), c = this.cz;
+        var a = this.ekran(A.x0, A.yolSonu, 0), b = this.ekran(A.x1, A.yolSonu, 0), e = this.ekran(A.x1, A.y1, 0), f = this.ekran(A.x0, A.y1, 0);
+        this.cokgen([a, b, e, f], this.ton('#a9b0b9', I));
+        c.strokeStyle = this.ton('#dfe4ea', I); c.lineWidth = Math.max(1, 1.6 * this.kam.olcek);
+        c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(e.x, e.y); c.lineTo(f.x, f.y); c.lineTo(a.x, a.y); c.stroke();
+        if (!this._vurusKapali && this.vurus) this.vurus.push({ tip: 'hucre', i: -1000, poly: [a, b, e, f] });
+      }
+    });
+    /* tabela: en önde */
+    L.push({
+      d: 1e6, tur: 'ozel', gx: 0, gy: A.y1,
+      ciz: function () { this.levha(A.x0 + 0.5, A.y1 + 0.1, 16, (d.karsi ? 'KARŞI YAKA' : 'ANA ŞUBE') + ' · dokun', '#2f6fa8', '#fff', 6.5); }
+    });
+    return L;
+  }
+
+  var eskiD = IZO.derinlikDuzelt;
+  IZO.derinlikDuzelt = function (sb, liste) {
+    var es = null;
+    try { es = E.karsiEsi(sb); } catch (x) { }
+    if (es) {
+      var anh = D.s.aktif + ':' + es.idx + ':' + sb.w + 'x' + sb.h + ':' + es.sb.w + 'x' + es.sb.h + ':' + (sb.yol || 1);
+      if (onbellek.anahtar !== anh || ++onbellek.kare > 45) {
+        onbellek.anahtar = anh; onbellek.kare = 0;
+        onbellek.ogeler = ogeleriKur(this, sb, es);
+      }
+      /* o alana denk gelen ağaç, ev, direk çizilmesin */
+      var A = E.karsiAlan(sb, es.sb);
+      for (var i = liste.length - 1; i >= 0; i--) {
+        var o = liste[i];
+        if (o.tur !== 'sus') continue;
+        var s = o.s, w = s.w || 1, h = s.h || 1;
+        if (s.gx < A.x1 + 0.3 && s.gx + w > A.x0 - 0.3 && s.gy + h > A.yolSonu + 0.2 && s.gy < A.y1 + 0.3) liste.splice(i, 1);
+      }
+      for (var k = 0; k < onbellek.ogeler.length; k++) liste.push(onbellek.ogeler[k]);
+    }
+    return eskiD.call(this, sb, liste);
+  };
+
+  /* karşı yakaya dokunma */
+  if (typeof UI !== 'undefined') {
+    var h1 = UI.hucreTik;
+    UI.hucreTik = function (k) {
+      if (k === -1000) {
+        if (this.tasinan !== null && this.tasinan !== undefined) return;
+        var es = E.karsiEsi(D.sube());
+        if (!es) return;
+        var d = es.sb;
+        var h = '<div class="not">Yolun karşısındaki istasyonun. ' + D.pompalar(d).length + ' pompa, ' + D.binalar(d).length + ' tesis · arsa ' + d.w + '×' + d.h + '.</div>';
+        h += '<button class="btn genis" style="margin-top:10px" onclick="UI.modalKapat();UI.subeGec(' + es.idx + ')">🛣️ ' + D.lok(d).ad + ' şubesine geç</button>';
+        h += '<button class="btn ikincil genis" style="margin-top:8px" onclick="UI.modalKapat()">Kapat</button>';
+        this.modal(D.lok(d).ad, h);
+        return;
+      }
+      return h1.apply(this, arguments);
+    };
   }
 })();
