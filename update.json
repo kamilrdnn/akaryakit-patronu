@@ -1,7 +1,7 @@
 {
-  "versionCode": 151,
-  "versionName": "1.2.45",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.45/AkaryakitPatronu-1.2.45.apk",
-  "size": 3368361,
-  "notes": "Yapılarım listesinden doğrudan yükseltme; bina yükseltme bedeli ekrandakiyle eşitlendi"
+  "versionCode": 152,
+  "versionName": "1.2.46",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.46/AkaryakitPatronu-1.2.46.apk",
+  "size": 3368825,
+  "notes": "Daha büyük arsalar, seviyeye göre 12–20 hücrelik alım; düzenleme dolu arsada da çalışır"
 }
