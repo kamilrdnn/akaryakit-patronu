@@ -616,6 +616,14 @@ const UI = {
   },
   tasimaIptal: function () { this.tasinan = null; this.bildir('Taşıma iptal', '', 'uyari'); this.ciz(); },
   jeneratorDoldur: function (k) { if (SIM.jeneratorDoldur(D.sube(), k)) this.yapiModal(k); },
+  /* Yapılarım listesinden jeneratör deposunu doldur */
+  jeneratorDoldurListe: function (k) { if (SIM.jeneratorDoldur(D.sube(), k)) this.panelYenile(); },
+  jeneratorHepsiniDoldur: function () {
+    var sb = D.sube(), n = 0;
+    D.binalar(sb, 'jenerator').forEach(function (j) { if ((j.b.depo || 0) < SIM.jeneratorKap(j.b) - 1 && SIM.jeneratorDoldur(sb, j.i)) n++; });
+    if (!n) this.bildir('Doldurulamadı', 'Jeneratör depoları dolu ya da dizel tankında yakıt yok.', 'uyari');
+    this.panelYenile();
+  },
 
   pompaAta: function (pid, pompa, k) { if (pompa === null) SIM.pompaAta(D.sube(), pid, null); else EK.pompayaEkle(D.sube(), pid, pompa); this.yapiModal(k); },
   pompaciAlVeAta: function (k) {
@@ -749,6 +757,19 @@ const UI = {
     h += '<button class="btn genis" style="margin-top:9px" onclick="UI.duzenleOnay()">🧹 İstasyonu düzenle</button>';
     h += '</div>';
 
+    var jenL = D.binalar(sb, 'jenerator');
+    if (jenL.length) {
+      var jTop = 0, jKap = 0;
+      jenL.forEach(function (j) { jTop += j.b.depo || 0; jKap += SIM.jeneratorKap(j.b); });
+      h += '<div class="kart"><div class="baslik">🔋 Jeneratör yakıtı</div>';
+      h += '<div class="kv"><span>' + jenL.length + ' jeneratör · depo</span><b>' + say(jTop, 0) + ' / ' + say(jKap, 0) + ' L</b></div>';
+      h += '<div class="cubuk"><i style="width:' + (jKap ? jTop / jKap * 100 : 0) + '%;background:' + (jTop < jKap * 0.25 ? 'var(--kirmizi)' : 'var(--yesil)') + '"></i></div>';
+      h += '<div class="kv"><span>Dizel tankında</span><b>' + say(sb.tank.dizel.dolu, 0) + ' L</b></div>';
+      if (jTop < jKap - 1) h += '<button class="btn genis" style="margin-top:8px" onclick="UI.jeneratorHepsiniDoldur()">⛽ Hepsini dizel tankından doldur</button>';
+      else h += '<div class="not">Depolar dolu.</div>';
+      h += '</div>';
+    }
+
     h += '<div class="kart"><div class="baslik">İstasyondaki yapılar</div>';
     h += '<div class="not">Yükseltmeyi doğrudan buradaki ⬆ düğmesiyle yapabilirsin. "Aç" yapının kartını açar: bakım, taşıma, yıkma.</div>';
     var say2 = 0;
@@ -777,6 +798,10 @@ const UI = {
       h += '<div><div class="ad">' + ad + '</div><div class="alt">' + alt + '<br><span class="mini">konum ' + satir + '. sıra, ' + sutun + '. sütun</span></div></div></div>';
       var yb = SIM.yukseltmeBedeli(y);
       h += '<div style="display:flex;gap:5px;align-items:center">';
+      if (y.t === 'jenerator') {
+        var jk = SIM.jeneratorKap(y), jd = y.depo || 0;
+        if (jd < jk - 1) h += '<button class="btn minik"' + (jd < jk * 0.25 ? ' style="background:var(--kirmizi)"' : '') + ' onclick="UI.jeneratorDoldurListe(' + i + ')">⛽ Doldur<br><span class="mini">' + say(jd, 0) + '/' + say(jk, 0) + ' L</span></button>';
+      }
       if (yb > 0) h += '<button class="btn minik"' + (D.s.para < yb ? ' style="opacity:.45"' : '') + ' onclick="UI.yukseltListe(' + i + ')">⬆ sv' + (y.sv + 1) + '<br><span class="mini">' + tl(yb) + '</span></button>';
       else h += '<span class="etiket iyi">en üst</span>';
       h += '<button class="btn minik ikincil" onclick="UI.yapiModal(' + i + ')">Aç</button></div></div>';

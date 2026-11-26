@@ -908,6 +908,14 @@ console.log('UI TEST 9c — ek sistemler');
     kontrol(SIM.istasyonDuzenle(sbz) && sbz.yapi.filter(Boolean).length === say0, 'dolu arsada düzenleme hata vermemeli');
     for (let i = 0; i < sbz.yapi.length; i++) if (sbz.yapi[i] && sbz.yapi[i].t === 'cicek' && !yedekY.includes(sbz.yapi[i])) sbz.yapi[i] = null;
     calistir('büyük arsada sahne', () => { UI.sekmeGec('istasyon'); IZO._sahneAnahtar = null; IZO.guncelle(0.016); IZO.ciz(); }); }
+  /* jeneratör: yapılarım listesinden doldurma */
+  { D.s.para = 5e8; let jy = D.binalar(sbe, 'jenerator')[0];
+    if (!jy) { const yer = SIM.yerAc(sbe, 'bina'); SIM.binaKur(sbe, yer, 'jenerator'); jy = D.binalar(sbe, 'jenerator')[0]; }
+    kontrol(!!jy, 'jeneratör kurulabilmeli');
+    if (jy) { jy.b.depo = 0; sbe.tank.dizel.dolu = 5000;
+      kontrol(UI.yapilarHtml(sbe).indexOf('jeneratorDoldurListe') > 0 && UI.yapilarHtml(sbe).indexOf('jeneratorHepsiniDoldur') > 0, 'yapılarım listesinde doldur düğmeleri olmalı');
+      calistir('listeden jeneratör doldur', () => UI.jeneratorHepsiniDoldur());
+      kontrol(jy.b.depo > 0 && sbe.tank.dizel.dolu < 5000, 'jeneratör listeden doldurulmalı'); } }
   /* genel müdür */
   { D.s.ek.gm = null; D.s.para = 5e8; D.s.seviye = 20;
     calistir('genel müdür sayfası (adaylar)', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'gm'); });
