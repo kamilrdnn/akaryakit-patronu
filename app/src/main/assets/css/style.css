@@ -710,3 +710,8 @@ body.foto #fotoCik{display:block}
 .bolgeCubuk i{display:block;height:100%}
 .lejant{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:10.5px;opacity:.85}
 .lejant i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+.vardiyaSec{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:2px 0 10px}
+.vardiyaSec button{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:inherit;border-radius:9px;padding:6px 2px;font-size:11.5px;font-weight:700;display:flex;flex-direction:column;gap:1px;align-items:center}
+.vardiyaSec button span{font-size:9.5px;font-weight:500;opacity:.7}
+.vardiyaSec button.aktif{background:rgba(240,180,41,.22);border-color:#f0b429}

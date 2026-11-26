@@ -867,7 +867,12 @@ console.log('UI TEST 9c — ek sistemler');
     D.s.saat = 23; kontrol(!EK.gorevde(g1) && EK.gorevde(g2), 'gece yalnız gececi çalışmalı');
     kontrol(EK.vardiyaTasarrufu() > 0, 'vardiya maaş tasarrufu sağlamalı');
     calistir('personel sayfası (vardiya kartı)', () => UI.sekmeGec('personel'));
-    kontrol(w.document.getElementById('govde').innerHTML.indexOf('Vardiya') > 0, 'vardiya kartı görünmeli');
+    kontrol(w.document.getElementById('govde').innerHTML.indexOf('vardiyaSec') > 0, 'vardiya düğmeleri personel ekranında olmalı');
+    calistir('vardiya seç', () => EK.vardiyaTikla(g1.id, 'gece')); kontrol(EK.vardiya(g1) === 'gece', 'düğmeyle vardiya değişmeli');
+    EK.vardiyaDegis(g1.id, 'gunduz');
+    { const pk0 = D.pompalar(sbe)[0].i; g1.pompa = pk0; g2.pompa = null; g1.vardiya = 'tam'; g2.vardiya = 'tam';
+      calistir('otomatik dağıt', () => EK.vardiyaOtoTikla());
+      kontrol(g1.pompa === pk0 && g2.pompa === pk0 && g1.vardiya === 'gunduz' && g2.vardiya === 'gece', 'otomatik dağıtım pompayı iki vardiyaya bölmeli'); }
     calistir('vardiya düğmesi', () => EK.vardiyaSirala(g1.id));
     calistir('oto servis (vardiyalı)', () => SIM.otoServis(sbe, 1));
     kontrol(sbe.personel.length === 3, 'hesap sonrası personel listesi eksilmemeli');

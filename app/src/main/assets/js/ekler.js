@@ -199,15 +199,29 @@ var EK = (function () {
       h += '<button class="btn kucuk ikincil" onclick="EK.zamTikla(false)">Reddet</button></div></div>';
     }
     if (!sb.personel.length) return h;
-    h += '<div class="kart"><div class="baslik">Ekip durumu</div>';
-    h += '<div class="not">Çalıştıkça kıdem kazanır, becerileri artar. Moral düşerse istifa ederler; prim morali yükseltir.</div>';
+    var gunduzMu = D.s.saat >= 7 && D.s.saat < 19;
+    h += '<div class="kart"><div class="baslik">Ekip ve vardiya · şu an ' + (gunduzMu ? '☀️ gündüz' : '🌙 gece') + '</div>';
+    h += '<div class="not">Her kişinin altındaki üç düğmeden vardiyasını seç. Gündüzcü %28, gececi %20 daha az maaş alır ama yalnızca kendi saatinde çalışır; tam gün çalışan yorulur. Moral düşerse istifa ederler, prim morali yükseltir.</div>';
+    h += '<button class="btn kucuk genis" style="margin:8px 0 4px" onclick="EK.vardiyaOtoTikla()">⚡ Vardiyaları otomatik dağıt</button>';
     for (var i = 0; i < sb.personel.length; i++) {
       var p = E.pHazirla(sb.personel[i]);
       var renk = p.moral > 60 ? 'var(--yesil)' : (p.moral > 30 ? 'var(--sari)' : 'var(--kirmizi)');
-      h += '<div class="satir"><div class="sol"><div class="ikon">' + VERI.personel[p.tip].emoji + '</div><div><div class="ad">' + p.ad + '</div>';
-      h += '<div class="alt">' + '★'.repeat(p.kidem) + ' ' + E.kidemAd[p.kidem - 1] + ' · moral ' + Math.round(p.moral) + '</div>';
+      var v = E.vardiya(p), gorevde = E.gorevde(p);
+      h += '<div class="satir"><div class="sol"><div class="ikon">' + VERI.personel[p.tip].emoji + '</div><div><div class="ad">' + p.ad +
+           (p.tip === 'pompaci' ? ' <span class="mini">' + (p.pompa !== null && p.pompa !== undefined ? '· Pompa ' + (p.pompa + 1) : '· boşta') + '</span>' : '') + '</div>';
+      h += '<div class="alt">' + '★'.repeat(p.kidem) + ' ' + E.kidemAd[p.kidem - 1] + ' · moral ' + Math.round(p.moral) + ' · ' +
+           (gorevde ? '<span class="yesilY">görevde</span>' : '<span class="sariY">izinde</span>') + '</div>';
       h += '<div class="cubuk" style="width:140px"><i style="width:' + p.moral + '%;background:' + renk + '"></i></div></div></div>';
       h += '<button class="btn minik ikincil" onclick="EK.primTikla(\'' + p.id + '\')">Prim<br><span class="mini">' + tl(E.primBedeli(p)) + '</span></button></div>';
+      if (E.vardiyali[p.tip]) {
+        h += '<div class="vardiyaSec">';
+        ['tam', 'gunduz', 'gece'].forEach(function (vk) {
+          var t = E.vardiyalar[vk];
+          h += '<button class="' + (v === vk ? 'aktif' : '') + '" onclick="EK.vardiyaTikla(\'' + p.id + '\',\'' + vk + '\')">' + t.emoji + ' ' + t.ad +
+               '<span>' + tl(p.maas / 30 * t.kat) + '/gün</span></button>';
+        });
+        h += '</div>';
+      }
     }
     return h + '</div>';
   };
@@ -741,6 +755,38 @@ try { EK.kur(); } catch (e) { }
     }
     return false;
   };
+  E.vardiyaTikla = function (pid, v) { if (E.vardiyaDegis(pid, v)) UI.panelYenile(); };
+  /* tek dokunuşla dağıt: iki kişilik pompalar gündüz/gece, tek kişilikler tam gün;
+     temizlik ve teknisyen ikişer ikişer gündüz/gece, tek kalan tam gün */
+  E.vardiyaOto = function (sb) {
+    var i, pompaGrubu = {}, bos = [], tipler = { temizlik: [], teknisyen: [] };
+    for (i = 0; i < sb.personel.length; i++) {
+      var p = sb.personel[i];
+      if (p.tip === 'pompaci') {
+        if (p.pompa !== null && p.pompa !== undefined) (pompaGrubu[p.pompa] = pompaGrubu[p.pompa] || []).push(p);
+        else bos.push(p);
+      } else if (tipler[p.tip]) tipler[p.tip].push(p);
+    }
+    /* boştaki pompacıları tek kişilik pompalara ikinci vardiya olarak yerleştir */
+    for (var k in pompaGrubu) if (pompaGrubu[k].length === 1 && bos.length) { var y = bos.shift(); y.pompa = +k; pompaGrubu[k].push(y); }
+    for (k in pompaGrubu) {
+      var g = pompaGrubu[k];
+      if (g.length >= 2) { g[0].vardiya = 'gunduz'; g[1].vardiya = 'gece'; for (i = 2; i < g.length; i++) g[i].pompa = null; }
+      else g[0].vardiya = 'tam';
+    }
+    for (i = 0; i < bos.length; i++) bos[i].vardiya = 'tam';
+    for (var t in tipler) {
+      var L = tipler[t];
+      if (L.length === 1) L[0].vardiya = 'tam';
+      else for (i = 0; i < L.length; i++) L[i].vardiya = i % 2 === 0 ? 'gunduz' : 'gece';
+    }
+    return true;
+  };
+  E.vardiyaOtoTikla = function () {
+    E.vardiyaOto(D.sube());
+    UI.bildir('⚡ Vardiyalar dağıtıldı', 'İki kişilik pompalar gündüz/gece paylaşıldı; tek kişilikler tam gün çalışacak.', 'iyi');
+    UI.panelYenile();
+  };
   E.vardiyaSirala = function (pid) {
     var sb = D.sube(), sira = ['tam', 'gunduz', 'gece'];
     for (var i = 0; i < sb.personel.length; i++) if (sb.personel[i].id === pid) {
@@ -1021,8 +1067,5 @@ try { EK.kur(); } catch (e) { }
   };
 
   /* arayüz */
-  if (typeof UI !== 'undefined') {
-    var p1 = UI.personelHtml;
-    UI.personelHtml = function () { return p1.apply(this, arguments) + E.vardiyaKart(); };
-  }
+  /* vardiya düğmeleri personel ekranının en üstündeki "Ekip ve vardiya" kartındadır */
 })();
