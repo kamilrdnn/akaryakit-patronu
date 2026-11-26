@@ -1,7 +1,7 @@
 {
-  "versionCode": 158,
-  "versionName": "1.2.52",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.52/AkaryakitPatronu-1.2.52.apk",
-  "size": 3380601,
-  "notes": "Karşı yaka aynı ekranda, İnşaat'ta Bakım sekmesi, genel müdür jeneratör yakıtını takip ediyor"
+  "versionCode": 159,
+  "versionName": "1.2.53",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.53/AkaryakitPatronu-1.2.53.apk",
+  "size": 3380337,
+  "notes": "Karşı yaka kaldırıldı, yerine kavşak yükseltmesi: karşı yönden gelen araçlar istasyona dönebiliyor"
 }
