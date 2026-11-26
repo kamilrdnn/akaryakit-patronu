@@ -464,6 +464,7 @@ const SIM = {
       var saniye = 2.5 * dk;
       var hedefeKalan = m.hedef - m.verilen;
       var hata = (1 - pompaci.beceri / 100) * rastgele(-1.6, 1.9);
+      if (sb.otoKesme && hata > 0) hata *= 0.08;          /* otomatik kesmeli tabanca: taşma neredeyse olmaz */
       var hedefNokta = m.hedef + hata;
       var verebilir = Math.min(akis * saniye, Math.max(0, hedefNokta - m.verilen));
       if (m.yakit !== 'ev') verebilir = Math.min(verebilir, sb.tank[m.yakit].dolu);

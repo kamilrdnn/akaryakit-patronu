@@ -1088,11 +1088,85 @@ try { EK.kur(); } catch (e) { }
     ['sikayet', '📮 Şikâyetleri çözsün',                  'Şikâyetleri okur, sebebini giderir; gideremediğini sana önerir.'],
     ['bakim',   '🛠️ Arıza ve temizliği takip etsin',      'Arızayı tamir ettirir, istasyon kirlenince temizletir.'],
     ['yakit',   '⛽ Yakıt siparişini versin',             'Tank %20\'nin altına düşünce sipariş verir.'],
+    ['tasma',   '💧 Yakıt taşmasını önlesin',            'Taşma şikâyeti gelince pompacıları eğitir; sürerse otomatik kesmeli tabanca taktırır.'],
+    ['market',  '🛒 Marketle ilgilensin',                 'Raflar azalınca stok alır, kasiyer yoksa işe alır.'],
     ['fazla',   '✂️ Fazla personeli çıkarsın',            'Görev verilemeyen pompacıyı tazminatıyla işten çıkarır.']
   ];
   E.gmRezervler = [100000, 500000, 2000000, 10000000];
 
-  E.gm = function () { return E.d().gm || null; };
+  E.gm = function () {
+    var g = E.d().gm || null;
+    if (g && g.ayar) { if (g.ayar.tasma === undefined) g.ayar.tasma = true; if (g.ayar.market === undefined) g.ayar.market = true; }
+    return g;
+  };
+
+  /* ---- taşma önlemleri ---- */
+  E.egitimBedeli = function (p) { return Math.round((12000 + p.beceri * 150) / 500) * 500; };
+  E.otoKesmeBedeli = function (sb) { return Math.max(1, D.pompalar(sb).length) * 90000; };
+  E.otoKesmeAl = function (sb) {
+    if (sb.otoKesme) return false;
+    if (!D.harca(E.otoKesmeBedeli(sb))) return false;
+    sb.otoKesme = true;
+    UI.bildir('💧 Otomatik kesmeli tabanca', 'Bütün pompalara takıldı; pompacılar artık neredeyse hiç taşırmayacak.', 'iyi');
+    return true;
+  };
+  E.otoKesmeKart = function () {
+    var sb = D.sube();
+    var h = '<div class="kart"><div class="baslik">💧 Taşma önlemi</div>';
+    if (sb.otoKesme) return h + '<div class="not">✓ Bu şubede otomatik kesmeli tabanca takılı. Pompacılar depo dolunca kendiliğinden duruyor.</div></div>';
+    h += '<div class="not">Pompacılar becerilerine göre az ya da çok taşırır. Otomatik kesmeli tabanca depo dolunca akışı keser; taşma şikâyetleri neredeyse biter. Kendin doldururken etkisi yoktur.</div>';
+    h += '<button class="btn genis" style="margin-top:8px" onclick="EK.otoKesmeTikla()">Bütün pompalara taktır · ' + tl(E.otoKesmeBedeli(sb)) + '</button>';
+    return h + '</div>';
+  };
+  E.otoKesmeTikla = function () { if (E.otoKesmeAl(D.sube())) UI.panelYenile(); };
+  /* genel müdür: son şikâyetlere bakıp taşmaya karşı adım atar */
+  E.gmTasma = function (sb) {
+    var g = E.gm(), ad = E.subeAdi(sb), L = sb.sikayetler || [], sayi = 0, i;
+    for (i = 0; i < L.length; i++) if ((L[i].tip === 'tasma' || L[i].tip === 'yanlis') && D.s.gun - L[i].gun <= 2 && !L[i].tasmaIslendi) sayi++;
+    if (!sayi) return 0;
+    for (i = 0; i < L.length; i++) if (L[i].tip === 'tasma' || L[i].tip === 'yanlis') L[i].tasmaIslendi = true;
+    var yapilan = 0;
+    /* 1) en düşük becerili pompacıları eğit */
+    var po = sb.personel.filter(function (p) { return p.tip === 'pompaci' && p.beceri < 90; }).sort(function (a, b) { return a.beceri - b.beceri; });
+    var kota = 1 + Math.floor(g.beceri / 40);
+    for (i = 0; i < po.length && i < kota; i++) {
+      if (!E.gmOde(E.egitimBedeli(po[i]))) break;
+      var once = po[i].beceri;
+      po[i].beceri = Math.min(95, po[i].beceri + rastgeleTam(5, 9));
+      yapilan++;
+      E.gmYaz('🎓 ' + ad + ': taşma şikâyeti üzerine ' + po[i].ad + ' eğitime gönderildi (beceri ' + once + ' → ' + po[i].beceri + ').');
+    }
+    /* 2) şikâyet yoğunsa ya da eğitilecek kimse kalmadıysa otomatik kesmeli tabanca */
+    sb._tasmaSay = (sb._tasmaSay || 0) + sayi;
+    if (!sb.otoKesme && (sb._tasmaSay >= 5 || !po.length) && E.gmOde(E.otoKesmeBedeli(sb))) {
+      sb.otoKesme = true; yapilan++;
+      E.gmYaz('💧 ' + ad + ': taşma sürdüğü için bütün pompalara otomatik kesmeli tabanca taktırıldı.');
+    }
+    return yapilan;
+  };
+  /* genel müdür: market rafları ve kasiyer */
+  E.gmMarket = function (sb) {
+    var g = E.gm(), ad = E.subeAdi(sb);
+    if (!SIM.marketVar(sb) || !sb.market) return 0;
+    var yapilan = 0, kap = SIM.marketRafKapasite(sb), dolu = SIM.marketDoluluk(sb);
+    if (kap > 0 && dolu / kap < 0.45) {
+      var once = D.s.para;
+      /* rezervin altına inmeden alım: bütçeyi geçici olarak rezerv kadar azalt */
+      var kullanilabilir = D.s.para - g.rezerv;
+      if (kullanilabilir > 5000) {
+        D.s.para = kullanilabilir;
+        var adet = E.gmSessiz(function () { return SIM.marketTumunuDoldur(sb); });
+        var harcanan = kullanilabilir - D.s.para;
+        D.s.para = once - harcanan;
+        if (adet) { yapilan++; E.gmYaz('🛒 ' + ad + ': market rafları azalmıştı; ' + say(adet, 0) + ' ürün alındı (' + tl(harcanan) + ').'); }
+      }
+    }
+    if (g.ayar.alim && !SIM.personelSayisi(sb, 'kasiyer')) {
+      var y = E.gmSessiz(function () { return E.gmAl(sb, 'kasiyer'); });
+      if (y) { yapilan++; E.gmYaz('🧑‍💼 ' + ad + ': markette kasiyer yoktu; ' + y.ad + ' işe alındı.'); }
+    }
+    return yapilan;
+  };
   E.gmAdayUret = function () {
     var beceri = rastgeleTam(45, 96);
     return {
@@ -1110,7 +1184,7 @@ try { EK.kur(); } catch (e) { }
     if (!D.harca(aday.maas)) return false;                       /* bir aylık peşin */
     E.d().gm = {
       ad: aday.ad, beceri: aday.beceri, maas: aday.maas, gun: D.s.gun, rezerv: 500000,
-      ayar: { alim: true, gorev: true, vardiya: true, moral: true, sikayet: true, bakim: true, yakit: true, fazla: false },
+      ayar: { alim: true, gorev: true, vardiya: true, moral: true, sikayet: true, bakim: true, yakit: true, tasma: true, market: true, fazla: false },
       rapor: [], sayac: {}, oneri: {}
     };
     E._gmAdaylar = null;
@@ -1229,6 +1303,10 @@ try { EK.kur(); } catch (e) { }
         if (E.gmOde(taz)) { sb.personel.splice(sb.personel.indexOf(f), 1); hak--; E.gmYaz('✂️ ' + ad + ': görev verilemeyen ' + f.ad + ' işten çıkarıldı (tazminat ' + tl(taz) + ').'); }
       }
 
+      /* taşma ve market */
+      if (g.ayar.tasma && hak > 0) hak -= Math.min(hak, E.gmTasma(sb));
+      if (g.ayar.market && hak > 0 && D.s.saat % 3 === 0) hak -= Math.min(hak, E.gmMarket(sb));
+
       /* şikâyetler */
       if (g.ayar.sikayet && hak > 0) E.gmSikayet(sb, hak);
     });
@@ -1240,7 +1318,7 @@ try { EK.kur(); } catch (e) { }
     var oneriler = {
       wcYok: 'tuvalet kurulmalı', marketYok: 'market rafları doldurulmalı ya da market kurulmalı',
       karanlik: 'aydınlatma için jeneratör ya da güneş paneli gerekli', pahali: 'fiyatlar rakibe göre yüksek; Fiyat ekranından indir',
-      tasma: 'pompacılar taşırıyor; daha becerikli pompacı al ya da kendin doldur', yanlis: 'yanlış yakıt veriliyor; pompacı becerisi düşük',
+      tasma: 'pompacılar taşırıyor; "Yakıt taşmasını önlesin" yetkisi açıksa eğitim ve otomatik kesmeli tabancayla çözülür', yanlis: 'yanlış yakıt veriliyor; pompacı becerisi düşük',
       stokYok: 'yakıt bitiyor; depo büyüt ya da siparişi erken ver', bekleme: 'sıra uzuyor; pompa ekle ya da boş pompaya pompacı ata'
     };
     for (var i = 0; i < L.length && incelenen < hak * 3; i++) {
@@ -1379,6 +1457,10 @@ try { EK.kur(); } catch (e) { }
   };
 
   /* ---- bağlantı ---- */
+  if (typeof UI !== 'undefined' && UI.sikayetHtml) {
+    var sk1 = UI.sikayetHtml;
+    UI.sikayetHtml = function () { return E.otoKesmeKart() + sk1.apply(this, arguments); };
+  }
   var s1 = SIM.saatBasi;
   SIM.saatBasi = function () { var r = s1.apply(this, arguments); try { E.gmSaat(); } catch (x) { } return r; };
   var s2 = SIM.gunSonu;

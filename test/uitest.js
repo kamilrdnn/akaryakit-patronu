@@ -935,6 +935,21 @@ console.log('UI TEST 9c — ek sistemler');
     const pg = D.s.para; EK.gm().rezerv = 1e12; sbe.temizlik = 10; EK.gmSaat();
     kontrol(sbe.temizlik === 10 && D.s.para === pg, 'rezervin altına inecekse harcama yapmamalı');
     EK.gm().rezerv = 500000;
+    /* taşma: eğitim ve otomatik kesme */
+    { const zayif = sbe.personel.filter(p => p.tip === 'pompaci').sort((a, b) => a.beceri - b.beceri)[0]; zayif.beceri = 40; sbe.otoKesme = false; sbe._tasmaSay = 0;
+      for (let q = 0; q < 6; q++) SIM.sikayet(sbe, 'tasma', null);
+      EK.gmSaat();
+      kontrol(zayif.beceri > 40, 'genel müdür taşıran pompacıyı eğitmeli');
+      kontrol(sbe.otoKesme === true, 'taşma sürünce otomatik kesmeli tabanca taktırmalı');
+      kontrol(EK.gm().rapor.some(r => r.metin.indexOf('eğitime') > 0), 'eğitim rapora yazılmalı'); }
+    /* market */
+    { if (!SIM.marketVar(sbe)) { const yer = SIM.yerAc(sbe, 'bina'); SIM.binaKur(sbe, yer, 'market'); }
+      for (const k in sbe.market.stok) sbe.market.stok[k] = 0;
+      kontrol(EK.gmMarket(sbe) > 0 && SIM.marketDoluluk(sbe) > 0, 'genel müdür market raflarını doldurmalı');
+      for (const k in sbe.market.stok) sbe.market.stok[k] = 0; const pm = D.s.para; EK.gm().rezerv = 1e12; EK.gmMarket(sbe);
+      kontrol(D.s.para === pm, 'market alımı rezervi delmemeli'); EK.gm().rezerv = 500000; }
+    calistir('geri bildirim (taşma kartı)', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'sikayet'); });
+    kontrol(w.document.getElementById('govde').innerHTML.indexOf('Taşma önlemi') > 0, 'taşma önlemi kartı görünmeli');
     calistir('genel müdür gün sonu', () => EK.gmGun());
     kontrol(SIM.personelSayisi(sbe, 'temizlik') >= 1, 'genel müdür eksik temizlikçiyi almalı');
     kontrol(EK.gm().rapor.length > 3, 'genel müdür rapor tutmalı');
