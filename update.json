@@ -1,7 +1,7 @@
 {
-  "versionCode": 157,
-  "versionName": "1.2.51",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.51/AkaryakitPatronu-1.2.51.apk",
-  "size": 3377405,
-  "notes": "Yolun karşısındaki arsa: sahip olunan her lokasyonda karşı yakada ikinci şube"
+  "versionCode": 158,
+  "versionName": "1.2.52",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.52/AkaryakitPatronu-1.2.52.apk",
+  "size": 3380601,
+  "notes": "Karşı yaka aynı ekranda, İnşaat'ta Bakım sekmesi, genel müdür jeneratör yakıtını takip ediyor"
 }
