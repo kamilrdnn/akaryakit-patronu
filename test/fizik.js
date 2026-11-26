@@ -16,7 +16,7 @@ const sandbox={console,performance:{now:()=>saat},Date:{now:()=>saat},
 sandbox.window=sandbox;
 const ctx=vm.createContext(sandbox);
 vm.runInContext('var UI={bildir:function(){},ciz:function(){},modal:function(){},tikCiz:function(){},basarimToast:function(){},hucreTik:function(){},rehberKontrol:function(){}};var OYUN={duruyor:false};var SES={cal:function(){}};',ctx);
-['veri.js','durum.js','sim.js','izo.js','model.js'].forEach(f=>vm.runInContext(fs.readFileSync(A+f,'utf8'),ctx,{filename:f}));
+['veri.js','durum.js','sim.js','izo.js','model.js','ekler.js'].forEach(f=>vm.runInContext(fs.readFileSync(A+f,'utf8'),ctx,{filename:f}));
 const D=vm.runInContext('D',ctx),SIM=vm.runInContext('SIM',ctx),IZO=vm.runInContext('IZO',ctx);
 let hata=0; const kontrol=(k,m)=>{ if(!k){console.log('  ✗ '+m);hata++;} };
 function kos(ad, kur, sn){

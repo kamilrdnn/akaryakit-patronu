@@ -35,6 +35,7 @@ const dosyalar = [
   ['js/servis.js', ['SERVIS']],
   ['js/mini.js', ['MINI']],
   ['js/arayuz.js', ['UI']],
+  ['js/ekler.js', ['EK']],
   ['js/guncelle.js', ['GUNCELLE']],
   ['js/main.js', ['OYUN']]
 ];
@@ -791,6 +792,80 @@ console.log('UI TEST 9b — mini oyunlar, filo, taşıma, jeneratör');
   /* --- ayar anahtarları --- */
   calistir('ses anahtarı', () => { UI.sesDegis(); UI.sesDegis(); });
   calistir('lpg anahtarı', () => { UI.lpgGuvenlikDegis(); UI.lpgGuvenlikDegis(); });
+}
+
+console.log('UI TEST 9c — ek sistemler');
+{
+  const EK = w.EK;
+  kontrol(!!EK && EK._kuruldu, 'ek sistemler kurulmalı');
+  D.s.para = 5e8; D.s.seviye = 20; D.s.marka = 70;
+  const sbe = D.sube();
+  /* günlük giriş */
+  const T0 = Date.UTC(2026, 10, 26, 9);
+  D.s.ek = undefined;
+  kontrol(!EK.girisDurumu(T0).alindi && EK.girisDurumu(T0).seri === 1, 'ilk gün serisi 1 olmalı');
+  let p0 = D.s.para; kontrol(EK.girisAl(T0) > 0 && D.s.para > p0, 'giriş ödülü verilmeli');
+  kontrol(EK.girisAl(T0 + 3600e3) === 0, 'aynı gün ikinci ödül olmamalı');
+  kontrol(EK.girisDurumu(T0 + 86400e3).seri === 2, 'ertesi gün seri 2 olmalı');
+  kontrol(EK.girisDurumu(T0 + 3 * 86400e3).seri === 1, 'gün atlanınca seri sıfırlanmalı');
+  D.s.ek.giris.gun = '';
+  calistir('giriş penceresi', () => EK.girisGoster()); calistir('giriş al', () => EK.girisTikla());
+  /* Ar-Ge */
+  kontrol(!EK.argeAl('vip'), 'ön koşulsuz Ar-Ge alınmamalı');
+  const kira0 = SIM.kiraGunluk(sbe), ms0 = SIM.saatlikMusteri(sbe);
+  EK.arge.forEach(a => { if (!a.on) EK.argeAl(a.id); }); EK.arge.forEach(a => EK.argeAl(a.id));
+  kontrol(EK.arge.every(a => EK.argeVar(a.id)), 'bütün Ar-Ge alınabilmeli');
+  kontrol(SIM.kiraGunluk(sbe) < kira0, 'kira Ar-Ge ile düşmeli');
+  kontrol(!ms0 || SIM.saatlikMusteri(sbe) > ms0, 'pazarlama müşteriyi artırmalı');
+  calistir('Ar-Ge sayfası', () => UI.altSekmeGec('daha', 'arge'));
+  /* personel gelişimi */
+  sbe.personel = []; const pp = SIM.adayUret('temizlik'); sbe.personel.push(pp);
+  const bec0 = pp.beceri; for (let g = 0; g < 8; g++) EK.personelGun();
+  kontrol(pp.kidem >= 2 && pp.beceri >= bec0, 'personel kıdem kazanmalı');
+  D.s.ek.zam = { pid: pp.id, sube: D.s.aktif, oran: 0.1, gun: D.s.gun }; const m0 = pp.maas;
+  calistir('personel sayfası (zam kartı)', () => UI.sekmeGec('personel'));
+  kontrol(w.document.getElementById('govde').innerHTML.indexOf('Zam isteği') > 0, 'zam isteği kartı görünmeli');
+  EK.zamYanit(true); kontrol(pp.maas > m0 && !D.s.ek.zam, 'zam kabul edilince maaş artmalı');
+  pp.moral = 40; kontrol(EK.primVer(pp.id) && pp.moral > 40, 'prim morali yükseltmeli');
+  pp.moral = 2; let gitti = false; for (let g = 0; g < 60 && !gitti; g++) { if (sbe.personel.indexOf(pp) < 0) gitti = true; else { pp.moral = 2; EK.personelGun(); } }
+  kontrol(gitti, 'morali dibe vuran personel istifa etmeli');
+  /* bayilik */
+  kontrol(EK.bayiVer() && D.s.ek.bayi === 1 && EK.bayiGunluk() > 0, 'bayilik verilebilmeli');
+  calistir('bayilik sayfası', () => UI.altSekmeGec('daha', 'bayi'));
+  /* rakip */
+  kontrol(EK.rakipAl(sbe) && SIM.rakipCekim(sbe) === 1.22 && SIM.rakipIndirim(sbe) === 0, 'rakip satın alınabilmeli');
+  calistir('fiyat sayfası (rakip kartı)', () => UI.sekmeGec('fiyat'));
+  /* vergi */
+  D.s.ek.vergi.sonKar = D.s.ist.kar - 100000; p0 = D.s.para;
+  kontrol(EK.vergiKes() === 10000 && D.s.para === p0 - 10000, 'vergi dönem kârının %10\'u olmalı');
+  calistir('muhasebe (vergi kartı)', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'muhasebe'); });
+  /* olaylar */
+  D.s.olaylar = []; kontrol(EK.olayBaslat('bayram') && SIM.olayVar('bayram') && EK.olayKat() > 1, 'bayram olayı başlamalı');
+  calistir('olaylı üst şerit', () => { UI.sekmeGec('istasyon'); UI.ciz(); });
+  D.s.olaylar = [];
+  sbe.tank.benzin.dolu = 5000; for (let i = 0; i < sbe.yapi.length; i++) if (sbe.yapi[i] && sbe.yapi[i].t === 'kamera') sbe.yapi[i] = null;
+  { const tp = sbe.tank.benzin.dolu + sbe.tank.dizel.dolu + sbe.tank.lpg.dolu; kontrol(EK.hirsizlik(sbe) > 0 && sbe.tank.benzin.dolu + sbe.tank.dizel.dolu + sbe.tank.lpg.dolu < tp, 'kamerasız istasyonda yakıt çalınmalı'); }
+  /* VIP */
+  EK._vipSirada = true; let vm2 = null; for (let i = 0; i < 80 && !(vm2 && vm2.vip); i++) { EK._vipSirada = true; vm2 = SIM.musteriYap(sbe); }
+  kontrol(vm2 && vm2.vip, 'VIP müşteri üretilmeli');
+  /* piyasa */
+  for (let i = 0; i < 6; i++) EK.piyasaKaydet();
+  calistir('sipariş (piyasa kartı)', () => UI.sekmeGec('siparis'));
+  kontrol(w.document.getElementById('govde').innerHTML.indexOf('Toptan piyasa') > 0, 'piyasa kartı görünmeli');
+  /* yeni tesisler */
+  ['motel', 'oyunparki', 'cicek', 'bayrak'].forEach(t => {
+    kontrol(!!VERI.binalar[t] && VERI.binaSira.indexOf(t) >= 0, t + ' tesis listesinde olmalı');
+    const yer = SIM.yerAc(sbe, 'bina');
+    kontrol(yer >= 0 && SIM.binaKur(sbe, yer, t), t + ' kurulabilmeli');
+  });
+  calistir('yeni tesislerle sahne', () => { UI.sekmeGec('istasyon'); IZO.ciz(); });
+  /* gün sonu bütün ekleriyle çalışmalı */
+  calistir('gün sonu', () => SIM.gunSonu());
+  /* fotoğraf modu */
+  calistir('fotoğraf modu', () => { EK.foto(true); });
+  kontrol(w.document.body.classList.contains('foto'), 'fotoğraf modu açılmalı');
+  EK.foto(false); kontrol(!w.document.body.classList.contains('foto'), 'fotoğraf modu kapanmalı');
+  UI.sekmeGec('istasyon');
 }
 
 console.log('UI TEST 10 — bildirimler ve konsol hataları');

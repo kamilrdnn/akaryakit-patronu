@@ -15,7 +15,7 @@ const sandbox={console,performance:{now:()=>Date.now()},
 sandbox.window=sandbox;
 const ctx=vm.createContext(sandbox);
 vm.runInContext('var UI={bildir:function(){},ciz:function(){},modal:function(){},tikCiz:function(){},basarimToast:function(){},hucreTik:function(){}};',ctx);
-['veri.js','durum.js','sim.js','izo.js','model.js'].forEach(f=>vm.runInContext(fs.readFileSync(A+f,'utf8'),ctx,{filename:f}));
+['veri.js','durum.js','sim.js','izo.js','model.js','ekler.js'].forEach(f=>vm.runInContext(fs.readFileSync(A+f,'utf8'),ctx,{filename:f}));
 const D=vm.runInContext('D',ctx),IZO=vm.runInContext('IZO',ctx);
 D.yeni(); D.s.saat=+(process.argv[2]||13);
 IZO.kur();

@@ -31,6 +31,19 @@ var OYUN = {
         if (cd) setTimeout(function () { UI.cevrimdisiModal(cd); }, 400);
       } catch (e) {}
     }
+    /* günlük giriş ödülü: başka pencere yokken bir kez göster */
+    try {
+      var girisSay = 0;
+      var girisZ = setInterval(function () {
+        try {
+          if (++girisSay > 60) { clearInterval(girisZ); return; }
+          if (UI.modalAcik || (window.SERVIS && SERVIS.acik) || document.querySelector('.tanitim')) return;
+          if (!D.s.ist.musteri) return;                      /* yeni oyunda öğreticiyi bölme */
+          clearInterval(girisZ);
+          EK.girisGoster();
+        } catch (e) {}
+      }, 3000);
+    } catch (e) {}
     /* sessiz güncelleme denetimi */
     setTimeout(function () { try { GUNCELLE.kontrol(false); } catch (e) {} }, 2500);
     /* oyun açıkken de 15 dakikada bir yeni sürüme bak */

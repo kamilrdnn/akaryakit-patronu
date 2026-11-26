@@ -274,6 +274,7 @@ const UI = {
     h += '<button class="kamBtn tik" onclick="IZO.yakinlas(1.2)">+</button>';
     h += '<button class="kamBtn tik" onclick="IZO.yakinlas(0.84)">−</button>';
     h += '<button class="kamBtn tik" onclick="IZO.ortala()">⊙</button>';
+    h += '<button class="kamBtn tik" onclick="EK.foto(true)">📷</button>';
     h += '</div>';
 
     /* ---- alt: yalnızca kritik durum bilgisi (büyük doldur butonu kaldırıldı) ---- */
@@ -1486,6 +1487,7 @@ const UI = {
       ['gorevler', '🎯 Görevler', hazirGorev || ''], ['sozlesme', '✍️ Sözleşmeler'],
       ['filo', '🤝 Toplu Anlaşma'], ['marka', '🪧 Markam'],
       ['sikayet', '💬 Geri Bildirim', (D.sube().sikayetler || []).filter(function (x) { return !x.okundu; }).length || ''],
+      ['arge', '🔬 Ar-Ge'], ['bayi', '🤝 Bayilik'],
       ['basarim', '🏆 Başarımlar'], ['ayarlar', '⚙️ Ayarlar']
     ]);
     var k = this.altSekme.daha || 'ozet';
@@ -1495,6 +1497,8 @@ const UI = {
     if (k === 'filo') return h + this.filoHtml();
     if (k === 'marka') return h + this.markaHtml();
     if (k === 'sikayet') return h + this.sikayetHtml();
+    if (k === 'arge') return h + EK.argeHtml();
+    if (k === 'bayi') return h + EK.bayiHtml();
     if (k === 'basarim') return h + this.basarimHtml();
     if (k === 'ayarlar') return h + this.ayarlarHtml();
     return h + this.ozetHtml();
