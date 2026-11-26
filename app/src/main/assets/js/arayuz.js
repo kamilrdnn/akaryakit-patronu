@@ -1350,7 +1350,10 @@ const UI = {
      ========================================================= */
   personelHtml: function () {
     var sb = D.sube();
-    var h = '<div class="kart"><div class="baslik">Kadro · ' + sb.personel.length + '/12</div>';
+    var h = '<div class="kart"><div class="baslik">Kadro · ' + sb.personel.length + '/' + SIM.personelSiniri(sb) + '</div>';
+    var kd = [];
+    for (var kt in VERI.personel) kd.push(VERI.personel[kt].emoji + ' ' + SIM.personelSayisi(sb, kt) + '/' + SIM.personelSiniri(sb, kt));
+    h += '<div class="not">' + kd.join(' · ') + '<br>Pompacı sınırı pompa sayın kadardır; diğer görevliler buna ek.</div>';
     if (!sb.personel.length) h += '<div class="bos">Henüz personel yok. Her şeyi tek başına yapıyorsun.</div>';
     for (var i = 0; i < sb.personel.length; i++) {
       var p = sb.personel[i], t = VERI.personel[p.tip];

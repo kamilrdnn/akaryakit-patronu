@@ -172,6 +172,16 @@ const SIM = {
     return temel + binaSayi * 180;
   },
 
+  /* Kadro sınırı: pompacılar pompa sayısı kadar; diğer görevlerin kendi kontenjanı ayrıca eklenir. */
+  DIGER_KADRO: { temizlik: 3, teknisyen: 3, kasiyer: 2, mudur: 1 },
+  personelSiniri: function (sb, tip) {
+    if (tip === 'pompaci') return D.pompalar(sb).length;
+    if (tip) return this.DIGER_KADRO[tip] || 0;
+    var t = D.pompalar(sb).length;
+    for (var k in this.DIGER_KADRO) t += this.DIGER_KADRO[k];
+    return t;
+  },
+
   personelSayisi: function (sb, tip) {
     var n = 0;
     for (var i = 0; i < sb.personel.length; i++) if (sb.personel[i].tip === tip) n++;
@@ -2646,7 +2656,13 @@ const SIM = {
         return false;
       }
     }
-    if (sb.personel.length >= 12) { UI.bildir('Kadro dolu', 'Bu şubede en fazla 12 personel çalışabilir.', 'kotu'); return false; }
+    var sinir = this.personelSiniri(sb, aday.tip);
+    if (this.personelSayisi(sb, aday.tip) >= sinir) {
+      var tAd = VERI.personel[aday.tip].ad;
+      if (aday.tip === 'pompaci') UI.bildir('Pompacı kadrosu dolu', sinir ? 'Her pompaya bir pompacı alabilirsin (' + sinir + ' pompa). Daha fazlası için pompa kur.' : 'Önce pompa kur.', 'kotu');
+      else UI.bildir('Kadro dolu', 'Bu şubede en fazla ' + sinir + ' ' + tAd.toLocaleLowerCase('tr-TR') + ' çalışabilir.', 'kotu');
+      return false;
+    }
     var pesin = Math.round(aday.maas * 0.5);
     if (!D.harca(pesin)) return false;
     sb.personel.push(aday);
