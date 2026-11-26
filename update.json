@@ -1,7 +1,7 @@
 {
-  "versionCode": 152,
-  "versionName": "1.2.46",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.46/AkaryakitPatronu-1.2.46.apk",
-  "size": 3368825,
-  "notes": "Daha büyük arsalar, seviyeye göre 12–20 hücrelik alım; düzenleme dolu arsada da çalışır"
+  "versionCode": 153,
+  "versionName": "1.2.47",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.47/AkaryakitPatronu-1.2.47.apk",
+  "size": 3369213,
+  "notes": "Jeneratör deposu Yapılarım listesinden doldurulabilir (tek tek ve hepsi birden)"
 }
