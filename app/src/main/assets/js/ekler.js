@@ -1590,3 +1590,45 @@ try { EK.kur(); } catch (e) { }
     UI.filoHtml = function () { return E.anlasmaKart('filo') + u2.apply(this, arguments); };
   }
 })();
+
+
+/* =========================================================
+   EK 5 — VIP önceliği: sıranın başına geçer, pompa yoksa biri hızla boşaltılır
+   ========================================================= */
+(function () {
+  var E = EK;
+  /* VIP'e uygun, dolumu en ilerlemiş müşteriyi hemen bitir */
+  E.vipIcinBosalt = function (sb, vip) {
+    var po = D.pompalar(sb), en = null, enOran = -1;
+    for (var j = 0; j < po.length; j++) {
+      var p = po[j].p;
+      if (p.arizali || !p.mesgul || !SIM.pompaUygun(p, vip.yakit)) continue;
+      var m = SIM.musteriBul(sb, p.mesgul);
+      if (!m || m.vip || m.durum !== 'pompada' || m.yolda) continue;      /* elle doldurulan ve yoldaki araca dokunma */
+      var oran = m.hedef > 0 ? m.verilen / m.hedef : 1;
+      if (oran > enOran) { enOran = oran; en = { m: m, i: po[j].i }; }
+    }
+    if (!en) return false;
+    var m2 = en.m, kalan = Math.max(0, m2.hedef - m2.verilen);
+    if (m2.yakit !== 'ev' && sb.tank[m2.yakit]) { kalan = Math.min(kalan, sb.tank[m2.yakit].dolu); sb.tank[m2.yakit].dolu -= kalan; }
+    m2.verilen += kalan;
+    SIM.satisTamamla(sb, m2, false);
+    UI.bildir('⭐ VIP için pompa açıldı', 'Pompa ' + (en.i + 1) + ' hızla boşaltıldı; VIP müşteri oraya alınıyor.', 'iyi');
+    return true;
+  };
+  var a1 = SIM.atama;
+  SIM.atama = function (sb) {
+    try {
+      var L = sb.kuyruk, vi = -1, i;
+      for (i = 0; i < L.length; i++) if (L[i].vip && L[i].pompa === null && L[i].durum !== 'servis') { vi = i; break; }
+      if (vi >= 0) {
+        var vip = L[vi];
+        if (vi > 0) { L.splice(vi, 1); L.unshift(vip); }                   /* sıranın başına */
+        var po = D.pompalar(sb), bosVar = false;
+        for (i = 0; i < po.length; i++) if (!po[i].p.arizali && !po[i].p.mesgul && SIM.pompaUygun(po[i].p, vip.yakit)) bosVar = true;
+        if (!bosVar && !vip.vipBosaltildi && E.vipIcinBosalt(sb, vip)) vip.vipBosaltildi = true;
+      }
+    } catch (x) { }
+    return a1.apply(this, arguments);
+  };
+})();

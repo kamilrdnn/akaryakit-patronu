@@ -945,6 +945,25 @@ console.log('UI TEST 9c — ek sistemler');
     kontrol(EK.subeyeAl('filo', 'fl1') && D.s.filolar[0].sube === D.s.aktif, 'anlaşma bulunduğun şubeye alınabilmeli');
     kontrol(EK.fesih('filo', 'fl1') && D.s.filolar.length === 0, 'toplu anlaşma feshedilebilmeli');
     D.s.subeler.pop(); }
+  /* şarj ünitesi sınırı pompadan ayrı */
+  { D.s.para = 5e9; D.s.seviye = 20; for (let i = 0; i < sbe.beton.length; i++) sbe.beton[i] = true;
+    let kurulan = 0; for (let g = 0; g < 60; g++) { const yer = SIM.yerAc(sbe, 'pompa'); if (yer < 0 || !SIM.pompaKur(sbe, yer, 'benzin')) break; kurulan++; }
+    kontrol(SIM.yakitPompaSayisi(sbe) === SIM.pompaSiniri(sbe) || SIM.yerAc(sbe, 'pompa') < 0, 'yakıt pompaları kendi sınırına kadar kurulmalı');
+    const sj0 = SIM.sarjSayisi(sbe), yer2 = SIM.yerAc(sbe, 'pompa');
+    if (yer2 >= 0 && sj0 < SIM.sarjSiniri(sbe)) kontrol(SIM.pompaKur(sbe, yer2, 'ev') && SIM.sarjSayisi(sbe) === sj0 + 1, 'pompa sınırı doluyken şarj ünitesi kurulabilmeli');
+    D.s.seviye = 2; const az = SIM.sarjSiniri(sbe); D.s.seviye = 20; kontrol(SIM.sarjSiniri(sbe) > az, 'şarj sınırı seviyeyle artmalı');
+    calistir('inşaat sayfası (iki sınır)', () => UI.sekmeGec('insa')); }
+  /* VIP önceliği */
+  { sbe.kuyruk = []; const po = D.pompalar(sbe).filter(q => q.p.yakit !== 'ev'); po.forEach(q => { q.p.mesgul = null; q.p.arizali = false; });
+    sbe.tank.benzin.dolu = 9000;
+    po.forEach((q, n) => { const m = { id: 'n' + n, arac: 'Otomobil', emoji: '🚗', yakit: 'benzin', hedef: 40, tip: 'litre', etiket: '40 L', bahsis: 1, sabir: 60, sabirKalan: 60, pompa: q.i, verilen: 10 + n, durum: 'pompada' }; q.p.mesgul = m.id; sbe.kuyruk.push(m); });
+    const bekleyen = { id: 'b1', arac: 'Otomobil', emoji: '🚗', yakit: 'benzin', hedef: 30, tip: 'litre', etiket: '30 L', bahsis: 1, sabir: 60, sabirKalan: 60, pompa: null, verilen: 0, durum: 'bekliyor' };
+    const vipm = { id: 'v1', arac: 'Lüks Araç', emoji: '🚘', yakit: 'benzin', hedef: 50, tip: 'litre', etiket: '50 L', bahsis: 3, sabir: 40, sabirKalan: 40, pompa: null, verilen: 0, durum: 'bekliyor', vip: true };
+    sbe.kuyruk.push(bekleyen, vipm);
+    calistir('VIP ataması', () => SIM.atama(sbe));
+    kontrol(vipm.pompa !== null && vipm.durum === 'pompada', 'VIP için pompa boşaltılıp ona verilmeli');
+    kontrol(bekleyen.pompa === null, 'sıradaki normal müşteri VIP\'in önüne geçmemeli');
+    sbe.kuyruk = []; po.forEach(q => { q.p.mesgul = null; }); }
   /* genel müdür */
   { D.s.ek.gm = null; D.s.para = 5e8; D.s.seviye = 20;
     calistir('genel müdür sayfası (adaylar)', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'gm'); });

@@ -461,10 +461,10 @@ const UI = {
     var pompaSayi = D.pompalar(sb).length;
     var h = '';
 
-    h += '<div class="baslik">Pompa (' + pompaSayi + '/' + SIM.pompaSiniri(sb) + ')</div><div class="sek">';
+    h += '<div class="baslik">Pompa (' + SIM.yakitPompaSayisi(sb) + '/' + SIM.pompaSiniri(sb) + ') · Şarj (' + SIM.sarjSayisi(sb) + '/' + SIM.sarjSiniri(sb) + ')</div><div class="sek">';
     VERI.yakitSira.forEach(function (y) {
       var f = VERI.pompa.fiyat[y];
-      var kapali = pompaSayi >= SIM.pompaSiniri(sb) || s.para < f;
+      var kapali = (y === 'ev' ? SIM.sarjSayisi(sb) >= SIM.sarjSiniri(sb) : SIM.yakitPompaSayisi(sb) >= SIM.pompaSiniri(sb)) || s.para < f;
       h += '<button class="sec" ' + (kapali ? 'style="opacity:.45"' : '') + ' onclick="UI.pompaKur(' + k + ',\'' + y + '\')">';
       h += '<div class="st">' + VERI.yakitlar[y].emoji + ' ' + VERI.yakitlar[y].ad + ' pompası</div>';
       h += '<div class="ss">' + tl(f) + ' · akış ' + say(y === 'ev' ? VERI.pompa.evAkis[0] : VERI.pompa.akis[0], 1) + ' ' + VERI.yakitlar[y].birim + '/sn';
@@ -649,14 +649,16 @@ const UI = {
     var bosHucre = this.bosHucreSayisi(sb);
 
     if (k === 'istasyon') {
-      var pompaDolu = D.pompalar(sb).length >= SIM.pompaSiniri(sb);
+      var pompaDolu = SIM.yakitPompaSayisi(sb) >= SIM.pompaSiniri(sb);
+      var sarjDolu = SIM.sarjSayisi(sb) >= SIM.sarjSiniri(sb);
       h += '<div class="kart"><div class="baslikSatir"><div class="baslik" style="margin:0">Pompa kur</div>';
-      h += '<span class="limitRozet' + (pompaDolu ? ' dolu' : '') + '">' + D.pompalar(sb).length + '/' + SIM.pompaSiniri(sb) + '</span></div>';
-      h += '<div class="not">Tek dokunuşla uygun boş alana kurulur. Her pompa benzin, dizel ve LPG verir.</div>';
+      h += '<span class="limitRozet' + (pompaDolu ? ' dolu' : '') + '">⛽ ' + SIM.yakitPompaSayisi(sb) + '/' + SIM.pompaSiniri(sb) + '</span>';
+      h += '<span class="limitRozet' + (sarjDolu ? ' dolu' : '') + '" style="margin-left:5px">🔌 ' + SIM.sarjSayisi(sb) + '/' + SIM.sarjSiniri(sb) + '</span></div>';
+      h += '<div class="not">Tek dokunuşla uygun boş alana kurulur. Her pompa benzin, dizel ve LPG verir. Şarj üniteleri pompa sınırından ayrı sayılır; sınırı seviyenle artar.</div>';
       h += '<div class="kurIzgara">';
       VERI.yakitSira.forEach(function (y) {
         var f = VERI.pompa.fiyat[y];
-        var kapali = pompaDolu || s2.para < f;
+        var kapali = (y === 'ev' ? sarjDolu : pompaDolu) || s2.para < f;
         h += '<button class="kurKart' + (kapali ? ' kapali' : '') + '" onclick="UI.otoPompa(\'' + y + '\')">';
         h += '<span class="kkIk">' + VERI.yakitlar[y].emoji + '</span>';
         h += '<span class="kkAd">' + (y === 'ev' ? 'Şarj' : VERI.yakitlar[y].ad) + '</span>';
@@ -726,7 +728,8 @@ const UI = {
       h += '<div class="kart"><div class="baslik">Arsa</div>';
       h += '<div class="kv"><span>Mevcut parsel</span><b>' + sb.w + '×' + sb.h + ' = ' + (sb.w * sb.h) + ' hücre</b></div>';
       h += '<div class="kv"><span>Lokasyon sınırı</span><b>' + lok.w + '×' + lok.h + '</b></div>';
-      h += '<div class="kv"><span>Pompa sınırı</span><b>' + D.pompalar(sb).length + ' / ' + SIM.pompaSiniri(sb) + ' · arsa büyüdükçe artar</b></div>';
+      h += '<div class="kv"><span>Pompa sınırı</span><b>' + SIM.yakitPompaSayisi(sb) + ' / ' + SIM.pompaSiniri(sb) + ' · arsa büyüdükçe artar</b></div>';
+      h += '<div class="kv"><span>Şarj ünitesi sınırı</span><b>' + SIM.sarjSayisi(sb) + ' / ' + SIM.sarjSiniri(sb) + ' · seviyeyle artar</b></div>';
       var betonlu = 0, bosArsa = 0;
       for (var i = 0; i < sb.beton.length; i++) { if (sb.beton[i]) betonlu++; else bosArsa++; }
       h += '<div class="kv"><span>Beton dökülü</span><b>' + betonlu + '</b></div>';

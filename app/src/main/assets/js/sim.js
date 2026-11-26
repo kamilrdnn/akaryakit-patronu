@@ -2430,12 +2430,26 @@ const SIM = {
     return lok.maxPompa + Math.max(0, Math.floor((sb.w * sb.h - taban) / 8));
   },
 
+  /* şarj ünitesi sınırı seviyeyle büyür ve pompa sınırını yemez */
+  sarjSiniri: function (sb) { return Math.min(12, 2 + Math.floor((D.s.seviye || 1) / 2)); },
+  sarjSayisi: function (sb) { var n = 0; D.pompalar(sb).forEach(function (q) { if (q.p.yakit === 'ev') n++; }); return n; },
+  yakitPompaSayisi: function (sb) { return D.pompalar(sb).length - this.sarjSayisi(sb); },
+
   pompaKur: function (sb, i, yakit) {
     if (!sb.beton[i] || sb.yapi[i]) return false;
-    var lok = D.lok(sb), psinir = this.pompaSiniri(sb);
-    if (D.pompalar(sb).length >= psinir) {
-      UI.bildir('Pompa sınırı', 'Bu arsada en fazla ' + psinir + ' pompa kurabilirsin. Arsayı büyütürsen sınır artar.', 'kotu');
-      return false;
+    /* şarj üniteleri pompa sınırından ayrı sayılır */
+    if (yakit === 'ev') {
+      var ssinir = this.sarjSiniri(sb);
+      if (this.sarjSayisi(sb) >= ssinir) {
+        UI.bildir('Şarj ünitesi sınırı', 'Şu an en fazla ' + ssinir + ' şarj ünitesi kurabilirsin. Seviye atladıkça sınır artar.', 'kotu');
+        return false;
+      }
+    } else {
+      var psinir = this.pompaSiniri(sb);
+      if (this.yakitPompaSayisi(sb) >= psinir) {
+        UI.bildir('Pompa sınırı', 'Bu arsada en fazla ' + psinir + ' pompa kurabilirsin. Arsayı büyütürsen sınır artar.', 'kotu');
+        return false;
+      }
     }
     var f = VERI.pompa.fiyat[yakit];
     if (!D.harca(f)) return false;
