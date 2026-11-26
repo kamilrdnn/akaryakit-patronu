@@ -173,12 +173,16 @@ const SIM = {
   },
 
   /* Kadro sınırı: pompacılar pompa sayısı kadar; diğer görevlerin kendi kontenjanı ayrıca eklenir. */
-  DIGER_KADRO: { temizlik: 3, teknisyen: 3, kasiyer: 2, mudur: 1 },
+  /* vardiyalı çalışma: her pompaya gündüz ve gece için birer pompacı; diğer kadrolar seviyeyle büyür */
+  DIGER_KADRO: { temizlik: 4, teknisyen: 4, kasiyer: 2, mudur: 1 },
   personelSiniri: function (sb, tip) {
-    if (tip === 'pompaci') return D.pompalar(sb).length;
+    var sv = D.s.seviye || 1;
+    if (tip === 'pompaci') return D.pompalar(sb).length * 2;
+    if (tip === 'temizlik' || tip === 'teknisyen') return this.DIGER_KADRO[tip] + Math.min(4, Math.floor(sv / 4));
+    if (tip === 'kasiyer') return this.DIGER_KADRO.kasiyer + Math.min(2, Math.floor(sv / 6));
     if (tip) return this.DIGER_KADRO[tip] || 0;
-    var t = D.pompalar(sb).length;
-    for (var k in this.DIGER_KADRO) t += this.DIGER_KADRO[k];
+    var t = 0;
+    for (var k in VERI.personel) t += this.personelSiniri(sb, k);
     return t;
   },
 
@@ -2659,7 +2663,7 @@ const SIM = {
     var sinir = this.personelSiniri(sb, aday.tip);
     if (this.personelSayisi(sb, aday.tip) >= sinir) {
       var tAd = VERI.personel[aday.tip].ad;
-      if (aday.tip === 'pompaci') UI.bildir('Pompacı kadrosu dolu', sinir ? 'Her pompaya bir pompacı alabilirsin (' + sinir + ' pompa). Daha fazlası için pompa kur.' : 'Önce pompa kur.', 'kotu');
+      if (aday.tip === 'pompaci') UI.bildir('Pompacı kadrosu dolu', sinir ? 'Her pompaya gündüz ve gece için birer pompacı alabilirsin (en fazla ' + sinir + '). Daha fazlası için pompa kur.' : 'Önce pompa kur.', 'kotu');
       else UI.bildir('Kadro dolu', 'Bu şubede en fazla ' + sinir + ' ' + tAd.toLocaleLowerCase('tr-TR') + ' çalışabilir.', 'kotu');
       return false;
     }
@@ -2696,7 +2700,9 @@ const SIM = {
     if (!p) return false;
     if (pompaIdx !== null) {
       for (var j = 0; j < sb.personel.length; j++) {
-        if (sb.personel[j].id !== pid && sb.personel[j].pompa === pompaIdx) sb.personel[j].pompa = null;
+        /* aynı pompada vardiyaları çakışmayan iki pompacı durabilir (biri gündüz, biri gece) */
+        if (sb.personel[j].id !== pid && sb.personel[j].pompa === pompaIdx &&
+            (typeof EK === 'undefined' || !EK.vardiyaCakisir || EK.vardiyaCakisir(sb.personel[j], p))) sb.personel[j].pompa = null;
       }
     }
     p.pompa = pompaIdx;

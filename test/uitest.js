@@ -872,6 +872,17 @@ console.log('UI TEST 9c — ek sistemler');
     calistir('oto servis (vardiyalı)', () => SIM.otoServis(sbe, 1));
     kontrol(sbe.personel.length === 3, 'hesap sonrası personel listesi eksilmemeli');
     D.s.saat = 13; }
+  /* aynı pompada iki vardiya */
+  { const pk = D.pompalar(sbe)[0].i; sbe.personel = []; const a1 = SIM.adayUret('pompaci'), a2 = SIM.adayUret('pompaci'), a3 = SIM.adayUret('pompaci'); sbe.personel.push(a1, a2, a3);
+    kontrol(SIM.personelSiniri(sbe, 'pompaci') === D.pompalar(sbe).length * 2, 'pompacı sınırı pompa başına 2 olmalı');
+    EK.pompayaEkle(sbe, a1.id, pk); EK.pompayaEkle(sbe, a2.id, pk);
+    kontrol(a1.pompa === pk && a2.pompa === pk && !EK.vardiyaCakisir(a1, a2), 'aynı pompada gündüz ve gece pompacısı durabilmeli');
+    calistir('pompa kartı (iki vardiya)', () => UI.yapiModal(pk));
+    kontrol(w.document.getElementById('modalIc').innerHTML.indexOf('2/2 vardiya') > 0, 'pompa kartı iki vardiyayı göstermeli');
+    UI.modalKapat();
+    D.s.saat = 12; kontrol(EK.gorevdekiler(sbe).filter(p => p.pompa === pk).length === 1, 'aynı anda yalnız biri görevde olmalı');
+    EK.vardiyaDegis(a2.id, 'tam'); kontrol(a1.pompa === null && a2.pompa === pk, 'vardiya çakışınca diğeri pompadan alınmalı');
+    D.s.saat = 13; }
   /* bölge kapışması */
   { D.s.ek.bolge = undefined; const bg = EK.bolge();
     kontrol(bg.liste.length === 8 && bg.liste.every(b => Math.abs(b.sen + b.r[0] + b.r[1] + b.r[2] - 100) < 0.5), 'bölge payları 100 etmeli');

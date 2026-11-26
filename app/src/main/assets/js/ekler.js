@@ -700,12 +700,43 @@ try { EK.kur(); } catch (e) { }
     for (var i = 0; i < sb.personel.length; i++) { if (E.gorevde(sb.personel[i])) r.push(sb.personel[i]); else degisti = true; }
     return degisti ? r : sb.personel;
   };
+  E.vardiyaCakisir = function (a, b) {
+    var va = E.vardiya(a), vb = E.vardiya(b);
+    return va === 'tam' || vb === 'tam' || va === vb;
+  };
+  /* pompaya pompacı ekle: pompada biri varsa vardiyalar gündüz/gece diye paylaştırılır */
+  E.pompayaEkle = function (sb, pid, k) {
+    var yeni = null, mevcut = [];
+    for (var i = 0; i < sb.personel.length; i++) {
+      if (sb.personel[i].id === pid) yeni = sb.personel[i];
+      else if (sb.personel[i].pompa === k) mevcut.push(sb.personel[i]);
+    }
+    if (!yeni) return false;
+    if (mevcut.length === 1) {
+      var m = mevcut[0];
+      if (E.vardiya(m) === 'tam') m.vardiya = 'gunduz';
+      yeni.vardiya = E.vardiya(m) === 'gunduz' ? 'gece' : 'gunduz';
+      UI.bildir('🕐 Vardiya paylaşıldı', m.ad + ' ' + E.vardiyalar[m.vardiya].ad.toLocaleLowerCase('tr-TR') + ', ' + yeni.ad + ' ' + E.vardiyalar[yeni.vardiya].ad.toLocaleLowerCase('tr-TR') + ' çalışacak.', 'iyi');
+    }
+    return SIM.pompaAta(sb, pid, k);
+  };
   E.vardiyaDegis = function (pid, v) {
     var sb = D.sube();
     if (!E.vardiyalar[v]) return false;
     for (var i = 0; i < sb.personel.length; i++) if (sb.personel[i].id === pid) {
       if (!E.vardiyali[sb.personel[i].tip]) return false;
       sb.personel[i].vardiya = v;
+      /* aynı pompadaki diğer pompacıyla çakışıyorsa onu pompadan al */
+      var ben = sb.personel[i];
+      if (ben.pompa !== null && ben.pompa !== undefined) {
+        for (var j = 0; j < sb.personel.length; j++) {
+          var d = sb.personel[j];
+          if (d !== ben && d.pompa === ben.pompa && E.vardiyaCakisir(d, ben)) {
+            d.pompa = null;
+            UI.bildir('Vardiya çakıştı', d.ad + ' aynı saatte çalıştığı için pompadan alındı.', 'uyari');
+          }
+        }
+      }
       return true;
     }
     return false;

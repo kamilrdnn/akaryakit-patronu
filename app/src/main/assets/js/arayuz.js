@@ -536,14 +536,19 @@ const UI = {
     }
 
     if (y.t === 'pompa') {
-      var atanan = null;
-      for (var i = 0; i < sb.personel.length; i++) if (sb.personel[i].pompa === k) atanan = sb.personel[i];
-      h += '<div class="baslik" style="margin-top:14px">Pompacı</div>';
-      if (atanan) {
-        h += '<div class="satir"><div class="sol"><div class="ikon">🧑‍🔧</div><div><div class="ad">' + atanan.ad + '</div><div class="alt">Beceri ' + atanan.beceri + ' · ' + tl(atanan.maas) + '/ay</div></div></div>';
-        h += '<button class="btn minik ikincil" onclick="UI.pompaAta(\'' + atanan.id + '\',null,' + k + ')">Kaldır</button></div>';
-        h += '<div class="not">Pompacı doldurursa bahşiş alamazsın ve küçük hata payı olur. En kârlısı kendin doldurmaktır.</div>';
-      } else {
+      var atananlar = [];
+      for (var i = 0; i < sb.personel.length; i++) if (sb.personel[i].pompa === k) atananlar.push(sb.personel[i]);
+      var atanan = atananlar.length ? atananlar[0] : null;
+      /* ikinci vardiya için yer var mı: pompada tek kişi varsa bir kişi daha atanabilir */
+      var yerVar = atananlar.length < 2;
+      h += '<div class="baslik" style="margin-top:14px">Pompacı' + (atananlar.length ? ' · ' + atananlar.length + '/2 vardiya' : '') + '</div>';
+      for (var an = 0; an < atananlar.length; an++) {
+        var ap = atananlar[an], av = EK.vardiyalar[EK.vardiya(ap)];
+        h += '<div class="satir"><div class="sol"><div class="ikon">🧑‍🔧</div><div><div class="ad">' + ap.ad + '</div><div class="alt">' + av.emoji + ' ' + av.ad + ' · beceri ' + ap.beceri + ' · ' + tl(ap.maas) + '/ay</div></div></div>';
+        h += '<button class="btn minik ikincil" onclick="UI.pompaAta(\'' + ap.id + '\',null,' + k + ')">Kaldır</button></div>';
+      }
+      if (atananlar.length) h += '<div class="not">Pompacı doldurursa bahşiş alamazsın ve küçük hata payı olur. En kârlısı kendin doldurmaktır.' + (yerVar ? ' İkinci bir pompacı atarsan biri gündüz, diğeri gece çalışır.' : '') + '</div>';
+      if (yerVar) {
         var bos = [];
         for (var j = 0; j < sb.personel.length; j++) if (sb.personel[j].tip === 'pompaci' && sb.personel[j].pompa === null) bos.push(sb.personel[j]);
         if (!bos.length) {
@@ -601,12 +606,12 @@ const UI = {
   tasimaIptal: function () { this.tasinan = null; this.bildir('Taşıma iptal', '', 'uyari'); this.ciz(); },
   jeneratorDoldur: function (k) { if (SIM.jeneratorDoldur(D.sube(), k)) this.yapiModal(k); },
 
-  pompaAta: function (pid, pompa, k) { SIM.pompaAta(D.sube(), pid, pompa); this.yapiModal(k); },
+  pompaAta: function (pid, pompa, k) { if (pompa === null) SIM.pompaAta(D.sube(), pid, null); else EK.pompayaEkle(D.sube(), pid, pompa); this.yapiModal(k); },
   pompaciAlVeAta: function (k) {
     var sb = D.sube();
     var p = SIM.personelAl(sb, 'pompaci');
     if (!p) return;
-    SIM.pompaAta(sb, p.id, k);
+    EK.pompayaEkle(sb, p.id, k);
     this.bildir('Pompacı işe alındı', p.ad + ' · Pompa ' + (k + 1), 'iyi');
     this.yapiModal(k);
   },
@@ -1354,7 +1359,7 @@ const UI = {
     var h = '<div class="kart"><div class="baslik">Kadro · ' + sb.personel.length + '/' + SIM.personelSiniri(sb) + '</div>';
     var kd = [];
     for (var kt in VERI.personel) kd.push(VERI.personel[kt].emoji + ' ' + SIM.personelSayisi(sb, kt) + '/' + SIM.personelSiniri(sb, kt));
-    h += '<div class="not">' + kd.join(' · ') + '<br>Pompacı sınırı pompa sayın kadardır; diğer görevliler buna ek.</div>';
+    h += '<div class="not">' + kd.join(' · ') + '<br>Her pompaya gündüz ve gece için birer pompacı alabilirsin; diğer kadrolar seviyenle büyür.</div>';
     if (!sb.personel.length) h += '<div class="bos">Henüz personel yok. Her şeyi tek başına yapıyorsun.</div>';
     for (var i = 0; i < sb.personel.length; i++) {
       var p = sb.personel[i], t = VERI.personel[p.tip];
