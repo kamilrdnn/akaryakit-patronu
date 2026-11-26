@@ -2422,11 +2422,19 @@ const SIM = {
     return true;
   },
 
+  /* pompa sınırı arsayla büyür: lokasyonun taban sınırı + taban alanın üstündeki her 8 hücre için 1 pompa */
+  POMPA_TABAN_ALAN: { kasaba: 42, cevreyolu: 63, otoyol: 80, marina: 72, metropol: 120 },
+  pompaSiniri: function (sb) {
+    var lok = D.lok(sb);
+    var taban = this.POMPA_TABAN_ALAN[lok.id] || 60;
+    return lok.maxPompa + Math.max(0, Math.floor((sb.w * sb.h - taban) / 8));
+  },
+
   pompaKur: function (sb, i, yakit) {
     if (!sb.beton[i] || sb.yapi[i]) return false;
-    var lok = D.lok(sb);
-    if (D.pompalar(sb).length >= lok.maxPompa) {
-      UI.bildir('Pompa sınırı', lok.ad + ' en fazla ' + lok.maxPompa + ' pompa alır.', 'kotu');
+    var lok = D.lok(sb), psinir = this.pompaSiniri(sb);
+    if (D.pompalar(sb).length >= psinir) {
+      UI.bildir('Pompa sınırı', 'Bu arsada en fazla ' + psinir + ' pompa kurabilirsin. Arsayı büyütürsen sınır artar.', 'kotu');
       return false;
     }
     var f = VERI.pompa.fiyat[yakit];

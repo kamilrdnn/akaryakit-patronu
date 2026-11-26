@@ -125,8 +125,7 @@ var OYUN = {
     }
 
     /* ---- ana menü ---- */
-    h += '<div class="acLogo"><span>⛽</span></div>';
-    h += '<h1>Akaryakıt Patronu</h1>';
+    h += '<div class="oyunLogo kucuk">' + this.oyunLogoSvg() + '<div class="olYazi"><span>AKARYAKIT</span><b>PATRONU</b></div></div>';
     h += '<p>Kasabanın küçük istasyonundan metropol zincirine.</p>';
     h += '<div class="acMenu">';
     if (oz) {
@@ -140,8 +139,61 @@ var OYUN = {
     h += '<button class="acBtn ikincil" onclick="OYUN.acilisCiz(\'hakkinda\')"><span class="acBas">ℹ️ Nasıl oynanır</span></button>';
     h += '</div>';
     h += '<div class="ipucu">💡 ' + ipucu + '</div>';
+    h += '<div class="acYapimci">' + this.studyoSvg() + '<span>KAMİLRDNN</span></div>';
     if (surum) h += '<div class="acSurum">' + surum + '</div>';
     document.getElementById('acilis').innerHTML = h;
+  },
+
+  /* ---- logolar (satır içi SVG; dosya ya da yazı tipi gerektirmez) ---- */
+  /* stüdyo amblemi: altıgen içinde K */
+  studyoSvg: function () {
+    return '<svg class="kmAmblem" viewBox="0 0 100 100" aria-hidden="true">' +
+      '<defs><linearGradient id="kmG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd24a"/><stop offset=".5" stop-color="#ff7a3d"/><stop offset="1" stop-color="#ff3d7f"/></linearGradient></defs>' +
+      '<path d="M50 4 90 27v46L50 96 10 73V27z" fill="#121a2b" stroke="url(#kmG)" stroke-width="6" stroke-linejoin="round"/>' +
+      '<path d="M35 26v48M35 52l30-26M44 46l23 28" fill="none" stroke="url(#kmG)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  },
+  /* oyun amblemi: taç takmış yakıt damlası */
+  oyunLogoSvg: function () {
+    return '<svg class="olAmblem" viewBox="0 0 120 140" aria-hidden="true">' +
+      '<defs><linearGradient id="olD" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9a4d"/><stop offset=".55" stop-color="#f2632f"/><stop offset="1" stop-color="#b9371a"/></linearGradient>' +
+      '<linearGradient id="olT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe680"/><stop offset="1" stop-color="#f0a81e"/></linearGradient></defs>' +
+      '<path d="M60 34C60 34 22 78 22 100a38 38 0 0 0 76 0C98 78 60 34 60 34z" fill="url(#olD)" stroke="#fff" stroke-opacity=".28" stroke-width="3"/>' +
+      '<path d="M42 96c0-10 8-24 13-31" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="6" stroke-linecap="round"/>' +
+      '<g fill="#fff"><rect x="49" y="88" width="17" height="26" rx="3"/><rect x="52" y="92" width="11" height="8" rx="1.5" fill="#b9371a"/>' +
+      '<path d="M68 94h4a4 4 0 0 1 4 4v10a3 3 0 0 0 6 0V96l-5-6" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></g>' +
+      '<path d="M30 30l10-22 12 15 8-19 8 19 12-15 10 22z" fill="url(#olT)" stroke="#a86a00" stroke-width="2" stroke-linejoin="round"/>' +
+      '<rect x="30" y="30" width="60" height="8" rx="3" fill="url(#olT)" stroke="#a86a00" stroke-width="2"/>' +
+      '<circle cx="40" cy="8" r="4" fill="#ff5a7a"/><circle cx="60" cy="4" r="4.5" fill="#6fe0ff"/><circle cx="80" cy="8" r="4" fill="#7dffb0"/></svg>';
+  },
+
+  /* ---- açılış animasyonu: önce yapımcı, sonra oyun logosu, ardından menü ---- */
+  intro: function () {
+    var kap = document.getElementById('intro');
+    if (!kap) return;
+    var harfler = 'KAMİLRDNN'.split(''), yazi = '';
+    for (var i = 0; i < harfler.length; i++) yazi += '<i style="animation-delay:' + (0.35 + i * 0.07).toFixed(2) + 's">' + harfler[i] + '</i>';
+    var kivilcim = '';
+    for (var k = 0; k < 10; k++) {
+      kivilcim += '<u style="left:' + (8 + k * 9.3).toFixed(1) + '%;top:' + (k % 2 ? 22 : 74) + '%;animation-delay:' + (1.05 + k * 0.06).toFixed(2) + 's"></u>';
+    }
+    kap.innerHTML =
+      '<div class="inSahne in1">' + this.studyoSvg() +
+        '<div class="kmYazi">' + yazi + '<em></em></div>' +
+        '<div class="kmAlt">GAMES</div>' + kivilcim + '</div>' +
+      '<div class="inSahne in2"><div class="oyunLogo">' + this.oyunLogoSvg() +
+        '<div class="olYazi"><span>AKARYAKIT</span><b>PATRONU</b></div></div>' +
+        '<div class="inCubuk"><i></i></div></div>' +
+      '<div class="inGec">dokun · geç</div>';
+    kap.className = 'oynuyor';
+    var bitti = false;
+    var bitir = function () {
+      if (bitti) return;
+      bitti = true;
+      kap.className = 'kapaniyor';
+      setTimeout(function () { kap.className = ''; kap.innerHTML = ''; kap.style.display = 'none'; }, 450);
+    };
+    kap.onclick = bitir;
+    setTimeout(bitir, 5200);
   },
 
   devamEt: function () {
@@ -184,6 +236,7 @@ window.oyunDevam = function () { OYUN.duruyor = false; };
 /* ---- başlat ---- */
 window.addEventListener('load', function () {
   OYUN.acilisCiz();
+  try { OYUN.intro(); } catch (e) { var ik = document.getElementById('intro'); if (ik) ik.style.display = 'none'; }
   document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   window.addEventListener('beforeunload', function () { if (D.s) D.kaydet(); });
 });

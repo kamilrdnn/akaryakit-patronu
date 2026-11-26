@@ -1466,3 +1466,127 @@ try { EK.kur(); } catch (e) { }
   var s2 = SIM.gunSonu;
   SIM.gunSonu = function () { try { E.gmGun(); } catch (x) { } return s2.apply(this, arguments); };
 })();
+
+
+/* =========================================================
+   EK 4 — sözleşme ve toplu anlaşma yönetimi
+   · başka şubede imzalanan anlaşma artık boşa ceza yazmaz: o şube kendi çalışır
+   · anlaşma bulunduğun şubeye alınabilir
+   · fesih: kalan süreye göre cezasını ödeyip çıkarsın
+   ========================================================= */
+(function () {
+  var E = EK;
+
+  /* oyuncunun başında olmadığı şubenin anlaşmayı karşılama oranı */
+  E.pasifVerim = function (sb) {
+    if (!sb || sb.devredildi) return 0;
+    var mudur = null;
+    for (var i = 0; i < sb.personel.length; i++) if (sb.personel[i].tip === 'mudur') mudur = sb.personel[i];
+    return mudur ? kisitla(0.7 + mudur.beceri / 280, 0.7, 1.05) : 0.6;
+  };
+  E.anlasmaBul = function (tur, idv) {
+    var L = tur === 'filo' ? D.s.filolar : D.s.sozlesmeler;
+    for (var i = 0; i < L.length; i++) if (L[i].id === idv) return { liste: L, i: i, a: L[i] };
+    return null;
+  };
+  E.fesihBedeli = function (a) {
+    var kalan = Math.max(0, a.kalanGun) / Math.max(1, a.gun);
+    return Math.round((a.ceza || 0) * (0.25 + 0.5 * kalan) / 500) * 500;
+  };
+  E.fesih = function (tur, idv) {
+    var b = E.anlasmaBul(tur, idv);
+    if (!b) return false;
+    var bedel = E.fesihBedeli(b.a);
+    if (D.s.para < bedel) { UI.bildir('Para yetmiyor', 'Fesih bedeli: ' + tl(bedel), 'kotu'); return false; }
+    D.s.para -= bedel; D.s.ist.bugunGider += bedel;
+    D.s.marka = kisitla(D.s.marka - 1.5, 0, 100);
+    b.liste.splice(b.i, 1);
+    /* sıradaki konvoy araçları da gider */
+    if (tur === 'filo') D.s.subeler.forEach(function (sb) {
+      for (var q = sb.kuyruk.length - 1; q >= 0; q--) {
+        var m = sb.kuyruk[q];
+        if (m.filo === idv && m.pompa === null) sb.kuyruk.splice(q, 1);
+      }
+    });
+    UI.bildir('📄 Feshedildi', b.a.ad + ' · fesih bedeli ' + tl(bedel), 'uyari');
+    return true;
+  };
+  E.subeyeAl = function (tur, idv) {
+    var b = E.anlasmaBul(tur, idv);
+    if (!b || b.a.sube === D.s.aktif) return false;
+    b.a.sube = D.s.aktif;
+    if (tur === 'filo') b.a.sonSaat = -1;
+    UI.bildir('📍 Şubeye alındı', b.a.ad + ' artık ' + D.lok(D.sube()).ad + ' şubesinden karşılanacak.', 'iyi');
+    return true;
+  };
+  E.fesihSor = function (tur, idv) {
+    var b = E.anlasmaBul(tur, idv);
+    if (!b) return;
+    var h = '<div class="not"><b>' + b.a.ad + '</b> feshedilecek. Kalan ' + b.a.kalanGun + ' gün için ceza ödersin, marka puanın biraz düşer; prim hakkın yanar.</div>';
+    h += '<div class="kv" style="margin-top:8px"><span>Fesih bedeli</span><b class="kirmiziY">' + tl(E.fesihBedeli(b.a)) + '</b></div>';
+    h += '<button class="btn genis" style="margin-top:12px" onclick="EK.fesihTikla(\'' + tur + '\',\'' + idv + '\')">Feshet</button>';
+    h += '<button class="btn ikincil genis" style="margin-top:8px" onclick="UI.modalKapat()">Vazgeç</button>';
+    UI.modal('Anlaşmayı feshet', h);
+  };
+  E.fesihTikla = function (tur, idv) { UI.modalKapat(); if (E.fesih(tur, idv)) UI.panelYenile(); };
+  E.subeyeAlTikla = function (tur, idv) { if (E.subeyeAl(tur, idv)) UI.panelYenile(); };
+
+  E.anlasmaKart = function (tur) {
+    var L = tur === 'filo' ? D.s.filolar : D.s.sozlesmeler;
+    if (!L.length) return '';
+    var h = '<div class="kart"><div class="baslik">' + (tur === 'filo' ? '🤝 Yürüyen toplu anlaşmalar' : '✍️ Yürüyen sözleşmeler') + ' · ' + L.length + '</div>';
+    h += '<div class="not">Anlaşma hangi şubedeyse oradan karşılanır. Başında olmadığın şube bunu kendi yürütür (müdürü varsa daha iyi). İstersen bulunduğun şubeye al ya da cezasını ödeyip feshet.</div>';
+    for (var i = 0; i < L.length; i++) {
+      var a = L[i], sb = D.s.subeler[a.sube], burada = a.sube === D.s.aktif;
+      var durum;
+      if (tur === 'filo') durum = burada ? 'bugün ' + say(a.bugunTeslim || 0, 0) + ' / ' + say(a.gunlukL, 0) + ' L' : 'günde ' + say(a.gunlukL, 0) + ' L · şube yürütüyor (%' + Math.round(E.pasifVerim(sb) * 100) + ')';
+      else {
+        var satilan = burada && sb && sb.gunlukYakit ? (sb.gunlukYakit[a.yakit] || 0) : 0;
+        durum = burada ? 'bugün ' + say(satilan, 0) + ' / ' + say(a.gunlukL, 0) + ' L' : 'günde ' + say(a.gunlukL, 0) + ' L · şube yürütüyor (%' + Math.round(E.pasifVerim(sb) * 100) + ')';
+      }
+      h += '<div class="satir"><div class="sol"><div class="ikon">' + (a.emoji || '📄') + '</div><div><div class="ad">' + a.ad + '</div>';
+      h += '<div class="alt">' + (sb ? D.lok(sb).ad : '—') + (burada ? ' <span class="yesilY">(buradasın)</span>' : '') + ' · ' + a.kalanGun + ' gün kaldı<br>' + VERI.yakitlar[a.yakit].kisa + ' · ' + durum +
+           (a.kacirilan ? ' · <span class="kirmiziY">' + a.kacirilan + ' gün eksik</span>' : '') + '</div></div></div></div>';
+      h += '<div class="btngrup" style="margin:-2px 0 10px">';
+      if (!burada) h += '<button class="btn kucuk ikincil" onclick="EK.subeyeAlTikla(\'' + tur + '\',\'' + a.id + '\')">📍 Bu şubeye al</button>';
+      h += '<button class="btn kucuk ikincil" onclick="EK.fesihSor(\'' + tur + '\',\'' + a.id + '\')">📄 Feshet · ' + tl(E.fesihBedeli(a)) + '</button>';
+      h += '</div>';
+    }
+    return h + '</div>';
+  };
+
+  /* gün sonu: başında olmadığın şubelerdeki anlaşmalar kendiliğinden karşılanır */
+  var g1 = SIM.gunSonu;
+  SIM.gunSonu = function () {
+    try {
+      var s = D.s;
+      s.filolar.forEach(function (f) {
+        if (f.sube === s.aktif) return;
+        var sb = s.subeler[f.sube], v = E.pasifVerim(sb);
+        if (!sb || !v) return;
+        var teslim = f.gunlukL * v;
+        f.bugunTeslim = Math.max(f.bugunTeslim || 0, teslim);
+        f.toplamTeslim = (f.toplamTeslim || 0) + teslim;
+        var kar = teslim * ((sb.fiyat && sb.fiyat[f.yakit]) || 0) * (1 - (f.iskonto || 0)) * 0.12;
+        s.para += kar; s.ist.bugunCiro += kar;
+      });
+      s.sozlesmeler.forEach(function (z) {
+        if (z.sube === s.aktif) return;
+        var sb = s.subeler[z.sube], v = E.pasifVerim(sb);
+        if (!sb || !v) return;
+        if (!sb.gunlukYakit) sb.gunlukYakit = { benzin: 0, dizel: 0, lpg: 0, ev: 0 };
+        /* müdürlü şube hedefi tutturur; müdürsüz şube bazı günler kaçırır */
+        var tutar = v >= 0.9 || Math.random() < v;
+        sb.gunlukYakit[z.yakit] = Math.max(sb.gunlukYakit[z.yakit] || 0, tutar ? z.gunlukL : z.gunlukL * v);
+      });
+    } catch (x) { }
+    return g1.apply(this, arguments);
+  };
+
+  if (typeof UI !== 'undefined') {
+    var u1 = UI.sozlesmeHtml;
+    UI.sozlesmeHtml = function () { return E.anlasmaKart('sozlesme') + u1.apply(this, arguments); };
+    var u2 = UI.filoHtml;
+    UI.filoHtml = function () { return E.anlasmaKart('filo') + u2.apply(this, arguments); };
+  }
+})();

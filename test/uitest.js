@@ -54,7 +54,12 @@ function calistir(ad, fn) {
 const { D, SIM, UI, SERVIS, VERI, GUNCELLE, OYUN, IZO, MINI, SES } = w;
 
 console.log('UI TEST 1 — açılış ekranı');
+calistir('açılış animasyonu', () => OYUN.intro());
+kontrol(w.document.getElementById('intro').innerHTML.indexOf('kmYazi') > 0 && w.document.getElementById('intro').innerHTML.indexOf('PATRONU') > 0, 'açılış animasyonu yapımcı ve oyun logosunu içermeli');
+calistir('animasyonu geç', () => w.document.getElementById('intro').onclick());
+kontrol(w.document.getElementById('intro').className === 'kapaniyor', 'dokununca animasyon kapanmalı');
 calistir('acilisCiz', () => OYUN.acilisCiz());
+kontrol(w.document.getElementById('acilis').innerHTML.indexOf('olAmblem') > 0 && w.document.getElementById('acilis').innerHTML.indexOf('KAMİLRDNN') > 0, 'menüde oyun logosu ve yapımcı imzası olmalı');
 kontrol(w.document.getElementById('acilis').innerHTML.indexOf('Yeni oyun') > 0, 'Yeni oyun düğmesi çizilmeli');
 ['yeniOnay', 'yedek', 'hakkinda'].forEach(e => calistir('açılış ' + e, () => OYUN.acilisCiz(e)));
 calistir('yeni oyun onayı', () => OYUN.yeniOyunOnay());
@@ -916,6 +921,30 @@ console.log('UI TEST 9c — ek sistemler');
       kontrol(UI.yapilarHtml(sbe).indexOf('jeneratorDoldurListe') > 0 && UI.yapilarHtml(sbe).indexOf('jeneratorHepsiniDoldur') > 0, 'yapılarım listesinde doldur düğmeleri olmalı');
       calistir('listeden jeneratör doldur', () => UI.jeneratorHepsiniDoldur());
       kontrol(jy.b.depo > 0 && sbe.tank.dizel.dolu < 5000, 'jeneratör listeden doldurulmalı'); } }
+  /* pompa sınırı arsayla büyür */
+  { const lk = D.lok(sbe); const eskiW = sbe.w, eskiH = sbe.h;
+    kontrol(SIM.pompaSiniri(sbe) >= lk.maxPompa, 'pompa sınırı taban sınırın altına inmemeli');
+    kontrol(sbe.w * sbe.h <= SIM.POMPA_TABAN_ALAN[lk.id] || SIM.pompaSiniri(sbe) > lk.maxPompa, 'büyük arsada pompa sınırı artmalı: ' + SIM.pompaSiniri(sbe)); }
+  /* sözleşme ve toplu anlaşma: fesih, şubeye alma, başka şubede yürütme */
+  { D.s.para = 5e8;
+    D.s.sozlesmeler = [{ id: 'sz1', ad: 'Deneme Sözleşme', emoji: '🚌', yakit: 'dizel', gun: 10, kalanGun: 6, gunlukL: 500, fiyat: 50, prim: 100000, ceza: 80000, basarili: 0, kacirilan: 0, sube: D.s.aktif }];
+    D.s.filolar = [{ id: 'fl1', tanim: 'x', ad: 'Deneme Filo', emoji: '🚛', arac: 'Tır', yakit: 'dizel', aracSayi: 2, aracL: 200, saatler: [9], iskonto: 0.05, gun: 10, kalanGun: 10, gunlukL: 400, prim: 90000, ceza: 60000, sube: D.s.aktif, bugunTeslim: 0, toplamTeslim: 0, kacirilan: 0, sonSaat: -1 }];
+    calistir('sözleşme sayfası (yönetim kartı)', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'sozlesme'); });
+    kontrol(w.document.getElementById('govde').innerHTML.indexOf('Feshet') > 0, 'sözleşmede feshet düğmesi olmalı');
+    calistir('toplu anlaşma sayfası (yönetim kartı)', () => UI.altSekmeGec('daha', 'filo'));
+    kontrol(w.document.getElementById('govde').innerHTML.indexOf('Feshet') > 0, 'toplu anlaşmada feshet düğmesi olmalı');
+    calistir('fesih penceresi', () => EK.fesihSor('filo', 'fl1')); UI.modalKapat();
+    const bd = EK.fesihBedeli(D.s.sozlesmeler[0]), p0 = D.s.para;
+    kontrol(bd > 0 && EK.fesih('sozlesme', 'sz1') && D.s.sozlesmeler.length === 0 && D.s.para === p0 - bd, 'sözleşme bedeli ödenerek feshedilmeli');
+    /* başka şubedeki filo: ceza yazmamalı */
+    D.s.filolar[0].sube = D.s.aktif + 1;
+    D.s.subeler.push(D.yeniSube('cevreyolu', false)); D.s.subeler[D.s.subeler.length - 1].personel = [{ id: 'm1', tip: 'mudur', ad: 'M', beceri: 90, maas: 40000, pompa: null }];
+    D.s.filolar[0].sube = D.s.subeler.length - 1;
+    const kac0 = D.s.filolar[0].kacirilan; calistir('gün sonu (başka şubede filo)', () => SIM.gunSonu());
+    kontrol(D.s.filolar[0] && D.s.filolar[0].kacirilan === kac0, 'müdürlü şubedeki anlaşma ceza yazmamalı');
+    kontrol(EK.subeyeAl('filo', 'fl1') && D.s.filolar[0].sube === D.s.aktif, 'anlaşma bulunduğun şubeye alınabilmeli');
+    kontrol(EK.fesih('filo', 'fl1') && D.s.filolar.length === 0, 'toplu anlaşma feshedilebilmeli');
+    D.s.subeler.pop(); }
   /* genel müdür */
   { D.s.ek.gm = null; D.s.para = 5e8; D.s.seviye = 20;
     calistir('genel müdür sayfası (adaylar)', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'gm'); });
