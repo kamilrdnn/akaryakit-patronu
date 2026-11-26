@@ -1,7 +1,7 @@
 {
-  "versionCode": 144,
-  "versionName": "1.2.38",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.38/AkaryakitPatronu-1.2.38.apk",
-  "size": 3344617,
-  "notes": "Etkinlikler: gerçek saate göre 2 saatte bir değişir, tamamlanınca karttan kalkar"
+  "versionCode": 145,
+  "versionName": "1.2.39",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.39/AkaryakitPatronu-1.2.39.apk",
+  "size": 3345005,
+  "notes": "Personel sınırı sabit 12 değil: pompacı pompa sayısı kadar, diğer görevliler ek kontenjan"
 }
