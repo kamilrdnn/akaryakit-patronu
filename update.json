@@ -1,7 +1,7 @@
 {
-  "versionCode": 150,
-  "versionName": "1.2.44",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.44/AkaryakitPatronu-1.2.44.apk",
-  "size": 3368161,
-  "notes": "Genel müdür: eksik personel alımı, görevlendirme, vardiya, şikâyet takibi, arıza/temizlik/yakıt ve günlük rapor"
+  "versionCode": 151,
+  "versionName": "1.2.45",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.45/AkaryakitPatronu-1.2.45.apk",
+  "size": 3368361,
+  "notes": "Yapılarım listesinden doğrudan yükseltme; bina yükseltme bedeli ekrandakiyle eşitlendi"
 }
