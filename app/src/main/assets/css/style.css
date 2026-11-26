@@ -715,3 +715,6 @@ body.foto #fotoCik{display:block}
 .vardiyaSec button{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:inherit;border-radius:9px;padding:6px 2px;font-size:11.5px;font-weight:700;display:flex;flex-direction:column;gap:1px;align-items:center}
 .vardiyaSec button span{font-size:9.5px;font-weight:500;opacity:.7}
 .vardiyaSec button.aktif{background:rgba(240,180,41,.22);border-color:#f0b429}
+
+.gmSatir{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:12.5px;line-height:1.35}
+.gmSatir span{display:block;font-size:10px;opacity:.55;margin-bottom:1px}

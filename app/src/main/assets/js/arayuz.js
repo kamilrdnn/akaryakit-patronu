@@ -1492,7 +1492,7 @@ const UI = {
       ['gorevler', '🎯 Görevler', hazirGorev || ''], ['sozlesme', '✍️ Sözleşmeler'],
       ['filo', '🤝 Toplu Anlaşma'], ['marka', '🪧 Markam'],
       ['sikayet', '💬 Geri Bildirim', (D.sube().sikayetler || []).filter(function (x) { return !x.okundu; }).length || ''],
-      ['bolge', '🗺️ Bölgeler'], ['arge', '🔬 Ar-Ge'], ['bayi', '🤝 Bayilik'],
+      ['gm', '👔 Genel Müdür'], ['bolge', '🗺️ Bölgeler'], ['arge', '🔬 Ar-Ge'], ['bayi', '🤝 Bayilik'],
       ['basarim', '🏆 Başarımlar'], ['ayarlar', '⚙️ Ayarlar']
     ]);
     var k = this.altSekme.daha || 'ozet';
@@ -1502,6 +1502,7 @@ const UI = {
     if (k === 'filo') return h + this.filoHtml();
     if (k === 'marka') return h + this.markaHtml();
     if (k === 'sikayet') return h + this.sikayetHtml();
+    if (k === 'gm') return h + EK.gmHtml();
     if (k === 'bolge') return h + EK.bolgeHtml();
     if (k === 'arge') return h + EK.argeHtml();
     if (k === 'bayi') return h + EK.bayiHtml();

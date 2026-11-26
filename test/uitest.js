@@ -888,6 +888,34 @@ console.log('UI TEST 9c — ek sistemler');
     D.s.saat = 12; kontrol(EK.gorevdekiler(sbe).filter(p => p.pompa === pk).length === 1, 'aynı anda yalnız biri görevde olmalı');
     EK.vardiyaDegis(a2.id, 'tam'); kontrol(a1.pompa === null && a2.pompa === pk, 'vardiya çakışınca diğeri pompadan alınmalı');
     D.s.saat = 13; }
+  /* genel müdür */
+  { D.s.ek.gm = null; D.s.para = 5e8; D.s.seviye = 20;
+    calistir('genel müdür sayfası (adaylar)', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'gm'); });
+    kontrol(EK.gmIseAl({ ad: 'Deneme Müdür', beceri: 90, maas: 180000 }) && !!EK.gm(), 'genel müdür işe alınabilmeli');
+    sbe.personel = []; sbe.temizlik = 20; sbe.sikayetler = [];
+    const pmp = D.pompalar(sbe); pmp[0].p.arizali = true; pmp[0].p.bakim = 20;
+    SIM.sikayet(sbe, 'bekleme', null); SIM.sikayet(sbe, 'kirli', null); SIM.sikayet(sbe, 'wcYok', null);
+    sbe.tank.benzin.dolu = 10; sbe.siparis = [];
+    for (let t = 0; t < 12; t++) EK.gmSaat();
+    kontrol(!pmp[0].p.arizali, 'genel müdür arızayı tamir ettirmeli');
+    kontrol(sbe.temizlik === 100, 'genel müdür istasyonu temizletmeli');
+    kontrol(pmp.every(q => sbe.personel.some(p => p.pompa === q.i)), 'genel müdür boş pompalara pompacı almalı');
+    kontrol(sbe.sikayetler.every(x => x.okundu), 'genel müdür şikâyetleri incelemeli');
+    kontrol(sbe.siparis.some(x => x.yakit === 'benzin'), 'genel müdür biten yakıtı sipariş etmeli');
+    const bostaki = SIM.adayUret('pompaci'); sbe.personel.push(bostaki); EK.gmSaat();
+    kontrol(bostaki.pompa !== null, 'genel müdür boştaki pompacıyı görevlendirmeli');
+    const pg = D.s.para; EK.gm().rezerv = 1e12; sbe.temizlik = 10; EK.gmSaat();
+    kontrol(sbe.temizlik === 10 && D.s.para === pg, 'rezervin altına inecekse harcama yapmamalı');
+    EK.gm().rezerv = 500000;
+    calistir('genel müdür gün sonu', () => EK.gmGun());
+    kontrol(SIM.personelSayisi(sbe, 'temizlik') >= 1, 'genel müdür eksik temizlikçiyi almalı');
+    kontrol(EK.gm().rapor.length > 3, 'genel müdür rapor tutmalı');
+    calistir('genel müdür sayfası', () => UI.altSekmeGec('daha', 'gm'));
+    kontrol(w.document.getElementById('govde').innerHTML.indexOf('Yetkiler') > 0, 'genel müdür sayfası yetkileri göstermeli');
+    calistir('yetki kapat', () => EK.gmAyarTikla('alim')); kontrol(EK.gm().ayar.alim === false, 'yetki kapatılabilmeli');
+    calistir('rezerv', () => EK.gmRezervTikla());
+    calistir('çıkar penceresi', () => EK.gmCikarTikla()); UI.modalKapat();
+    kontrol(EK.gmCikar() && !EK.gm(), 'genel müdür işten çıkarılabilmeli'); }
   /* bölge kapışması */
   { D.s.ek.bolge = undefined; const bg = EK.bolge();
     kontrol(bg.liste.length === 8 && bg.liste.every(b => Math.abs(b.sen + b.r[0] + b.r[1] + b.r[2] - 100) < 0.5), 'bölge payları 100 etmeli');

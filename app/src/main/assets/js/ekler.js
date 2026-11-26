@@ -1069,3 +1069,318 @@ try { EK.kur(); } catch (e) { }
   /* arayüz */
   /* vardiya düğmeleri personel ekranının en üstündeki "Ekip ve vardiya" kartındadır */
 })();
+
+/* =========================================================
+   EK 3 — GENEL MÜDÜR
+   Şirketin tamamına bakar: eksik personeli alır, boşta kalanı görevlendirir,
+   vardiyayı düzenler, şikâyetleri inceleyip sebebini giderir, bakım / temizlik /
+   yakıt siparişini takip eder ve her gün rapor verir.
+   Saat başı ve gün sonunda çalışır; kare başına yükü yoktur.
+   ========================================================= */
+(function () {
+  var E = EK;
+
+  E.gmAyarlar = [
+    ['alim',    '🧑‍🔧 Eksik personeli işe alsın',        'Boş pompaya pompacı, eksikse temizlikçi, teknisyen ve kasiyer alır.'],
+    ['gorev',   '📌 Boşta kalanı görevlendirsin',         'Pompası olmayan pompacıyı boş pompaya ya da ikinci vardiyaya yerleştirir.'],
+    ['vardiya', '🕐 Vardiyaları düzenlesin',              'Kadro değişince gündüz / gece dağılımını yeniden kurar.'],
+    ['moral',   '💬 Zam ve primle ilgilensin',            'Zam isteklerini yanıtlar, morali çok düşene prim verir.'],
+    ['sikayet', '📮 Şikâyetleri çözsün',                  'Şikâyetleri okur, sebebini giderir; gideremediğini sana önerir.'],
+    ['bakim',   '🛠️ Arıza ve temizliği takip etsin',      'Arızayı tamir ettirir, istasyon kirlenince temizletir.'],
+    ['yakit',   '⛽ Yakıt siparişini versin',             'Tank %20\'nin altına düşünce sipariş verir.'],
+    ['fazla',   '✂️ Fazla personeli çıkarsın',            'Görev verilemeyen pompacıyı tazminatıyla işten çıkarır.']
+  ];
+  E.gmRezervler = [100000, 500000, 2000000, 10000000];
+
+  E.gm = function () { return E.d().gm || null; };
+  E.gmAdayUret = function () {
+    var beceri = rastgeleTam(45, 96);
+    return {
+      ad: secRast(VERI.isimler) + ' ' + secRast(VERI.soyadlar), beceri: beceri,
+      maas: Math.round((90000 + 110000 * beceri / 100) / 1000) * 1000
+    };
+  };
+  E.gmAdaylar = function (yenile) {
+    if (yenile || !E._gmAdaylar) E._gmAdaylar = [E.gmAdayUret(), E.gmAdayUret(), E.gmAdayUret()];
+    return E._gmAdaylar;
+  };
+  E.gmIseAl = function (aday) {
+    if (E.gm()) return false;
+    if (D.s.seviye < 5) { UI.bildir('Kilitli', 'Genel müdür seviye 5\'te alınabilir.', 'kotu'); return false; }
+    if (!D.harca(aday.maas)) return false;                       /* bir aylık peşin */
+    E.d().gm = {
+      ad: aday.ad, beceri: aday.beceri, maas: aday.maas, gun: D.s.gun, rezerv: 500000,
+      ayar: { alim: true, gorev: true, vardiya: true, moral: true, sikayet: true, bakim: true, yakit: true, fazla: false },
+      rapor: [], sayac: {}, oneri: {}
+    };
+    E._gmAdaylar = null;
+    UI.bildir('👔 Genel müdür göreve başladı', aday.ad + ' artık şirketi koordine ediyor.', 'iyi');
+    return true;
+  };
+  E.gmCikar = function () {
+    var g = E.gm();
+    if (!g) return false;
+    var taz = Math.round(g.maas * 0.8);
+    D.s.para -= taz; D.s.ist.bugunGider += taz;
+    E.d().gm = null;
+    UI.bildir('Genel müdür ayrıldı', 'Tazminat: ' + tl(taz), 'uyari');
+    return true;
+  };
+  E.gmYaz = function (metin) {
+    var g = E.gm();
+    if (!g) return;
+    g.rapor.unshift({ gun: D.s.gun, saat: ikiHane(D.s.saat) + ':' + ikiHane(D.s.dk), metin: metin });
+    if (g.rapor.length > 24) g.rapor.pop();
+    g.bugunIs = (g.bugunIs || 0) + 1;
+  };
+  /* bütçe: kasada rezervin üstünde para varsa harcar */
+  E.gmOde = function (tutar) {
+    var g = E.gm();
+    if (!g || tutar <= 0 || D.s.para - tutar < g.rezerv) return false;
+    D.s.para -= tutar; D.s.ist.bugunGider += tutar;
+    return true;
+  };
+  /* genel müdür iş yaparken çekirdek bildirimleri susar; günde tek özet gelir */
+  E.gmSessiz = function (fn) {
+    var eski = UI.bildir;
+    UI.bildir = function () { };
+    try { return fn(); } finally { UI.bildir = eski; }
+  };
+  E.subeAdi = function (sb) { return D.lok(sb).ad; };
+
+  E.gmAl = function (sb, tip, pompa) {
+    if (SIM.personelSayisi(sb, tip) >= SIM.personelSiniri(sb, tip)) return null;
+    var g = E.gm(), aday = SIM.adayUret(tip), deneme = 0;
+    /* iyi genel müdür daha iyi adayı seçer */
+    while (deneme++ < Math.floor(g.beceri / 25)) { var a2 = SIM.adayUret(tip); if (a2.beceri > aday.beceri) aday = a2; }
+    if (!E.gmOde(Math.round(aday.maas * 0.5))) return null;
+    sb.personel.push(aday);
+    if (pompa !== undefined && pompa !== null) E.pompayaEkle(sb, aday.id, pompa);
+    return aday;
+  };
+
+  /* ---- saat başı: acil işler ---- */
+  E.gmSaat = function () {
+    var g = E.gm();
+    if (!g) return;
+    var hak = 1 + Math.floor(g.beceri / 30);                    /* saat başına işlem */
+    D.s.subeler.forEach(function (sb) {
+      if (sb.devredildi || hak <= 0) return;
+      var ad = E.subeAdi(sb), i, y;
+
+      /* arıza ve temizlik */
+      if (g.ayar.bakim) {
+        for (i = 0; i < sb.yapi.length && hak > 0; i++) {
+          y = sb.yapi[i];
+          if (y && y.arizali && E.gmOde(SIM.bakimBedeli(y))) {
+            y.bakim = 100; y.arizali = false; hak--;
+            E.gmYaz('🛠️ ' + ad + ': arızalı ' + (y.t === 'pompa' ? 'pompa' : VERI.binalar[y.t].ad.toLocaleLowerCase('tr-TR')) + ' tamir ettirildi.');
+          }
+        }
+        if (hak > 0 && sb.temizlik < 45) {
+          var tf = Math.round(2500 + (100 - sb.temizlik) * 220);
+          if (E.gmOde(tf)) { sb.temizlik = 100; sb.memnuniyet = kisitla(sb.memnuniyet + 3, 0, 100); hak--; E.gmYaz('🧹 ' + ad + ': istasyon temizletildi.'); }
+        }
+      }
+
+      /* yakıt */
+      if (g.ayar.yakit && hak > 0) {
+        ['benzin', 'dizel', 'lpg'].forEach(function (yk) {
+          if (hak <= 0 || !sb.tank[yk]) return;
+          var kap = D.tankKap(sb, yk);
+          if (!kap || sb.tank[yk].dolu / kap > 0.2) return;
+          for (var q = 0; q < sb.siparis.length; q++) if (sb.siparis[q].yakit === yk) return;      /* yolda var */
+          var miktar = Math.round((kap - sb.tank[yk].dolu) * 0.85 / 100) * 100;
+          var tahmini = D.toptanFiyat(yk) * miktar * 1.02 + 2500 + miktar * 0.35;
+          if (miktar < 500 || D.s.para - tahmini < g.rezerv) return;
+          if (E.gmSessiz(function () { return SIM.siparisVer(sb, yk, miktar); })) {
+            hak--; E.gmYaz('⛽ ' + ad + ': ' + say(miktar, 0) + ' L ' + VERI.yakitlar[yk].ad.toLocaleLowerCase('tr-TR') + ' sipariş edildi.');
+          }
+        });
+      }
+
+      /* boşta kalan pompacı ve boş pompa */
+      var po = D.pompalar(sb), dolu = {}, bos = [];
+      for (i = 0; i < sb.personel.length; i++) {
+        var p = sb.personel[i];
+        if (p.tip !== 'pompaci') continue;
+        if (p.pompa !== null && p.pompa !== undefined) dolu[p.pompa] = (dolu[p.pompa] || 0) + 1; else bos.push(p);
+      }
+      if (g.ayar.gorev) {
+        for (i = 0; i < po.length && bos.length && hak > 0; i++) if (!dolu[po[i].i]) {
+          var b1 = bos.shift(); E.gmSessiz(function () { E.pompayaEkle(sb, b1.id, po[i].i); }); dolu[po[i].i] = 1; hak--;
+          E.gmYaz('📌 ' + ad + ': ' + b1.ad + ' Pompa ' + (po[i].i + 1) + '\'e görevlendirildi.');
+        }
+        for (i = 0; i < po.length && bos.length && hak > 0; i++) if (dolu[po[i].i] === 1) {
+          var b2 = bos.shift(); E.gmSessiz(function () { E.pompayaEkle(sb, b2.id, po[i].i); }); dolu[po[i].i] = 2; hak--;
+          E.gmYaz('📌 ' + ad + ': ' + b2.ad + ' Pompa ' + (po[i].i + 1) + '\'de ikinci vardiyaya alındı.');
+        }
+      }
+      if (g.ayar.alim) {
+        for (i = 0; i < po.length && hak > 0; i++) if (!dolu[po[i].i] && !po[i].p.arizali) {
+          var yeni = E.gmSessiz(function () { return E.gmAl(sb, 'pompaci', po[i].i); });
+          if (!yeni) break;
+          dolu[po[i].i] = 1; hak--;
+          E.gmYaz('🧑‍🔧 ' + ad + ': Pompa ' + (po[i].i + 1) + ' boştu; ' + yeni.ad + ' işe alındı (beceri ' + yeni.beceri + ').');
+        }
+      }
+      if (g.ayar.fazla && bos.length && hak > 0) {
+        var f = bos.pop(), taz = Math.round(f.maas * 0.8);
+        if (E.gmOde(taz)) { sb.personel.splice(sb.personel.indexOf(f), 1); hak--; E.gmYaz('✂️ ' + ad + ': görev verilemeyen ' + f.ad + ' işten çıkarıldı (tazminat ' + tl(taz) + ').'); }
+      }
+
+      /* şikâyetler */
+      if (g.ayar.sikayet && hak > 0) E.gmSikayet(sb, hak);
+    });
+  };
+
+  /* şikâyeti oku, sebebini gider ya da öneri olarak yaz */
+  E.gmSikayet = function (sb, hak) {
+    var g = E.gm(), L = sb.sikayetler || [], ad = E.subeAdi(sb), incelenen = 0;
+    var oneriler = {
+      wcYok: 'tuvalet kurulmalı', marketYok: 'market rafları doldurulmalı ya da market kurulmalı',
+      karanlik: 'aydınlatma için jeneratör ya da güneş paneli gerekli', pahali: 'fiyatlar rakibe göre yüksek; Fiyat ekranından indir',
+      tasma: 'pompacılar taşırıyor; daha becerikli pompacı al ya da kendin doldur', yanlis: 'yanlış yakıt veriliyor; pompacı becerisi düşük',
+      stokYok: 'yakıt bitiyor; depo büyüt ya da siparişi erken ver', bekleme: 'sıra uzuyor; pompa ekle ya da boş pompaya pompacı ata'
+    };
+    for (var i = 0; i < L.length && incelenen < hak * 3; i++) {
+      var s = L[i];
+      if (s.okundu) continue;
+      s.okundu = true; s.gm = true; incelenen++;
+      g.sayac[s.tip] = (g.sayac[s.tip] || 0) + 1;
+      sb.memnuniyet = kisitla(sb.memnuniyet + 0.25 + g.beceri / 400, 0, 100);       /* ilgilenilen müşteri yumuşar */
+      var anahtar = sb.lok + ':' + s.tip;
+      if (oneriler[s.tip] && g.oneri[anahtar] !== D.s.gun) {
+        g.oneri[anahtar] = D.s.gun;
+        E.gmYaz('💡 ' + ad + ' · ' + s.baslik + ': ' + oneriler[s.tip] + '.');
+      }
+    }
+    if (incelenen) g.bugunSikayet = (g.bugunSikayet || 0) + incelenen;
+    return incelenen;
+  };
+
+  /* ---- gün sonu: kadro, vardiya, moral, maaş, özet ---- */
+  E.gmGun = function () {
+    var g = E.gm();
+    if (!g) return;
+    var gunluk = g.maas / 30;
+    D.s.para -= gunluk; D.s.ist.bugunGider += gunluk;
+
+    D.s.subeler.forEach(function (sb) {
+      if (sb.devredildi) return;
+      var ad = E.subeAdi(sb), yapiSay = D.pompalar(sb).length + D.binalar(sb).length;
+      if (g.ayar.alim) {
+        var ihtiyac = [];
+        if (!SIM.personelSayisi(sb, 'temizlik') && yapiSay >= 4) ihtiyac.push('temizlik');
+        if (!SIM.personelSayisi(sb, 'teknisyen') && yapiSay >= 6) ihtiyac.push('teknisyen');
+        if (!SIM.personelSayisi(sb, 'kasiyer') && D.binaSayisi(sb, 'market')) ihtiyac.push('kasiyer');
+        ihtiyac.forEach(function (t) {
+          var y = E.gmSessiz(function () { return E.gmAl(sb, t); });
+          if (y) E.gmYaz('🧑‍💼 ' + ad + ': ' + VERI.personel[t].ad.toLocaleLowerCase('tr-TR') + ' eksikti; ' + y.ad + ' işe alındı.');
+        });
+      }
+      if (g.ayar.vardiya) {
+        var imza = sb.personel.map(function (p) { return p.id + ':' + (p.pompa === null || p.pompa === undefined ? '-' : p.pompa); }).join('|');
+        if (sb._gmImza !== imza) {
+          var ilk = sb._gmImza === undefined;
+          E.vardiyaOto(sb);
+          sb._gmImza = sb.personel.map(function (p) { return p.id + ':' + (p.pompa === null || p.pompa === undefined ? '-' : p.pompa); }).join('|');
+          if (!ilk) E.gmYaz('🕐 ' + ad + ': kadro değişti, vardiyalar yeniden düzenlendi.');
+        }
+      }
+      if (g.ayar.moral) {
+        sb.personel.forEach(function (p) {
+          E.pHazirla(p);
+          if (p.moral < 30 && E.gmOde(E.primBedeli(p))) { p.moral = kisitla(p.moral + 22, 0, 100); E.gmYaz('🎁 ' + ad + ': morali düşen ' + p.ad + ' için prim verildi.'); }
+        });
+      }
+    });
+    if (g.ayar.moral && E.d().zam) {
+      var zp = E.zamPersonel();
+      if (zp) {
+        var kabul = zp.beceri >= 55 || zp.kidem >= 3;
+        var zAd = zp.ad, oran = Math.round(E.d().zam.oran * 100);
+        E.gmSessiz(function () { E.zamYanit(kabul); });
+        E.gmYaz('💬 ' + zAd + ' %' + oran + ' zam istedi: ' + (kabul ? 'kabul edildi.' : 'becerisi düşük olduğu için reddedildi.'));
+      }
+    }
+    /* günlük özet */
+    var is = g.bugunIs || 0, sk = g.bugunSikayet || 0;
+    if (is || sk) UI.bildir('👔 Genel müdür raporu', is + ' iş yapıldı' + (sk ? ', ' + sk + ' şikâyet incelendi' : '') + '. Ayrıntı: Yönetim → Genel Müdür.', 'iyi');
+    g.dunIs = is; g.dunSikayet = sk; g.bugunIs = 0; g.bugunSikayet = 0;
+  };
+
+  /* ---- arayüz ---- */
+  E.gmHtml = function () {
+    var g = E.gm(), h = '', i;
+    if (!g) {
+      h += '<div class="kart"><div class="baslik">👔 Genel Müdür</div>';
+      h += '<div class="not">Şube müdüründen ayrıdır; bütün şirkete bakar. Eksik personeli alır, boşta kalanı görevlendirir, vardiyayı düzenler, şikâyetleri inceleyip sebebini giderir, arıza, temizlik ve yakıt siparişini takip eder. Her gün rapor verir. Becerisi yüksek olan saatte daha çok iş çıkarır ve daha iyi personel seçer.</div>';
+      if (D.s.seviye < 5) return h + '<div class="not">🔒 Seviye 5\'te açılır.</div></div>';
+      h += '</div><div class="kart"><div class="baslik">Adaylar</div>';
+      var A = E.gmAdaylar();
+      for (i = 0; i < A.length; i++) {
+        h += '<div class="satir"><div class="sol"><div class="ikon">👔</div><div><div class="ad">' + A[i].ad + '</div>';
+        h += '<div class="alt">beceri <b>' + A[i].beceri + '</b> · ' + tl(A[i].maas) + '/ay · saatte ' + (1 + Math.floor(A[i].beceri / 30)) + ' iş</div>';
+        h += '<div class="cubuk" style="width:140px"><i style="width:' + A[i].beceri + '%;background:' + (A[i].beceri > 75 ? 'var(--yesil)' : A[i].beceri > 55 ? 'var(--sari)' : 'var(--kirmizi)') + '"></i></div></div></div>';
+        h += '<button class="btn minik" onclick="EK.gmTikla(' + i + ')">Al<br><span class="mini">' + tl(A[i].maas) + '</span></button></div>';
+      }
+      h += '<button class="btn ikincil genis" style="margin-top:10px" onclick="EK.gmAdaylar(true);UI.panelYenile()">🔄 Yeni adaylar</button></div>';
+      return h;
+    }
+    h += '<div class="kart"><div class="baslik">👔 ' + g.ad + ' · Genel Müdür</div>';
+    h += '<div class="kv"><span>Beceri</span><b>' + g.beceri + ' · saatte ' + (1 + Math.floor(g.beceri / 30)) + ' iş</b></div>';
+    h += '<div class="kv"><span>Maaş</span><b>' + tl(g.maas) + '/ay</b></div>';
+    h += '<div class="kv"><span>Dün</span><b>' + (g.dunIs || 0) + ' iş · ' + (g.dunSikayet || 0) + ' şikâyet</b></div>';
+    h += '<div class="kv"><span>Kasada dokunmayacağı para</span><b>' + tl(g.rezerv) + '</b></div>';
+    h += '<div class="btngrup" style="margin-top:8px"><button class="btn kucuk ikincil" onclick="EK.gmRezervTikla()">Rezervi değiştir</button>';
+    h += '<button class="btn kucuk ikincil" onclick="EK.gmCikarTikla()">İşten çıkar</button></div></div>';
+
+    h += '<div class="kart"><div class="baslik">Yetkiler</div>';
+    for (i = 0; i < E.gmAyarlar.length; i++) {
+      var a = E.gmAyarlar[i], acik = !!g.ayar[a[0]];
+      h += '<div class="anahtarSatir"><div><div class="ad">' + a[1] + '</div><div class="alt">' + a[2] + '</div></div>';
+      h += '<button class="anahtar' + (acik ? ' acik' : '') + '" onclick="EK.gmAyarTikla(\'' + a[0] + '\')"><i></i></button></div>';
+    }
+    h += '</div>';
+
+    var top = 0, k;
+    for (k in g.sayac) top += g.sayac[k];
+    if (top) {
+      h += '<div class="kart"><div class="baslik">İncelenen şikâyetler · ' + top + '</div>';
+      var sira = Object.keys(g.sayac).sort(function (x, y) { return g.sayac[y] - g.sayac[x]; });
+      for (i = 0; i < sira.length; i++) {
+        var t = VERI.sikayetTipleri[sira[i]];
+        if (!t) continue;
+        h += '<div class="kv"><span>' + t.emoji + ' ' + t.ad + '</span><b>' + g.sayac[sira[i]] + '</b></div>';
+        h += '<div class="cubuk"><i style="width:' + (g.sayac[sira[i]] / g.sayac[sira[0]] * 100) + '%"></i></div>';
+      }
+      h += '<div class="not">En çok tekrar eden sebep en üstte; asıl onu çözmek gerekir.</div></div>';
+    }
+
+    h += '<div class="kart"><div class="baslik">Rapor</div>';
+    if (!g.rapor.length) h += '<div class="bos">Henüz kayıt yok. Saat başlarında kontrol eder.</div>';
+    for (i = 0; i < g.rapor.length; i++) h += '<div class="gmSatir"><span>Gün ' + g.rapor[i].gun + ' · ' + g.rapor[i].saat + '</span>' + g.rapor[i].metin + '</div>';
+    return h + '</div>';
+  };
+  E.gmTikla = function (i) { if (E.gmIseAl(E.gmAdaylar()[i])) UI.panelYenile(); };
+  E.gmAyarTikla = function (k) { var g = E.gm(); if (g) { g.ayar[k] = !g.ayar[k]; UI.panelYenile(); } };
+  E.gmRezervTikla = function () {
+    var g = E.gm(); if (!g) return;
+    g.rezerv = E.gmRezervler[(E.gmRezervler.indexOf(g.rezerv) + 1) % E.gmRezervler.length];
+    UI.panelYenile();
+  };
+  E.gmCikarTikla = function () {
+    var g = E.gm(); if (!g) return;
+    var h = '<div class="not"><b>' + g.ad + '</b> işten çıkarılacak. Tazminat: ' + tl(Math.round(g.maas * 0.8)) + '</div>';
+    h += '<button class="btn genis" style="margin-top:10px" onclick="EK.gmCikar();UI.modalKapat();UI.panelYenile()">İşten çıkar</button>';
+    h += '<button class="btn ikincil genis" style="margin-top:8px" onclick="UI.modalKapat()">Vazgeç</button>';
+    UI.modal('Genel müdür', h);
+  };
+
+  /* ---- bağlantı ---- */
+  var s1 = SIM.saatBasi;
+  SIM.saatBasi = function () { var r = s1.apply(this, arguments); try { E.gmSaat(); } catch (x) { } return r; };
+  var s2 = SIM.gunSonu;
+  SIM.gunSonu = function () { try { E.gmGun(); } catch (x) { } return s2.apply(this, arguments); };
+})();
