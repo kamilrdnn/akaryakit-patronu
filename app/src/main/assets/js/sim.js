@@ -1766,9 +1766,21 @@ const SIM = {
       }
     }
     bAday.sort(function (a, b) { return a.puan - b.puan; });
+    var konan = [];
     for (var b2 = 0; b2 < binalar.length && b2 < bAday.length; b2++) {
       plan.push({ idx: bAday[b2].k, yapi: binalar[b2] });
       kullanilan[bAday[b2].k] = true;
+      konan.push(binalar[b2]);
+    }
+    /* arsa tıklım tıklımsa: kalanları boş kalan herhangi bir hücreye (ön şerit dahil) sıkıştır,
+       böylece düzenleme hiçbir zaman "yer yok" diye durmaz */
+    var kalan = [], q;
+    for (q = 0; q < pompalar.length; q++) { var varMi = false; for (var z = 0; z < plan.length; z++) if (plan[z].yapi === pompalar[q]) varMi = true; if (!varMi) kalan.push(pompalar[q]); }
+    for (q = 0; q < binalar.length; q++) if (konan.indexOf(binalar[q]) < 0) kalan.push(binalar[q]);
+    for (var bosK = sb.w * sb.h - 1; bosK >= 0 && kalan.length; bosK--) {
+      if (kullanilan[bosK]) continue;
+      kullanilan[bosK] = true;
+      plan.push({ idx: bosK, yapi: kalan.shift() });
     }
     return plan;
   },
@@ -2517,14 +2529,28 @@ const SIM = {
   /* =========================================================
      ARSA / ŞUBE / RAFİNERİ
      ========================================================= */
+  /* bir alımda arsanın varacağı boyut: iki sütun + bir satırla başlar,
+     kazanç hedefin altında kalırsa sınıra kadar sütun/satır eklemeye devam eder */
+  arsaAdim: function (sb) {
+    var lok = D.lok(sb);
+    var hedef = 12 + Math.min(8, Math.floor((D.s.seviye || 1) / 2));
+    var w = Math.min(lok.w, sb.w + 2), h = Math.min(lok.h, sb.h + 1);
+    var sira = 0;
+    while (w * h - sb.w * sb.h < hedef && (w < lok.w || h < lok.h) && sira < 12) {
+      if ((sira % 2 === 0 && w < lok.w) || h >= lok.h) w++; else h++;
+      sira++;
+    }
+    return { w: w, h: h, kazanc: w * h - sb.w * sb.h };
+  },
+
   arsaGenislet: function (sb) {
     var lok = D.lok(sb);
     if (sb.w >= lok.w && sb.h >= lok.h) return false;
     var bedel = Math.round((sb.w * sb.h) * 22000 * lok.trafik);
     if (!D.harca(bedel)) return false;
-    /* her alımda iki sütun + bir satır (ya da sınıra kadar) — parsel hızlı büyür */
-    var yeniW = Math.min(lok.w, sb.w + 2);
-    var yeniH = Math.min(lok.h, sb.h + 1);
+    /* her alımda seviyeye göre 12–20 hücre (ya da sınıra kadar) */
+    var adim = this.arsaAdim(sb);
+    var yeniW = adim.w, yeniH = adim.h;
     if (yeniW === sb.w && yeniH === sb.h) return false;
     var yeniYapi = new Array(yeniW * yeniH).fill(null);
     var yeniBeton = new Array(yeniW * yeniH).fill(false);

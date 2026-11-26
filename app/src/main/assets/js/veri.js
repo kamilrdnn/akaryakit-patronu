@@ -73,19 +73,19 @@ const VERI = {
 
   /* ---------------- lokasyonlar ---------------- */
   lokasyonlar: [
-    { id:'kasaba',    ad:'Kasaba İstasyonu',   emoji:'🏘️', fiyat:0,        w:7, h:6, trafik:1.00, maxPompa:6,  seviyeSart:1,
+    { id:'kasaba',    ad:'Kasaba İstasyonu',   emoji:'🏘️', fiyat:0,        w:10, h:8, trafik:1.00, maxPompa:6,  seviyeSart:1,
       profil:{ Otomobil:1.1, Hatchback:1.1, 'Ticari Araç':.9, Tır:.25, Otobüs:.3, Motosiklet:1.2, 'Lüks Araç':.3, Elektrikli:.25, Traktör:1.4, Taksi:.7 },
       aciklama:'Doğduğun kasaba. Sakin trafik, düşük kira, öğrenmek için ideal.' },
-    { id:'cevreyolu', ad:'Çevre Yolu',         emoji:'🛣️', fiyat:900000,   w:9, h:7, trafik:1.75, maxPompa:9,  seviyeSart:4,
+    { id:'cevreyolu', ad:'Çevre Yolu',         emoji:'🛣️', fiyat:900000,   w:12, h:9, trafik:1.75, maxPompa:9,  seviyeSart:4,
       profil:{ Otomobil:1.2, Hatchback:1.1, 'Ticari Araç':1.3, Tır:.8, Otobüs:.8, Motosiklet:.9, 'Lüks Araç':.7, Elektrikli:.6, Traktör:.4, Taksi:1.2 },
       aciklama:'Şehir çıkışı. Dengeli trafik, ticari araç ve taksi yoğun.' },
-    { id:'otoyol',    ad:'Otoyol Dinlenme',    emoji:'🚛', fiyat:2600000,  w:10, h:8, trafik:2.60, maxPompa:12, seviyeSart:7,
+    { id:'otoyol',    ad:'Otoyol Dinlenme',    emoji:'🚛', fiyat:2600000,  w:14, h:10, trafik:2.60, maxPompa:12, seviyeSart:7,
       profil:{ Otomobil:1.0, Hatchback:.8, 'Ticari Araç':1.2, Tır:3.2, Otobüs:2.4, Motosiklet:.5, 'Lüks Araç':.9, Elektrikli:.8, Traktör:.1, Taksi:.3 },
       aciklama:'Dizel cenneti. Tır ve otobüsler büyük depolarla gelir; restoran ve tır parkı şart.' },
-    { id:'marina',    ad:'Marina',             emoji:'⛵', fiyat:4100000,  w:9, h:8, trafik:1.60, maxPompa:10, seviyeSart:9,
+    { id:'marina',    ad:'Marina',             emoji:'⛵', fiyat:4100000,  w:12, h:10, trafik:1.60, maxPompa:10, seviyeSart:9,
       profil:{ Otomobil:.9, Hatchback:.6, 'Ticari Araç':.5, Tır:.2, Otobüs:.3, Motosiklet:.8, 'Lüks Araç':3.4, Elektrikli:1.6, Traktör:.05, Taksi:.6 },
       aciklama:'Lüks araç ve yat sahipleri. Az müşteri ama yüksek bahşiş ve premium fiyat toleransı.' },
-    { id:'metropol',  ad:'Metropol',           emoji:'🌆', fiyat:7800000,  w:12, h:10, trafik:3.60, maxPompa:14, seviyeSart:12,
+    { id:'metropol',  ad:'Metropol',           emoji:'🌆', fiyat:7800000,  w:16, h:12, trafik:3.60, maxPompa:14, seviyeSart:12,
       profil:{ Otomobil:1.4, Hatchback:1.3, 'Ticari Araç':1.1, Tır:.6, Otobüs:1.2, Motosiklet:1.5, 'Lüks Araç':1.5, Elektrikli:2.8, Traktör:.02, Taksi:2.6 },
       aciklama:'Zirve. Dev trafik, elektrikli araç patlaması, 14 pompaya kadar büyüme.' }
   ],

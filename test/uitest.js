@@ -895,6 +895,19 @@ console.log('UI TEST 9c — ek sistemler');
     kontrol(UI.yapilarHtml(sbe).indexOf('yukseltListe') > 0, 'yapılarım listesinde yükselt düğmesi olmalı');
     const bn = D.binalar(sbe).find(x => VERI.binalar[x.b.t].sv > x.b.sv);
     if (bn) { const p1 = D.s.para, b1 = SIM.yukseltmeBedeli(bn.b); SIM.yukselt(sbe, bn.i); kontrol(D.s.para === p1 - b1, 'bina yükseltme bedeli ekrandakiyle aynı olmalı'); } }
+  /* arsa: büyük adım ve tıklım tıklım arsada düzenleme */
+  { D.s.para = 5e9; const sbz = D.sube(); const a0 = sbz.w * sbz.h, ad = SIM.arsaAdim(sbz), lk = D.lok(sbz);
+    if (sbz.w < lk.w || sbz.h < lk.h) { kontrol(ad.kazanc >= 12 || (ad.w === lk.w && ad.h === lk.h), 'arsa adımı en az 12 hücre vermeli: ' + ad.kazanc);
+      kontrol(SIM.arsaGenislet(sbz) && sbz.w * sbz.h === a0 + ad.kazanc, 'arsa yazan kadar büyümeli'); }
+    for (let g = 0; g < 20; g++) SIM.arsaGenislet(sbz);
+    kontrol(sbz.w === lk.w && sbz.h === lk.h && lk.w >= 10, 'arsa lokasyon sınırına kadar büyüyebilmeli: ' + sbz.w + 'x' + sbz.h);
+    const yedekY = sbz.yapi.slice(), yedekB = sbz.beton.slice();
+    for (let i = 0; i < sbz.yapi.length; i++) { sbz.beton[i] = true; if (!sbz.yapi[i]) sbz.yapi[i] = { t: 'cicek', sv: 1, bakim: 100 }; }
+    const say0 = sbz.yapi.filter(Boolean).length;
+    kontrol(SIM.duzenlemeOnizle(sbz).length === say0, 'dolu arsada da bütün yapılar plana girmeli');
+    kontrol(SIM.istasyonDuzenle(sbz) && sbz.yapi.filter(Boolean).length === say0, 'dolu arsada düzenleme hata vermemeli');
+    for (let i = 0; i < sbz.yapi.length; i++) if (sbz.yapi[i] && sbz.yapi[i].t === 'cicek' && !yedekY.includes(sbz.yapi[i])) sbz.yapi[i] = null;
+    calistir('büyük arsada sahne', () => { UI.sekmeGec('istasyon'); IZO._sahneAnahtar = null; IZO.guncelle(0.016); IZO.ciz(); }); }
   /* genel müdür */
   { D.s.ek.gm = null; D.s.para = 5e8; D.s.seviye = 20;
     calistir('genel müdür sayfası (adaylar)', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'gm'); });
