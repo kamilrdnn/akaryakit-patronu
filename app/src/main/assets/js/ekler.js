@@ -1632,3 +1632,91 @@ try { EK.kur(); } catch (e) { }
     return a1.apply(this, arguments);
   };
 })();
+
+/* =========================================================
+   EK 6 — yolun karşısındaki arsa: aynı lokasyonda ikinci şube
+   Sahip olduğun her lokasyonda karşı yakadaki arsayı alıp orada da şube açarsın.
+   Karşı şube ayrı bir istasyondur: kendi arsası büyür, kendi kadrosu ve tankı olur;
+   Şubeler ekranından geçilir. Karşısında rakip yoktur, çünkü karşısı sensin.
+   ========================================================= */
+(function () {
+  var E = EK;
+
+  /* karşı şubenin adı ayrı görünsün */
+  var lokOnbellek = {};
+  var eskiLok = D.lok;
+  D.lok = function (sb) {
+    var l = eskiLok.apply(this, arguments);
+    var hedef = sb || (this.s ? this.sube() : null);
+    if (!hedef || !hedef.karsi) return l;
+    if (!lokOnbellek[l.id]) { var k = Object.create(l); k.ad = l.ad + ' · Karşı Yaka'; lokOnbellek[l.id] = k; }
+    return lokOnbellek[l.id];
+  };
+
+  E.karsiVar = function (lokId) {
+    for (var i = 0; i < D.s.subeler.length; i++) if (D.s.subeler[i].lok === lokId && D.s.subeler[i].karsi) return true;
+    return false;
+  };
+  E.karsiTanim = function (lokId) {
+    for (var i = 0; i < VERI.lokasyonlar.length; i++) if (VERI.lokasyonlar[i].id === lokId) return VERI.lokasyonlar[i];
+    return null;
+  };
+  E.karsiBedeli = function (lokId) {
+    var l = E.karsiTanim(lokId);
+    return l ? Math.round((l.fiyat * 0.7 + 700000 * l.trafik) / 10000) * 10000 : 0;
+  };
+  E.karsiSeviye = function (lokId) { var l = E.karsiTanim(lokId); return l ? l.seviyeSart + 2 : 99; };
+  E.karsiAc = function (lokId) {
+    var l = E.karsiTanim(lokId), sahip = false;
+    if (!l || E.karsiVar(lokId)) return false;
+    for (var i = 0; i < D.s.subeler.length; i++) if (D.s.subeler[i].lok === lokId && !D.s.subeler[i].karsi && !D.s.subeler[i].devredildi) sahip = true;
+    if (!sahip) { UI.bildir('Önce bu yakayı al', 'Karşı arsayı almak için o lokasyonda şuben olmalı.', 'kotu'); return false; }
+    if (D.s.seviye < E.karsiSeviye(lokId)) { UI.bildir('Seviye yetersiz', l.ad + ' karşı yakası için seviye ' + E.karsiSeviye(lokId) + ' gerekiyor.', 'kotu'); return false; }
+    if (!D.harca(E.karsiBedeli(lokId))) return false;
+    var sb = D.yeniSube(lokId, false);
+    sb.karsi = true;
+    sb.ad = l.ad + ' · Karşı Yaka';
+    sb.beton[0] = true; sb.beton[1] = true;
+    sb.yapi[0] = { t: 'pompa', yakit: lokId === 'otoyol' ? 'dizel' : 'benzin', sv: 1, bakim: 100, mesgul: null, arizali: false };
+    sb.rakipIst = { ad: 'Kendi şuben', guc: 1, agresif: 0, indirim: 0, savas: 0, olay: null, pay: 50, kazanilanSavas: 0, yok: true };
+    D.s.subeler.push(sb);
+    D.xpEkle(700);
+    UI.bildir('🛣️ Karşı yaka senin!', l.ad + ' yolunun karşısındaki arsa alındı. Şubeler ekranından geçip kurmaya başla.', 'iyi');
+    return true;
+  };
+  E.karsiKart = function () {
+    var h = '<div class="kart"><div class="baslik">🛣️ Yolun karşısı</div>';
+    h += '<div class="not">Şuben olan her lokasyonda yolun karşısındaki arsayı da alabilirsin. Orası ayrı bir şubedir: arsasını büyütür, pompa ve tesis kurarsın; karşı yönden gelen araçlar oraya girer. Karşında rakip olmaz.</div>';
+    var say0 = 0;
+    for (var i = 0; i < VERI.lokasyonlar.length; i++) {
+      var l = VERI.lokasyonlar[i], sahip = false;
+      for (var j = 0; j < D.s.subeler.length; j++) if (D.s.subeler[j].lok === l.id && !D.s.subeler[j].karsi && !D.s.subeler[j].devredildi) sahip = true;
+      if (!sahip) continue;
+      say0++;
+      var varMi = E.karsiVar(l.id), kilit = D.s.seviye < E.karsiSeviye(l.id);
+      h += '<div class="satir"><div class="sol"><div class="ikon">' + l.emoji + '</div><div><div class="ad">' + l.ad + ' · Karşı Yaka</div>';
+      h += '<div class="alt">' + (varMi ? '<span class="yesilY">senin</span>' : (kilit ? '<span class="kirmiziY">Sv ' + E.karsiSeviye(l.id) + ' gerekli</span>' : 'arsa ' + l.w + '×' + l.h + '\'e kadar büyür')) + '</div></div></div>';
+      if (!varMi) h += '<button class="btn minik"' + (kilit || D.s.para < E.karsiBedeli(l.id) ? ' style="opacity:.45"' : '') + ' onclick="EK.karsiTikla(\'' + l.id + '\')">Al<br><span class="mini">' + tl(E.karsiBedeli(l.id)) + '</span></button>';
+      else h += '<span class="etiket iyi">✓</span>';
+      h += '</div>';
+    }
+    if (!say0) h += '<div class="bos">Önce bir şuben olmalı.</div>';
+    return h + '</div>';
+  };
+  E.karsiTikla = function (lokId) { if (E.karsiAc(lokId)) UI.panelYenile(); };
+
+  /* karşı şubede rakip yok */
+  function rakipYok(sb) { return !!(sb && sb.rakipIst && sb.rakipIst.yok); }
+  var r1 = SIM.rakipCekim;   SIM.rakipCekim = function (sb) { return rakipYok(sb) ? 1.05 : r1.apply(this, arguments); };
+  var r2 = SIM.rakipGunSonu; SIM.rakipGunSonu = function (sb) { if (rakipYok(sb)) return; return r2.apply(this, arguments); };
+  var r3 = SIM.rakipIndirim; SIM.rakipIndirim = function (sb) { return rakipYok(sb) ? 0 : r3.apply(this, arguments); };
+  if (typeof UI !== 'undefined') {
+    var u1 = UI.rakipHtml;
+    UI.rakipHtml = function (sb) {
+      if (rakipYok(sb)) return '<div class="kart"><div class="baslik">🛣️ Karşı yaka</div><div class="not">Yolun karşısındaki istasyon da senin; burada fiyat savaşı olmaz.</div></div>';
+      return u1.apply(this, arguments);
+    };
+    var u2 = UI.subelerHtml;
+    UI.subelerHtml = function () { return u2.apply(this, arguments) + E.karsiKart(); };
+  }
+})();
