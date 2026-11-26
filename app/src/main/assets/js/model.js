@@ -1346,6 +1346,8 @@
       ekle(0, L - 0.05, W - 0.035, 0.07, 2.2 + gh, ch, cam, { duz: true });
       ekle(0, L - 0.02, W - 0.01, 0.08, 2.2 + gh + ch, 2.2, cesit === 'otobus' ? '#f4f6f8' : renk);
       if (cesit === 'otobus') ekle(0, L + 0.005, W + 0.005, 0.08, 4.4, 1.5, '#f4f6f8', { duz: true, ustsuz: true });
+      ekle(L / 2 - 0.03, 0.07, W - 0.05, 0.03, 2.2 + gh * 0.5, gh * 0.5 + ch, gece ? '#2a3a4e' : '#8fc7e4', { duz: true });   /* ön cam */
+      ekle(-L / 2 + 0.03, 0.07, W - 0.05, 0.03, 2.2 + gh, ch, self.karis(renk, '#000000', 0.12), { duz: true });               /* kapalı arka */
     } else if (cesit === 'traktor') {
       teker(-0.17, 0.2, 0.3, 0.09); teker(-0.17, -0.2, 0.3, 0.09);
       teker(0.22, 0.17, 0.17, 0.06); teker(0.22, -0.17, 0.17, 0.06);
@@ -1359,9 +1361,12 @@
       teker(0.24, W / 2 - 0.028, 0.15, 0.06); teker(0.24, -W / 2 + 0.028, 0.15, 0.06);
       teker(-0.24, W / 2 - 0.028, 0.15, 0.06); teker(-0.24, -W / 2 + 0.028, 0.15, 0.06);
       ekle(0, L, W, 0.13, 2, 5.8, renk);
-      ekle(-0.035, L * 0.5, W - 0.05, 0.1, 7.8, 4.6, cam, { duz: true });
-      ekle(-0.04, L * 0.45, W - 0.07, 0.1, 12.4, 1.5, renk);
-      if (cesit === 'taksi') ekle(-0.04, 0.12, 0.07, 0.02, 13.9, 2.4, '#2a2f38', { duz: true });
+      /* kabin arkaya yaslı, kaput önde uzun: aracın yönü bakınca anlaşılsın */
+      ekle(-0.1, L * 0.47, W - 0.05, 0.09, 7.8, 4.6, cam, { duz: true });
+      ekle(-0.115, L * 0.4, W - 0.07, 0.09, 12.4, 1.5, renk);
+      ekle(L / 2 - 0.035, 0.05, W - 0.07, 0.02, 2.6, 2.6, '#262b33', { duz: true });           /* ön ızgara */
+      ekle(0.17, 0.2, W - 0.16, 0.03, 7.8, 0.5, self.karis(renk, '#000000', 0.18), { duz: true }); /* kaput çizgisi */
+      if (cesit === 'taksi') ekle(-0.11, 0.12, 0.07, 0.02, 13.9, 2.4, '#2a2f38', { duz: true });
     }
     /* uzaktan yakına: parça merkezinin derinliğine, eşitse yüksekliğe göre */
     parcalar.sort(function (p, q) {
@@ -1385,10 +1390,15 @@
       };
       var onX = cesit === 'tir' ? 0.54 : L / 2;
       if (onGor) {
-        var f1 = nokta(onX - 0.005, W * 0.3, gece ? '#fff6c8' : '#fdf3c4', 1.25), f2 = nokta(onX - 0.005, -W * 0.3, gece ? '#fff6c8' : '#fdf3c4', 1.25);
+        var f1 = nokta(onX - 0.005, W * 0.3, gece ? '#fff6c8' : '#fff7d0', 1.9), f2 = nokta(onX - 0.005, -W * 0.3, gece ? '#fff6c8' : '#fff7d0', 1.9);
         if (gece) { this.hale(f1.x, f1.y, 9 * o, '255,240,180', 0.5); this.hale(f2.x, f2.y, 9 * o, '255,240,180', 0.5); }
       }
-      if (arkaGor) { nokta(-(cesit === 'tir' ? 0.53 : L / 2) + 0.005, W * 0.3, '#e23b3b', 1.1); nokta(-(cesit === 'tir' ? 0.53 : L / 2) + 0.005, -W * 0.3, '#e23b3b', 1.1); }
+      if (arkaGor) {
+        var ax = -(cesit === 'tir' ? 0.53 : L / 2) + 0.005;
+        var s1 = nokta(ax, W * 0.32, '#e8262b', 1.7), s2 = nokta(ax, -W * 0.32, '#e8262b', 1.7);
+        c.strokeStyle = 'rgba(232,38,43,.75)'; c.lineWidth = Math.max(1, 1.5 * o);
+        c.beginPath(); c.moveTo(s1.x, s1.y); c.lineTo(s2.x, s2.y); c.stroke();          /* stop şeridi */
+      }
     } else if (cesit === 'motor') {
       /* sürücü */
       var s = nk(-0.02, 0), e1 = this.ekran(s.gx, s.gy, 8), e2 = this.ekran(s.gx, s.gy, 15.5);

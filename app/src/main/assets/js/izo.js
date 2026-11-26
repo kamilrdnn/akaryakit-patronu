@@ -1379,6 +1379,28 @@ const IZO = {
       cizgi(orta + 0.14 + (yari - 0.22) * sr / serit, beyaz, 1.2, true);     /* uzak yön şerit ayraçları */
     }
 
+    /* şerit yön okları: istasyon tarafı sağa, karşı taraf sola akar */
+    var okRenk = this.ton('#dfe5ea', I), ol = this.kam.olcek;
+    if (ol > 0.45) {
+      c.fillStyle = okRenk; c.globalAlpha = 0.82;
+      var okCiz = function (ox, oy, yon) {
+        var u = 0.62, g = 0.05, b2 = 0.15, n = [
+          [-u / 2, -g], [u / 2 - 0.24, -g], [u / 2 - 0.24, -b2], [u / 2, 0], [u / 2 - 0.24, b2], [u / 2 - 0.24, g], [-u / 2, g]];
+        c.beginPath();
+        for (var q = 0; q < n.length; q++) { var e = IZO.ekran(ox + n[q][0] * yon, oy + n[q][1], 0.4); if (q) c.lineTo(e.x, e.y); else c.moveTo(e.x, e.y); }
+        c.closePath(); c.fill();
+      };
+      var gen = (yari - 0.22) / serit;
+      for (var ks = 0; ks < serit; ks++) {
+        var yy = ust + 0.08 + gen * (ks + 0.5), yu = orta + 0.14 + gen * (ks + 0.5);
+        for (var ox = -9 + (ks % 2) * 2.5; ox < sb.w + 11; ox += 5) {
+          okCiz(ox, yy, 1);
+          okCiz(ox + 1.2, yu, -1);
+        }
+      }
+      c.globalAlpha = 1;
+    }
+
     /* refüj: iki sarı çizgi arası beton ada + yeşillik */
     this.kutu(-14, orta - 0.12, 0, sb.w + 29, 0.24, 2.5, '#c9d0d8');
     var sari = this.ton('#e8c44a', I);
