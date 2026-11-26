@@ -1,7 +1,7 @@
 {
-  "versionCode": 149,
-  "versionName": "1.2.43",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.43/AkaryakitPatronu-1.2.43.apk",
-  "size": 3363405,
-  "notes": "Vardiya personel ekranında: kişi başına üç düğme ve tek dokunuşla otomatik dağıtım"
+  "versionCode": 150,
+  "versionName": "1.2.44",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.44/AkaryakitPatronu-1.2.44.apk",
+  "size": 3368161,
+  "notes": "Genel müdür: eksik personel alımı, görevlendirme, vardiya, şikâyet takibi, arıza/temizlik/yakıt ve günlük rapor"
 }
