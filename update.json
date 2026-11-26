@@ -1,7 +1,7 @@
 {
-  "versionCode": 155,
-  "versionName": "1.2.49",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.49/AkaryakitPatronu-1.2.49.apk",
-  "size": 3375061,
-  "notes": "Açılış animasyonu ve logolar, arsayla büyüyen pompa sınırı, sözleşme/toplu anlaşma feshi ve şube yönetimi"
+  "versionCode": 156,
+  "versionName": "1.2.50",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.50/AkaryakitPatronu-1.2.50.apk",
+  "size": 3376017,
+  "notes": "VIP önceliği: sıranın başına geçer, pompa yoksa biri hızla boşaltılır; şarj ünitesi sınırı pompadan ayrı ve seviyeyle artar"
 }
