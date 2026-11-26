@@ -1,7 +1,7 @@
 {
-  "versionCode": 159,
-  "versionName": "1.2.53",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.53/AkaryakitPatronu-1.2.53.apk",
-  "size": 3380337,
-  "notes": "Karşı yaka kaldırıldı, yerine kavşak yükseltmesi: karşı yönden gelen araçlar istasyona dönebiliyor"
+  "versionCode": 160,
+  "versionName": "1.2.54",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.54/AkaryakitPatronu-1.2.54.apk",
+  "size": 3380877,
+  "notes": "Trafik düzeni: şerit yön okları, araçların önü-arkası belirgin (kaput, far, stop şeridi), yön denetim testi"
 }
