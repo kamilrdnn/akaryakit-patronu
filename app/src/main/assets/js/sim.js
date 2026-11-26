@@ -2457,7 +2457,7 @@ const SIM = {
     }
     var tan = VERI.binalar[y.t];
     if (y.sv >= tan.sv) return false;
-    var bedel = Math.round(tan.svFiyat * Math.pow(1.6, y.sv - 1));
+    var bedel = this.yukseltmeBedeli(y);            /* ekranda yazan bedelle aynı */
     if (!D.harca(bedel)) return false;
     y.sv++; y.bakim = 100;
     if (y.t === 'depo') VERI.yakitSira.forEach(function (yy) { if (yy !== 'ev') sb.tank[yy].kap = D.tankKap(sb, yy); });

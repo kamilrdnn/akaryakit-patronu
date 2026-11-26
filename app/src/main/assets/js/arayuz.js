@@ -569,6 +569,17 @@ const UI = {
   },
 
   yukselt: function (k) { if (SIM.yukselt(D.sube(), k)) { this.bildir('Yükseltildi', '', 'iyi'); this.yapiModal(k); } },
+  /* Yapılarım listesinden doğrudan yükselt */
+  yukseltListe: function (k) {
+    var sb = D.sube(), y = sb.yapi[k];
+    if (!y) return;
+    if (SIM.yukselt(sb, k)) {
+      var ad = y.t === 'pompa' ? VERI.yakitlar[y.yakit].ad + ' Pompası' : VERI.binalar[y.t].ad;
+      this.bildir('⬆ Yükseltildi', ad + ' artık seviye ' + y.sv, 'iyi');
+      try { IZO._zAnahtar = ''; } catch (e) {}
+      this.panelYenile();
+    }
+  },
   bakim: function (k) { if (SIM.bakimYap(D.sube(), k)) { this.bildir('Bakım tamam', 'Ekipman yeni gibi.', 'iyi'); this.yapiModal(k); } },
   yik: function (k) { if (SIM.yik(D.sube(), k)) this.modalKapat(); },
   tasinan: null,
@@ -739,7 +750,7 @@ const UI = {
     h += '</div>';
 
     h += '<div class="kart"><div class="baslik">İstasyondaki yapılar</div>';
-    h += '<div class="not">Sahnede bir yapının arkası kapalı kalırsa buradan kartını açabilir, yükseltebilir, taşıyabilir ya da yıkabilirsin.</div>';
+    h += '<div class="not">Yükseltmeyi doğrudan buradaki ⬆ düğmesiyle yapabilirsin. "Aç" yapının kartını açar: bakım, taşıma, yıkma.</div>';
     var say2 = 0;
     for (var i = 0; i < sb.yapi.length; i++) {
       var y = sb.yapi[i];
@@ -764,7 +775,11 @@ const UI = {
       var satir = Math.floor(i / sb.w) + 1, sutun = (i % sb.w) + 1;
       h += '<div class="satir"><div class="sol"><div class="ikon">' + ik + '</div>';
       h += '<div><div class="ad">' + ad + '</div><div class="alt">' + alt + '<br><span class="mini">konum ' + satir + '. sıra, ' + sutun + '. sütun</span></div></div></div>';
-      h += '<button class="btn minik" onclick="UI.yapiModal(' + i + ')">Aç</button></div>';
+      var yb = SIM.yukseltmeBedeli(y);
+      h += '<div style="display:flex;gap:5px;align-items:center">';
+      if (yb > 0) h += '<button class="btn minik"' + (D.s.para < yb ? ' style="opacity:.45"' : '') + ' onclick="UI.yukseltListe(' + i + ')">⬆ sv' + (y.sv + 1) + '<br><span class="mini">' + tl(yb) + '</span></button>';
+      else h += '<span class="etiket iyi">en üst</span>';
+      h += '<button class="btn minik ikincil" onclick="UI.yapiModal(' + i + ')">Aç</button></div></div>';
     }
     if (!say2) h += '<div class="bos">Henüz yapı yok.</div>';
     h += '</div>';

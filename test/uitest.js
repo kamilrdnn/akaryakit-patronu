@@ -888,6 +888,13 @@ console.log('UI TEST 9c — ek sistemler');
     D.s.saat = 12; kontrol(EK.gorevdekiler(sbe).filter(p => p.pompa === pk).length === 1, 'aynı anda yalnız biri görevde olmalı');
     EK.vardiyaDegis(a2.id, 'tam'); kontrol(a1.pompa === null && a2.pompa === pk, 'vardiya çakışınca diğeri pompadan alınmalı');
     D.s.saat = 13; }
+  /* yapılarım listesinden yükseltme */
+  { D.s.para = 5e8; const pk = D.pompalar(sbe)[0]; pk.p.sv = 1; const p0 = D.s.para, bd = SIM.yukseltmeBedeli(pk.p);
+    calistir('listeden yükselt', () => UI.yukseltListe(pk.i));
+    kontrol(pk.p.sv === 2 && D.s.para === p0 - bd, 'listeden yükseltme çalışmalı ve yazan bedeli kesmeli');
+    kontrol(UI.yapilarHtml(sbe).indexOf('yukseltListe') > 0, 'yapılarım listesinde yükselt düğmesi olmalı');
+    const bn = D.binalar(sbe).find(x => VERI.binalar[x.b.t].sv > x.b.sv);
+    if (bn) { const p1 = D.s.para, b1 = SIM.yukseltmeBedeli(bn.b); SIM.yukselt(sbe, bn.i); kontrol(D.s.para === p1 - b1, 'bina yükseltme bedeli ekrandakiyle aynı olmalı'); } }
   /* genel müdür */
   { D.s.ek.gm = null; D.s.para = 5e8; D.s.seviye = 20;
     calistir('genel müdür sayfası (adaylar)', () => { UI.sekmeGec('daha'); UI.altSekmeGec('daha', 'gm'); });
