@@ -1,7 +1,7 @@
 {
-  "versionCode": 147,
-  "versionName": "1.2.41",
-  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.41/AkaryakitPatronu-1.2.41.apk",
-  "size": 3361693,
-  "notes": "Vardiya sistemi, oto kuaför, şarj parkı ve bölge kapışması"
+  "versionCode": 148,
+  "versionName": "1.2.42",
+  "apkUrl": "https://github.com/kamilrdnn/akaryakit-patronu/releases/download/v1.2.42/AkaryakitPatronu-1.2.42.apk",
+  "size": 3362577,
+  "notes": "Vardiyaya göre personel sınırı: pompa başına 2 pompacı, diğer kadrolar seviyeyle büyür; aynı pompada gündüz ve gece pompacısı"
 }
